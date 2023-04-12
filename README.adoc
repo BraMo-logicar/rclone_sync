@@ -40,7 +40,7 @@
 == Quotes
 
 r + clone = rclone = clone with %r (Python)
-[quote][literal]
+[literal]
 `_='_=%r;print(_%%_)';print(_%_)`
 
 == Links
