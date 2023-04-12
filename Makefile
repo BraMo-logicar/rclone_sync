@@ -109,7 +109,7 @@ rclone_sync.mail:
     d=`awk '/^Deleted:/ { print $$2 }' $(logt)`; \
     subj="[$(proj)@$(host)] rclone sync to $(rpath) ($${x-=0}x/$${d:-0}-)"; \
     elapsed=`awk '/Elapsed time:/ { print $$3 }' $(logt)`; \
-	(                                                       \
+	(                                                           \
         echo "From: $(mail_From)";                              \
         echo "To: $(mail_To)";                                  \
         echo "Subject: $$subj";                                 \
