@@ -40,20 +40,10 @@
 == Quotes
 
 r + clone = clone with r op
-[quote,BraMo]
+[quote]
 `_='_=%r;print(_%%_)';print(_%_)`
-
-r + clone = clone with r op
-[quote,BraMo]
-----
-_='_=%r;print(_%%_)';print(_%_)
-----
 
 == Links
 
 * https://rclone.org/ - rclone
-<<<<<<< HEAD
 * https://en.wikipedia.org/wiki/Quine_%28computing%29 - clone &harr; quine
-=======
-* https://en.wikipedia.org/wiki/Quine_(computing) - clone &rarr; quine
->>>>>>> a1304469455039e8a80883903261ee96ba8f312d
