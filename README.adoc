@@ -44,10 +44,6 @@ r + clone = rclone = clone with %r (Python)
 _='_=%r;print(_%%_)';print(_%_)
 ----
 
-`My` backup or `Maria` backup ? The `Max` priority.
-
-+My+ backup or +Maria+ backup ? The `Max` priority.
-
 == Links
 
 * https://rclone.org/ - rclone
