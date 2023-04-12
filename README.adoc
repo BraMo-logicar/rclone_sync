@@ -39,7 +39,7 @@
 
 == Quotes
 
-r + clone = clone with r op
+r + clone = rclone = clone with %r (Python)
 [quote]
 `_='_=%r;print(_%%_)';print(_%_)`
 
