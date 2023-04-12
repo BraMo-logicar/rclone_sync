@@ -46,4 +46,4 @@ r + clone = clone with r op
 == Links
 
 * https://rclone.org/ - rclone
-* https://en.wikipedia.org/wiki/Quine_(computing)/ - clone and quine
+* https://en.wikipedia.org/wiki/Quine_(computing)[] - clone and quine
