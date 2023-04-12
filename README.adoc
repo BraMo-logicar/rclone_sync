@@ -52,4 +52,4 @@ _='_=%r;print(_%%_)';print(_%_)
 == Links
 
 * https://rclone.org/ - rclone
-* https://en.wikipedia.org/wiki/Quine_(computing) - clone <-> quine
+* https://en.wikipedia.org/wiki/Quine_%28computing%29 - clone &harr; quine
