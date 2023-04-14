@@ -94,8 +94,8 @@ clean:
 rclone_sync:
 	@t0=`$(t)`; \
     $(rclone_sync) $(opts) / $(rpath); \
-    n=`awk '/objects/ { print $$4 }' $(sizef) | tr -d '()'`; \
     $(rclone) size $(rpath) > $(sizef); \
+    n=`awk '/objects/ { print $$4 }' $(sizef) | tr -d '()'`; \
     s=`awk '/size/ { print $$5 }' $(sizef) | tr -d '('`; \
     s=`$(call mb,$$s)`; \
     $(call log,"$(rpath): $$n objects$(,) $$s MB size"); \
@@ -135,4 +135,7 @@ rclone_sync.mail:
 # stats
 
 rclone_size:
-	@$(rclone) size $(rpath)
+	@echo "Bucket usage:"
+	@$(rclone) size $(rpath) | sed 's/^/  /'
+	@echo "Bucket usage (include versions):"
+	@$(rclone) size --s3-versions $(rpath) | sed 's/^/  /'
