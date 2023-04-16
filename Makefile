@@ -95,10 +95,14 @@ rclone_sync:
 	@t0=`$(t)`; \
     $(rclone_sync) $(opts) / $(rpath); \
     $(rclone) size $(rpath) > $(sizef); \
-    n=`awk '/objects/ { print $$4 }' $(sizef) | tr -d '()'`; \
-    s=`awk '/size/ { print $$5 }' $(sizef) | tr -d '('`; \
+    $(rclone) size --s3-versions $(rpath) >> $(sizef); \
+    n=`sed -En '1s/.*\(([0-9]*)\)/\1/p' $(sizef)`; \
+    s=`sed -En '2s/.*\(([0-9]*).*\)/\1/p' $(sizef)`; \
     s=`$(call mb,$$s)`; \
-    $(call log,"$(rpath): $$n objects$(,) $$s MB size"); \
+    nv=`sed -En '3s/.*\(([0-9]*)\)/\1/p' $(sizef)`; \
+    sv=`sed -En '4s/.*\(([0-9]*).*\)/\1/p' $(sizef)`; \
+    sv=`$(call mb,$$sv)`; \
+    $(call log,"$(rpath): $$n/$$nv objects$(,) $$s/$$sv MB size"); \
     dt=$$($(call elapsed,$$t0,`$(t)`)); \
     $(call log,"'$@' done ($${dt}s)")
 
@@ -124,7 +128,9 @@ rclone_sync.mail:
         echo "Disk usage:";                                     \
         df -t $(fstype) -h | sed 's/^/  /';                     \
         echo "Bucket usage:";                                   \
-        sed 's/^/  /' $(sizef);                                 \
+        sed -n '1,2s/^/  /' $(sizef);                           \
+        echo "Bucket usage (including versions):";              \
+        sed -n '3,4s/^/  /' $(sizef);                           \
         echo;                                                   \
         echo "--- log ---";                                     \
         cat $(logt);                                            \
@@ -137,5 +143,5 @@ rclone_sync.mail:
 rclone_size:
 	@echo "Bucket usage:"
 	@$(rclone) size $(rpath) | sed 's/^/  /'
-	@echo "Bucket usage (include versions):"
+	@echo "Bucket usage (including versions):"
 	@$(rclone) size --s3-versions $(rpath) | sed 's/^/  /'
