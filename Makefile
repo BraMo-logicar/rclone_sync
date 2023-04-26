@@ -1,7 +1,7 @@
 # Name: Makefile - Makefile for em2bak
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2023.04.11
+# Date: 2023.04.26
 
 #
 # vars
@@ -107,12 +107,19 @@ rclone_sync:
     $(call log,"'$@' done ($${dt}s)")
 
 rclone_sync.mail:
-	@set -- `grep ^Transferred: $(logt) | tail -1 | \
+	@c=`awk '/^Checks:/ { print $$2 }' $(logt)`; \
+    set -- `grep ^Transferred: $(logt) | grep -v 'ETA' | \
         awk '{ print $$2, $$4 }' | tr -d ,`; \
-    x=$$1 y=$$2; \
+    x1=$$1 x2=$$2; \
+    xn=`grep -c "Copied (new)" $(logt)` ; \
+    xr=`grep -c "Copied (replaced existing)" $(logt)` ; \
+    set -- `grep ^Transferred: $(logt) | grep 'ETA' | \
+        awk '{ print $$2, $$3, $$5, $$6 }' | tr -d ,`; \
+    s1="$$1$$2" s2="$$3$$4"; \
     d=`awk '/^Deleted:/ { print $$2 }' $(logt)`; \
-    subj="[$(proj)@$(host)] rclone sync to $(rpath) ($${x-=0}x/$${d:-0}-)"; \
     elapsed=`awk '/Elapsed time:/ { print $$3 }' $(logt)`; \
+    subj="[$(proj)@$(host)] rclone sync to $(rpath)"; \
+    subj+=" ($${xn-=0}+/$${xr-=0}=/$${d:-0}-)"; \
     (                                                           \
         echo "From: $(mail_From)";                              \
         echo "To: $(mail_To)";                                  \
@@ -122,7 +129,11 @@ rclone_sync.mail:
         echo;                                                   \
         echo "Host                : $(host)";                   \
         echo "Bucket              : $(e2_bucket)";              \
-        echo "Objects transferred : $${x:-0}/$${y:-0}";         \
+        echo "Objects checked     : $${c:-0}";                  \
+        echo "Objects transferred : $${x1:-0}/$${x2:-0}";       \
+        echo "  new               : $${xn:-0}";                 \
+        echo "  replace           : $${xr:-0}";                 \
+        echo "Data transferred    : $${s1:-0}/$${s2:-0}";       \
         echo "Objects deleted     : $${d:-0}";                  \
         echo "Elapsed             : $$elapsed";                 \
         echo "Disk usage:";                                     \
