@@ -128,9 +128,9 @@ rclone_sync.mail:
         echo "Disk usage:";                                     \
         df -t $(fstype) -h | sed 's/^/  /';                     \
         echo "Bucket usage:";                                   \
-        sed -n '1,2s/^/  /p' $(sizef);                           \
+        sed -n '1,2s/^/  /p' $(sizef);                          \
         echo "Bucket usage (including versions):";              \
-        sed -n '3,4s/^/  /p' $(sizef);                           \
+        sed -n '3,4s/^/  /p' $(sizef);                          \
         echo;                                                   \
         echo "--- log ---";                                     \
         cat $(logt);                                            \
