@@ -53,10 +53,10 @@ fstype := xfs
 
 mail_From := $(proj) system <backup-admin@emsquared.it>
 mail_from := backup-admin@emsquared.it
-mail_To   := backup admin <backup-admin@emsquared.it>
-mail_to   := backup-admin@emsquared.it
-#mail_To   := Marco Broglia <marco.broglia@emsquared.it>
-#mail_to   := marco.broglia@emsquared.it
+#mail_To   := backup admin <backup-admin@emsquared.it>
+#mail_to   := backup-admin@emsquared.it
+mail_To   := Marco Broglia <marco.broglia@emsquared.it>
+mail_to   := marco.broglia@emsquared.it
 
 #
 # funcs
@@ -108,14 +108,10 @@ rclone_sync:
 
 rclone_sync.mail:
 	@c=`awk '/^Checks:/ { print $$2 }' $(logt)`; \
-    set -- `grep ^Transferred: $(logt) | grep -v 'ETA' | \
-        awk '{ print $$2, $$4 }' | tr -d ,`; \
-    x1=$$1 x2=$$2; \
+    x=`grep ^Transferred: $(logt) | grep -v 'ETA' | awk '{ print $$2 }'`; \
     xn=`grep -c "Copied (new)" $(logt)` ; \
     xr=`grep -c "Copied (replaced existing)" $(logt)` ; \
-    set -- `grep ^Transferred: $(logt) | grep 'ETA' | \
-        awk '{ print $$2, $$3, $$5, $$6 }' | tr -d ,`; \
-    s1="$$1$$2" s2="$$3$$4"; \
+    s=`grep ^Transferred: $(logt) | grep 'ETA' | awk '{ print $$2, $$3 }'`; \
     d=`awk '/^Deleted:/ { print $$2 }' $(logt)`; \
     elapsed=`awk '/Elapsed time:/ { print $$3 }' $(logt)`; \
     subj="[$(proj)@$(host)] rclone sync to $(rpath)"; \
@@ -130,14 +126,16 @@ rclone_sync.mail:
         echo "Host                : $(host)";                   \
         echo "Bucket              : $(e2_bucket)";              \
         echo "Objects checked     : $${c:-0}";                  \
-        echo "Objects transferred : $${x1:-0}/$${x2:-0}";       \
+        echo "Objects transferred : $${x:-0}";                  \
         echo "  new               : $${xn:-0}";                 \
-        echo "  replace           : $${xr:-0}";                 \
-        echo "Data transferred    : $${s1:-0}/$${s2:-0}";       \
+        echo "  replaced          : $${xr:-0}";                 \
+        echo "Data transferred    : $${s:-0}";                  \
         echo "Objects deleted     : $${d:-0}";                  \
         echo "Elapsed             : $$elapsed";                 \
+        echo;                                                   \
         echo "Disk usage:";                                     \
         df -t $(fstype) -h | sed 's/^/  /';                     \
+        echo;                                                   \
         echo "Bucket usage:";                                   \
         sed -n '1,2s/^/  /p' $(sizef);                          \
         echo "Bucket usage (including versions):";              \
