@@ -155,4 +155,3 @@ log "end '$progname'"
 # exit
 
 exit 0
-
