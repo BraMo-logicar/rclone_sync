@@ -27,9 +27,9 @@ logt   := $(logdir)/$(prog).log
 
 # cmds
 
-rclone=/bin/rclone
-rclone_sync=$(home)/bin/rclone_sync
-sendmail=/sbin/sendmail
+rclone      := /bin/rclone
+rclone_sync := $(home)/bin/rclone_sync
+sendmail    := /sbin/sendmail
 
 # IDrive e2
 
