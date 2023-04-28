@@ -53,10 +53,10 @@ fstype := xfs
 
 mail_From := $(proj) system <backup-admin@emsquared.it>
 mail_from := backup-admin@emsquared.it
-#mail_To   := backup admin <backup-admin@emsquared.it>
-#mail_to   := backup-admin@emsquared.it
-mail_To   := Marco Broglia <marco.broglia@emsquared.it>
-mail_to   := marco.broglia@emsquared.it
+mail_To   := backup admin <backup-admin@emsquared.it>
+mail_to   := backup-admin@emsquared.it
+#mail_To   := Marco Broglia <marco.broglia@emsquared.it>
+#mail_to   := marco.broglia@emsquared.it
 
 #
 # funcs
