@@ -1,4 +1,4 @@
-# Name: Makefile - Makefile for rclone_bak
+# Name: Makefile - Makefile for rclone_sync
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
 # Date: 2023.09.15
@@ -41,7 +41,6 @@ clean:
 rclone_sync:
 	@t0=`$(t)`; \
     $(rclone_sync) $(opts) / $(rpath); \
-    cat $(logs) >> $(logf); \
     $(rclone) size $(rpath) > $(sizef); \
     $(rclone) size --s3-versions $(rpath) >> $(sizef); \
     n=`sed -En '1s/.*\(([0-9]*)\)/\1/p' $(sizef)`; \
@@ -64,34 +63,34 @@ rclone_sync.mail:
     elapsed=`awk '/Elapsed time:/ { print $$3 }' $(logt)`; \
     subj="[$(proj)@$(host)] rclone sync to $(rpath)"; \
     subj+=" ($${xn-=0}+/$${xr-=0}=/$${d:-0}-)"; \
-    (                                                           \
-        echo "From: $(mail_From)";                              \
-        echo "To: $(mail_To)";                                  \
-        echo "Subject: $$subj";                                 \
-        echo;                                                   \
-        echo "Sync backup @ $(host): rclone sync to s3 bucket"; \
-        echo;                                                   \
-        echo "Host                : $(host)";                   \
-        echo "Bucket              : $(s3_bucket)";              \
-        echo "Objects checked     : $${c:-0}";                  \
-        echo "Objects transferred : $${x:-0}";                  \
-        echo "  new               : $${xn:-0}";                 \
-        echo "  replaced          : $${xr:-0}";                 \
-        echo "Data transferred    : $${s:-0}";                  \
-        echo "Objects deleted     : $${d:-0}";                  \
-        echo "Elapsed             : $$elapsed";                 \
-        echo;                                                   \
-        echo "Disk usage:";                                     \
-        df -t $(fstype) -h | sed 's/^/  /';                     \
-        echo;                                                   \
-        echo "Bucket usage:";                                   \
-        sed -n '1,2s/^/  /p' $(sizef);                          \
-        echo "Bucket usage (including versions):";              \
-        sed -n '3,4s/^/  /p' $(sizef);                          \
-        echo;                                                   \
-        echo "--- log ---";                                     \
-        cat $(logt);                                            \
-        echo;                                                   \
+    (                                              \
+        echo "From: $(mail_From)";                 \
+        echo "To: $(mail_To)";                     \
+        echo "Subject: $$subj";                    \
+        echo;                                      \
+        echo "Rclone sync @ $(host) to s3 bucket"; \
+        echo;                                      \
+        echo "Host                : $(host)";      \
+        echo "Bucket              : $(s3_bucket)"; \
+        echo "Objects checked     : $${c:-0}";     \
+        echo "Objects transferred : $${x:-0}";     \
+        echo "  new               : $${xn:-0}";    \
+        echo "  replaced          : $${xr:-0}";    \
+        echo "Data transferred    : $${s:-0}";     \
+        echo "Objects deleted     : $${d:-0}";     \
+        echo "Elapsed             : $$elapsed";    \
+        echo;                                      \
+        echo "Disk usage:";                        \
+        df -t $(fstype) -h | sed 's/^/  /';        \
+        echo;                                      \
+        echo "Bucket usage:";                      \
+        sed -n '1,2s/^/  /p' $(sizef);             \
+        echo "Bucket usage (including versions):"; \
+        sed -n '3,4s/^/  /p' $(sizef);             \
+        echo;                                      \
+        echo "--- log ---";                        \
+        cat $(logt);                               \
+        echo;                                      \
     ) | $(sendmail) -f $(mail_from) $(mail_to) | \
     $(call log,"mail sent (from: <$(mail_from)>, to: <$(mail_to)>)")
 
