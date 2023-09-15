@@ -42,7 +42,7 @@
 * pass options to rclone
 * logging
   ** list of copied (new or replaced) and deleted objects
-  ** statistics (copied/deleted objects, elapsed time, disk and bucket usage)
+  ** statistics
      *** number of copied (new or replaced) and deleted objects
      *** data transferred
      *** elapsed time
