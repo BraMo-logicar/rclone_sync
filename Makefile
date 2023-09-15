@@ -28,16 +28,16 @@ rclone      := /bin/rclone
 rclone_sync := $(home)/bin/rclone_sync
 sendmail    := /sbin/sendmail
 
-# IDrive e2
+# s3 bucket
 
-e2_profile := e2
-e2_bucket  := $(host)-backup
+s3_profile := e2
+s3_bucket  := $(host)-backup
 
 # backup
 
 rclone_list := $(home)/etc/rclone.list
 opts        := --skip-links -v -I $(rclone_list) -n
-rpath       := $(e2_profile):$(e2_bucket)
+rpath       := $(s3_profile):$(s3_bucket)
 
 # misc
 
@@ -120,7 +120,7 @@ rclone_sync.mail:
         echo "Sync backup @ $(host): rclone sync to IDrive e2"; \
         echo;                                                   \
         echo "Host                : $(host)";                   \
-        echo "Bucket              : $(e2_bucket)";              \
+        echo "Bucket              : $(s3_bucket)";              \
         echo "Objects checked     : $${c:-0}";                  \
         echo "Objects transferred : $${x:-0}";                  \
         echo "  new               : $${xn:-0}";                 \
