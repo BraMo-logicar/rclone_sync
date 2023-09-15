@@ -41,6 +41,7 @@ clean:
 rclone_sync:
 	@t0=`$(t)`; \
     $(rclone_sync) $(opts) / $(rpath); \
+    cat $(logs) >> $(logf); \
     $(rclone) size $(rpath) > $(sizef); \
     $(rclone) size --s3-versions $(rpath) >> $(sizef); \
     n=`sed -En '1s/.*\(([0-9]*)\)/\1/p' $(sizef)`; \
