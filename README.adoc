@@ -1,4 +1,11 @@
-= rclone_sync
+= rclone_bak
+
+== usage
+
+[source]
+
+
+== rclone_sync
 
 [source]
 ----
@@ -29,7 +36,7 @@
 
 == Features
 
-* sync to bucket s3 by rclone
+* backup to bucket s3 by rclone
 * support for Amazon Aws, IDrive e2, ...
 * copy or skip links
 * pass options to rclone
