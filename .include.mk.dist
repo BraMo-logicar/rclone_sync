@@ -36,12 +36,13 @@ sendmail    := /sbin/sendmail
 
 s3_profile := $(host)
 s3_bucket  := $(host)-backup
+rpath      := $(s3_profile):$(s3_bucket)
 
-# backup
+# rclone
 
+rclone_conf := $(home)/etc/rclone.conf
 rclone_list := $(home)/etc/rclone.list
 opts        := --skip-links -v -I $(rclone_list)
-rpath       := $(s3_profile):$(s3_bucket)
 
 # misc
 
