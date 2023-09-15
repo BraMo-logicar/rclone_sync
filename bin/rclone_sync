@@ -35,15 +35,10 @@ prog=$(basename $0)
 
 # dirs & files
 
-home=/usr/local/$prog
+home=/usr/local/rclone_bak
 
 logf=$home/log/$prog.log
 logt=$logf.t
-
-echo "command: $command"
-echo "home: $home, prog: $prog"
-echo "logs: $logf $logt"
-exit
 
 # cmds
 
