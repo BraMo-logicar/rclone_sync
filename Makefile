@@ -1,7 +1,7 @@
-# Name: Makefile - Makefile for em2bak
+# Name: Makefile - Makefile for rclone_bak
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2023.04.26
+# Date: 2023.09.15
 
 #
 # vars
@@ -9,9 +9,7 @@
 
 SHELL := /bin/bash
 
-proj := em2bak
-prog := rclone_sync
-
+proj := rclone_bak
 host := $(shell hostname -s)
 
 # dirs and files
@@ -19,11 +17,10 @@ host := $(shell hostname -s)
 home := /usr/local/$(proj)
 tmp  := $(home)/tmp
 
-sizef := $(tmp)/rclone_size.out
+logf := $(home)/log/rclone_bak.log
+logt := $(logf).t
 
-logdir := $(home)/log
-logf   := $(logdir)/$(proj).log
-logt   := $(logdir)/$(prog).log
+sizef := $(tmp)/rclone_size.out
 
 # cmds
 
