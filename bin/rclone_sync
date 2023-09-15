@@ -22,24 +22,28 @@
 #     <local_path>             : local path to sync
 #     <remote:bucket/path>     : remote path
 # Author: Marco Broglia (marco.broglia@mutex.it)
-# Date: 2023.04.08
+# Date: 2023.09.15
 
 #
 # vars
 #
 
-# progname
+# command and prog
 
 command="$0"; [ $# -gt 0 ] && command="$command $*"
-progname=$(basename $0)
+prog=$(basename $0)
 
 # dirs & files
 
-proj=em2bak
-home=/usr/local/$proj
+home=/usr/local/$prog
 
-logf=$home/log/$proj.log
-logt=$home/log/$progname.log
+logf=$home/log/$prog.log
+logt=$logf.t
+
+echo "command: $command"
+echo "home: $home, prog: $prog"
+echo "logs: $logf $logt"
+exit
 
 # cmds
 
