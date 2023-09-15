@@ -41,8 +41,8 @@ clean:
 rclone_sync:
 	@t0=`$(t)`; \
     $(rclone_sync) $(opts) / $(rpath); \
-    $(rclone) size $(rpath) > $(sizef); \
-    $(rclone) size --s3-versions $(rpath) >> $(sizef); \
+    $(rclone) --config $(rclone_conf) size $(rpath) > $(sizef); \
+    $(rclone) --config $(rclone_conf) size --s3-versions $(rpath) >> $(sizef); \
     n=`sed -En '1s/.*\(([0-9]*)\)/\1/p' $(sizef)`; \
     s=`sed -En '2s/.*\(([0-9]*).*\)/\1/p' $(sizef)`; \
     s=`$(call mb,$$s)`; \
@@ -98,6 +98,7 @@ rclone_sync.mail:
 
 rclone_size:
 	@echo "Bucket usage:"
-	@$(rclone) size $(rpath) | sed 's/^/  /'
+	@$(rclone) --config $(rclone_conf) size $(rpath) | sed 's/^/  /'
 	@echo "Bucket usage (including versions):"
-	@$(rclone) size --s3-versions $(rpath) | sed 's/^/  /'
+	@$(rclone) --config $(rclone_conf) size --s3-versions $(rpath) | \
+        sed 's/^/  /'
