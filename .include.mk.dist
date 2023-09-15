@@ -11,15 +11,17 @@
 
 SHELL := /usr/bin/bash
 
-proj := rclone_bak
+proj := _PROJECT_NAME_
+prog := rclone_sync
+
 host := $(shell hostname -s)
 
 # dirs and files
 
-home := /usr/local/$(proj)
+home := $(CURDIR)
 tmp  := $(home)/tmp
 
-logf := $(home)/log/$(proj).log
+logf := $(home)/log/$(prog).log
 logt := $(logf).t
 
 sizef := $(tmp)/rclone_size.out

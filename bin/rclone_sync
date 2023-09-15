@@ -35,7 +35,7 @@ prog=$(basename $0)
 
 # dirs & files
 
-home=$(dirname $(dirname $0))
+home=$(dirname $PWD)
 
 logf=$home/log/$prog.log
 logt=$logf.t
