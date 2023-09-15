@@ -53,7 +53,7 @@ opts="--config $home/etc/rclone.conf --local-no-check-updated --stats 42h"
 #
 
 now()   { date '+%Y.%m.%d-%H:%M:%S'; }
-log()   { echo "$(now) [$progname:$$] $*" >> $logf; }
+log()   { echo "$(now) [$prog:$$] $*" >> $logf; }
 usage() { echo "$help"; }
 
 t()       { date +%s.%N; }
@@ -70,7 +70,7 @@ OPTS=$(getopt                                                          \
     -o hHlqvno:I:                                                      \
     -l help,Help,copy-links,skip-links,quiet,verbose,dry-run,options:, \
     -l filter-from:                                                    \
-    -n $progname -- "$@")
+    -n $prog -- "$@")
 [ $? -eq 0 ] || { usage; exit 1; }
 
 eval set -- "$OPTS"
@@ -113,7 +113,7 @@ lpath="$1" rpath="$2"
 # start
 
 t0=$(t)
-log "start '$progname' ('$command')"
+log "start '$prog' ('$command')"
 
 # opts
 
@@ -149,7 +149,7 @@ log "sync '$lpath' -> '$rpath' done (${elapsed}s)"
 t1=$(t)
 log "elapsed time: $(elapsed $t0 $t1)s"
 
-log "end '$progname'"
+log "end '$prog'"
 
 # exit
 
