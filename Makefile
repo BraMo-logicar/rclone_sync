@@ -36,12 +36,11 @@ e2_bucket  := $(host)-backup
 # backup
 
 rclone_list := $(home)/etc/rclone.list
-opts        := --skip-links -v -I $(rclone_list)
+opts        := --skip-links -v -I $(rclone_list) -n
 rpath       := $(e2_profile):$(e2_bucket)
 
 # misc
 
-age    := 6m
 fstype := xfs
 
 , := ,
@@ -50,10 +49,10 @@ fstype := xfs
 
 mail_From := $(proj) system <backup-admin@emsquared.it>
 mail_from := backup-admin@emsquared.it
-mail_To   := backup admin <backup-admin@emsquared.it>
-mail_to   := backup-admin@emsquared.it
-#mail_To   := Marco Broglia <marco.broglia@emsquared.it>
-#mail_to   := marco.broglia@emsquared.it
+#mail_To   := backup admin <backup-admin@emsquared.it>
+#mail_to   := backup-admin@emsquared.it
+mail_To   := Marco Broglia <marco.broglia@emsquared.it>
+mail_to   := marco.broglia@emsquared.it
 
 #
 # funcs
