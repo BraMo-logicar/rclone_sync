@@ -7,7 +7,7 @@
 # vars
 #
 
-SHELL := /bin/bash
+SHELL := /usr/bin/bash
 
 proj := rclone_bak
 host := $(shell hostname -s)
