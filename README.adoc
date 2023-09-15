@@ -24,7 +24,7 @@
 #     <local_path>             : local path to sync
 #     <remote:bucket/path>     : remote path
 # Author: Marco Broglia (marco.broglia@mutex.it)
-# Date: 2023.04.08
+# Date: 2023.09.15
 ----
 
 == Features
