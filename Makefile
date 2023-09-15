@@ -17,7 +17,7 @@ host := $(shell hostname -s)
 home := /usr/local/$(proj)
 tmp  := $(home)/tmp
 
-logf := $(home)/log/rclone_bak.log
+logf := $(home)/log/$(proj).log
 logt := $(logf).t
 
 sizef := $(tmp)/rclone_size.out
