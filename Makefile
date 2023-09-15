@@ -3,56 +3,7 @@
 # Author: Marco Broglia <marco.broglia@mutex.it>
 # Date: 2023.09.15
 
-#
-# vars
-#
-
-SHELL := /usr/bin/bash
-
-proj := rclone_bak
-host := $(shell hostname -s)
-
-# dirs and files
-
-home := /usr/local/$(proj)
-tmp  := $(home)/tmp
-
-logf := $(home)/log/$(proj).log
-logt := $(logf).t
-
-sizef := $(tmp)/rclone_size.out
-
-# cmds
-
-rclone      := /bin/rclone
-rclone_sync := $(home)/bin/rclone_sync
-sendmail    := /sbin/sendmail
-
-# s3 bucket
-
-s3_profile := e2
-s3_bucket  := $(host)-backup
-
-# backup
-
-rclone_list := $(home)/etc/rclone.list
-opts        := --skip-links -v -I $(rclone_list) -n
-rpath       := $(s3_profile):$(s3_bucket)
-
-# misc
-
-fstype := xfs
-
-, := ,
-
-# email
-
-mail_From := $(proj) system <backup-admin@emsquared.it>
-mail_from := backup-admin@emsquared.it
-#mail_To   := backup admin <backup-admin@emsquared.it>
-#mail_to   := backup-admin@emsquared.it
-mail_To   := Marco Broglia <marco.broglia@emsquared.it>
-mail_to   := marco.broglia@emsquared.it
+include .include.mk
 
 #
 # funcs
@@ -117,7 +68,7 @@ rclone_sync.mail:
         echo "To: $(mail_To)";                                  \
         echo "Subject: $$subj";                                 \
         echo;                                                   \
-        echo "Sync backup @ $(host): rclone sync to IDrive e2"; \
+        echo "Sync backup @ $(host): rclone sync to s3 bucket"; \
         echo;                                                   \
         echo "Host                : $(host)";                   \
         echo "Bucket              : $(s3_bucket)";              \
