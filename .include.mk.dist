@@ -34,9 +34,9 @@ sendmail    := /sbin/sendmail
 
 # s3 bucket
 
-s3_profile := $(host)
-s3_bucket  := $(host)-backup
-rpath      := $(s3_profile):$(s3_bucket)
+profile := _PROFILE_
+bucket  := _BUCKET_
+rpath   := $(profile):$(bucket)
 
 # rclone
 
