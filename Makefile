@@ -56,8 +56,8 @@ rclone_sync:
 rclone_sync.mail:
 	@c=`awk '/^Checks:/ { print $$2 }' $(logt)`; \
     x=`grep ^Transferred: $(logt) | grep -v 'ETA' | awk '{ print $$2 }'`; \
-    xn=`grep -c "Copied (new)" $(logt)` ; \
-    xr=`grep -c "Copied (replaced existing)" $(logt)` ; \
+    xn=`grep -c "Copied (new)" $(logt)`; \
+    xr=`grep -c "Copied (replaced existing)" $(logt)`; \
     s=`grep ^Transferred: $(logt) | grep 'ETA' | awk '{ print $$2, $$3 }'`; \
     d=`awk '/^Deleted:/ { print $$2 }' $(logt)`; \
     elapsed=`awk '/Elapsed time:/ { print $$3 }' $(logt)`; \
