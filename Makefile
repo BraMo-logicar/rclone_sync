@@ -91,7 +91,7 @@ rclone_sync.mail:
         echo "--- log ---";                            \
         cat $(logt);                                   \
         echo;                                          \
-    ) | $(sendmail) -f $(mail_from) $(mail_to) | \
+    ) | $(sendmail) -f $(mail_from) $(mail_to) && \
     $(call log,"mail sent (from: <$(mail_from)>, to: <$(mail_to)>)")
 
 # stats
