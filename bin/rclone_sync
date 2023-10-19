@@ -134,9 +134,8 @@ $rclone sync $opts $lpath $rpath &> $logt
 tt1=$(t)
 elapsed=$(elapsed $tt0 $tt1)
 if [ -s $logt ]; then
-    set -- $(grep ^Transferred: $logt | tail -1 | \
-        awk '{ print $2, $4 }' | tr -d ,)
-    x=$1 y=$2
+    set -- $(grep '^Transferred:.*%$' $logt | awk '{ print $2, $4 }' | tr -d ,)
+    x=${1:-0} y=${2:-0}
     d=$(grep ^Deleted: $logt | tail -1 | awk '{ print $2 }')
     { echo "--"; cat $logt; echo "--"; } >> $logf
     log "${dryrun:+(dryrun) }objects: ${x:-0}/${y:-0} transferred," \
