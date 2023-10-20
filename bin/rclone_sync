@@ -138,8 +138,7 @@ if [ -s $logt ]; then
     x=${1:-0} y=${2:-0}
     d=$(grep ^Deleted: $logt | tail -1 | awk '{ print $2 }')
     { echo "--"; cat $logt; echo "--"; } >> $logf
-    log "${dryrun:+(dryrun) }objects: $x/$y transferred," \
-        "${d:-0} deleted"
+    log "${dryrun:+(dryrun) }objects: $x/$y transferred, ${d:-0} deleted"
 fi
 log "sync '$lpath' -> '$rpath' done (${elapsed}s)"
 
