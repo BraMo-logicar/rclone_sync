@@ -11,8 +11,7 @@ include .include.mk
 
 # times
 
-t = perl -MTime::HiRes=gettimeofday -e 'printf "%.3f\n", scalar gettimeofday'
-
+t       = date +%s.%3N
 elapsed = echo "$(2) - $(1)" | bc | sed 's/^\./0./'
 
 # logs
