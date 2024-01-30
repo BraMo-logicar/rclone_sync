@@ -32,11 +32,16 @@ rclone      := /bin/rclone
 rclone_sync := $(home)/bin/rclone_sync
 sendmail    := /sbin/sendmail
 
-# s3 bucket
+# local
+
+lpath := _LPATH_
+
+# remote
 
 profile := _PROFILE_
 bucket  := _BUCKET_
-rpath   := $(profile):$(bucket)
+remote  := $(profile):$(bucket)
+rpath   := $(remote)_RPATH_
 
 # rclone
 
@@ -56,3 +61,5 @@ mail_From := $(proj) system <_HEADER_FROM_>
 mail_from := _SMTP_FROM_
 mail_To   := backup admin <_HEADER_TO_>
 mail_to   := _SMTP_TO_
+
+mail_log := _YES_NO_

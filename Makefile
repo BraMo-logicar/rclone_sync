@@ -87,9 +87,11 @@ rclone_sync.mail:
         echo "Bucket usage (including versions):";     \
         sed -n '3,4s/^/  /p' $(sizef);                 \
         echo;                                          \
-        echo "--- log ---";                            \
-        cat $(logt);                                   \
-        echo;                                          \
+        if [ $(mail_log) = "yes" ]; then               \
+            echo "--- log ---";                        \
+            cat $(logt);                               \
+            echo;                                      \
+        fi;                                            \
     ) | $(sendmail) -f $(mail_from) $(mail_to) && \
     $(call log,"mail sent (from: <$(mail_from)>, to: <$(mail_to)>)")
 
