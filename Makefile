@@ -69,7 +69,7 @@ rclone_sync.mail:
         echo;                                                    \
         echo "Sync by rclone: '$(host):$(lpath)' -> '$(rpath)'"; \
         echo;                                                    \
-        echo "Host                : $(host)";                    \
+        echo "Host                : $(hostname)";                \
         echo "Path                : $(lpath)";                   \
         echo;                                                    \
         echo "Bucket              : $(bucket)";                  \
