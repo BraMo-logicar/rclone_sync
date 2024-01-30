@@ -14,7 +14,8 @@ SHELL := /usr/bin/bash
 proj := _PROJECT_NAME_
 prog := rclone_sync
 
-host := $(shell hostname -s)
+hostname := $(shell hostname)
+host     := $(shell hostname -s)
 
 # dirs and files
 
