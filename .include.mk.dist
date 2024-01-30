@@ -41,7 +41,8 @@ lpath := _LPATH_
 profile := _PROFILE_
 bucket  := _BUCKET_
 remote  := $(profile):$(bucket)
-rpath   := $(remote)_RPATH_
+prefix  := _PREFIX_
+rpath   := $(remote)$(prefix)
 
 # rclone
 
