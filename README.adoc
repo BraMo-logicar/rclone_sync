@@ -31,17 +31,20 @@
 
 == Features
 
-* sync to bucket s3 by rclone
+* sync to bucket S3 by rclone
 * support for Amazon Aws, IDrive e2, ...
-* copy or skip links
+* file versioning
+* point in time restore
+* mount by date (snapshot time machine)
 * pass options to rclone
+* copy or skip links
 * logging
   ** list of copied (new or replaced) and deleted objects
   ** statistics
      *** number of copied (new or replaced) and deleted objects
      *** data transferred
      *** elapsed time
-     *** disk and bucket usage (with and withou versions)
+     *** disk and bucket usage (with and without versions)
 * report by email
 
 == Quotes
