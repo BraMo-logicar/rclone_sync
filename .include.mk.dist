@@ -49,7 +49,7 @@ rpath   := $(remote)$(prefix)
 
 rclone_conf := $(home)/etc/rclone.conf
 rclone_list := $(home)/etc/rclone.list
-opts        := --skip-links -v -I $(rclone_list)
+opts        := -I $(rclone_list) --skip-links -v
 
 # misc
 
