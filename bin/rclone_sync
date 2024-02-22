@@ -46,7 +46,7 @@ rclone=/bin/rclone
 
 # vars
 
-opts="--config $home/etc/rclone.conf --local-no-check-updated --stats 42h"
+opts="--config $home/etc/rclone.conf --local-no-check-updated --stats 24h"
 opts+=" --update --use-server-modtime"
 
 #
