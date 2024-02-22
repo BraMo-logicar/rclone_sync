@@ -22,8 +22,9 @@ host     := $(shell hostname -s)
 home := $(CURDIR)
 tmp  := $(home)/tmp
 
-logf := $(home)/log/$(prog).log
-logt := $(logf).t
+logf  := $(home)/log/$(prog).log
+logt  := $(logf).t
+logts := $(logf).ts
 
 sizef := $(tmp)/rclone_size.out
 
