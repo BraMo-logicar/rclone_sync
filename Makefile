@@ -35,10 +35,13 @@ clean:
 # targets
 #
 
+t:
+	$(now) > $(logts)
 # sync
 
 rclone_sync:
 	@t0=`$(t)`; \
+    $(now) > $(logts); \
     $(rclone_sync) $(opts) $(lpath) $(rpath); \
     $(rclone) --config $(rclone_conf) size $(rpath) > $(sizef); \
     $(rclone) --config $(rclone_conf) size --s3-versions $(rpath) >> $(sizef); \
@@ -59,6 +62,7 @@ rclone_sync.mail:
     xr=`grep -c "Copied (replaced existing)" $(logt)`; \
     s=`grep ^Transferred: $(logt) | grep 'ETA' | awk '{ print $$2, $$3 }'`; \
     d=`awk '/^Deleted:/ { print $$2 }' $(logt)`; \
+    runat=`cat $(logts)`; \
     elapsed=`awk '/Elapsed time:/ { print $$3 }' $(logt)`; \
     subj="[$(proj)@$(host)] rclone sync to s3 bucket $(remote)"; \
     subj+=" ($${xn-=0}+/$${xr-=0}=/$${d:-0}-)"; \
@@ -79,6 +83,7 @@ rclone_sync.mail:
         echo "  replaced          : $${xr:-0}";                  \
         echo "Data transferred    : $${s:-0}";                   \
         echo "Objects deleted     : $${d:-0}";                   \
+        echo "Run at              : $$runat;                     \
         echo "Elapsed             : $$elapsed";                  \
         echo;                                                    \
         echo "Disk usage:";                                      \
