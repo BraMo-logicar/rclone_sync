@@ -35,8 +35,6 @@ clean:
 # targets
 #
 
-t:
-	$(now) > $(logts)
 # sync
 
 rclone_sync:
@@ -83,7 +81,7 @@ rclone_sync.mail:
         echo "  replaced          : $${xr:-0}";                  \
         echo "Data transferred    : $${s:-0}";                   \
         echo "Objects deleted     : $${d:-0}";                   \
-        echo "Run at              : $$runat;                     \
+        echo "Run at              : $$runat";                    \
         echo "Elapsed             : $$elapsed";                  \
         echo;                                                    \
         echo "Disk usage:";                                      \
