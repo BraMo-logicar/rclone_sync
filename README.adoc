@@ -29,7 +29,7 @@
 # Date: 2023.09.15
 ----
 
-== Features
+== features
 
 * sync to bucket S3 by rclone
 * support for Amazon Aws, IDrive e2, ...
@@ -47,14 +47,14 @@
      *** disk and bucket usage (with and without versions)
 * report by email
 
-== Quotes
+== quotes
 
 r + clone = rclone = clone with %r (Python)
 ----
 _='_=%r;print(_%%_)';print(_%_)
 ----
 
-== Links
+== links
 
 * https://rclone.org/ - rclone
 * https://en.wikipedia.org/wiki/Quine_(computing)[] - clone -> quine
