@@ -30,7 +30,7 @@ sizef := $(tmp)/rclone_size.out
 
 # cmds
 
-rclone      := /bin/rclone
+rclone      := /usr/bin/rclone
 rclone_sync := $(home)/bin/rclone_sync
 sendmail    := /usr/sbin/sendmail
 
