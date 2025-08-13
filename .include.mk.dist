@@ -11,7 +11,7 @@
 
 SHELL := /usr/bin/bash
 
-proj := _PROJECT_NAME_
+proj := <PROJECT_NAME>
 prog := rclone_sync
 
 hostname := $(shell hostname)
@@ -36,14 +36,14 @@ sendmail    := /sbin/sendmail
 
 # local
 
-lpath := _LPATH_
+lpath := <LPATH>
 
 # remote
 
-profile := _PROFILE_
-bucket  := _BUCKET_
+profile := <PROFILE>
+bucket  := <BUCKET>
 remote  := $(profile):$(bucket)
-prefix  := _PREFIX_
+prefix  := <PREFIX>
 rpath   := $(remote)$(prefix)
 
 # rclone
@@ -60,9 +60,9 @@ fstype := xfs
 
 # email
 
-mail_From := $(proj) system <_HEADER_FROM_>
-mail_from := _SMTP_FROM_
-mail_To   := backup admin <_HEADER_TO_>
-mail_to   := _SMTP_TO_
+mail_From := $(proj) system <<HEADER_FROM>>
+mail_from := <SMTP_FROM>
+mail_To   := backup admin <<HEADER_TO>>
+mail_to   := <SMTP_TO>
 
-mail_log := _YES_NO_
+mail_log := <YES_NO>
