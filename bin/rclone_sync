@@ -1,53 +1,42 @@
-#! /bin/bash
+#!/usr/bin/env bash
 
-# Name: rclone_sync - sync to bucket s3 by rclone
+# Name: rclone_sync - rclone sync to bucket s3
 # Usage:
 #     rclone_sync [ -h|--help ] [ -H|--Help ]
-#         [ -I|--filter-from <file> ]
-#         [ -l|--copy-links ] [ --skip-links ]
-#         [ -q|--quiet ] [ -v|--verbose ]
-#         [ -n|--dry-run ]
-#         [ -o|--options <sync_opts> ]
+#         [ -o|--options <rclone_options> ]
 #         <local_path> <remote:bucket/path>
 # Options:
-#     -h|--help                : print usage
-#     -H|--Help                : print description
-#     -I|--filter-from <file>  : read filtering pattern from <file>
-#     -l|--copy-links          : follow symlinks  [no]
-#     --skip-links             : don't warn about skipped symlinks  [no]
-#     -q|--quiet               : log-level = ERROR  [no]
-#     -v|--verbose             : log-level = INFO  [no]
-#     -n|--dry-run             : dry-run  [no]
-#     -o|--options <sync_opts> : sync options  []
-#     <local_path>             : local path to sync
-#     <remote:bucket/path>     : remote path
+#     -h|--help                     : print usage
+#     -H|--Help                     : print description
+#     -o|--options <rclone_options> : rclone options
+#     <local_path>                  : local path to sync
+#     <remote:bucket/path>          : remote path
 # Author: Marco Broglia (marco.broglia@mutex.it)
-# Date: 2024.02.2024
+# Date: 2025.09.05
 
 #
 # vars
 #
 
-# command and prog
+# env
+
+set -euo pipefail
+
+proj=earthbak
+prog=${0##*/}
 
 command="$0"; [ $# -gt 0 ] && command="$command $*"
-prog=$(basename $0)
 
 # dirs & files
 
 home=$(dirname $(dirname $0))
 
-logf=$home/log/$prog.log
-logt=$logf.t
+conf=$home/etc/rclone.conf
+logf=$home/log/$proj.log
 
 # cmds
 
-rclone=/bin/rclone
-
-# vars
-
-opts="--config $home/etc/rclone.conf --local-no-check-updated --stats 24h"
-opts+=" --update --use-server-modtime"
+rclone=${RCLONE:-rclone}
 
 #
 # funcs
@@ -57,55 +46,41 @@ now()   { date '+%Y.%m.%d-%H:%M:%S'; }
 log()   { echo "$(now) [$prog:$$] $*" >> $logf; }
 usage() { echo "$help"; }
 
-t()       { date +%s.%N; }
-elapsed() { printf "%.3f" $(echo "$2 - $1" | bc); }
-
 #
 # opts
 #
 
+# default rclone options
+
+OPTS=(--config $conf)               # rclone config file
+OPTS+=(--local-no-check-updated)    # skip check of local files during upload
+OPTS+=(--stats 1h)                  # print stats every hour
+OPTS+=(--update)                    # skip files newer on destination
+OPTS+=(--use-server-modtime)        # use server modtime instead of metadata
+OPTS+=(--verbose)                   # more detailed output
+
+# my options
+
 help=$(sed -n '/^# Usage:/,/^# [^ ]/p' $0 | sed '$d;s/^# //')
-Help=$(sed -n '/^# Options:/,/^# [^ ]/p' $0 | sed '$d;s/^# //')
+Help=$(sed -n '/^# Name:/{:a;/^#/{p;n;ba}}' $0 | sed 's/^# //')
 
-OPTS=$(getopt                                        \
-    -o hHI:lqvno:                                    \
-    -l help,Help,filter-from:,copy-links,skip-links, \
-    -l quiet,verbose,dry-run,options:                \
-    -n $prog -- "$@")
-[ $? -eq 0 ] || { usage; exit 1; }
-
-eval set -- "$OPTS"
+GETOPTS=$(getopt -o hHo: -l help,Help,options -- "$@") || { usage; exit 1; }
+eval set -- "$GETOPTS"
 
 while :; do
     case "$1" in
-        -h|--help)
-            echo "$help"; exit 0 ;;
-        -H|--Help)
-            echo "$Help"; exit 0 ;;
-        -I|--filter-from)
-            from=$2; shift 2 ;;
-        -l|--copy-links)
-            links=1; shift ;;
-        --skip-links)
-            skip_links=1; shift ;;
-        -q|--quiet)
-            quiet=1; shift ;;
-        -v|--verbose)
-            verbose=1; shift ;;
-        -n|--dry-run)
-            dryrun=1; shift ;;
-        -o|--options)
-            myopts+=" $2"; shift 2 ;;
-        --)
-            shift; break ;;
-        *)
-            usage; exit 1 ;;
+        -h|--help) echo "$help"; exit 0 ;;
+        -H|--Help) echo "$Help"; exit 0 ;;
+        -o|--options) MYOPTS=($2); shift 2 ;;
+        --) shift; break ;;
+        *) usage; exit 2 ;;
     esac
 done
-myopts=${myopts# }
+[ $# != 2 ] && { usage; exit 3; }
 
-[ $# != 2 ] && { usage; exit 2; }
-lpath="$1" rpath="$2"
+# local and remote paths
+
+lpath="$1"; rpath="$2"
 
 #
 # main
@@ -113,43 +88,22 @@ lpath="$1" rpath="$2"
 
 # start
 
-t0=$(t)
 log "start '$prog' ('$command')"
 
 # opts
 
-[ $from ]       && opts+=" --filter-from $from"
-[ $links ]      && opts+=" --copy-links"
-[ $skip_links ] && opts+=" --skip-links"
-[ $quiet ]      && opts+=" --quiet"
-[ $verbose ]    && opts+=" --verbose"
-[ $dryrun ]     && opts+=" --dry-run"
-[ "$myopts" ]   && opts+=" $myopts"
-log "options: '$opts'"
+log "rclone options: '${OPTS[@]}'"
+log "rclone extra options: '${MYOPTS[@]}'"
+opts="${OPTS[@]} ${MYOPTS[@]}"
 
 # run
 
 log "run '$rclone sync $opts $lpath $rpath'"
-tt0=$(t)
-$rclone sync $opts $lpath $rpath &> $logt
-tt1=$(t)
-elapsed=$(elapsed $tt0 $tt1)
-if [ -s $logt ]; then
-    set -- $(grep '^Transferred:.*%$' $logt | awk '{ print $2, $4 }' | tr -d ,)
-    x=${1:-0} y=${2:-0}
-    d=$(grep ^Deleted: $logt | tail -1 | awk '{ print $2 }')
-    { echo "--"; cat $logt; echo "--"; } >> $logf
-    log "${dryrun:+(dryrun) }objects: $x/$y transferred, ${d:-0} deleted"
-fi
-log "sync '$lpath' -> '$rpath' done (${elapsed}s)"
+#$rclone sync $opts $lpath $rpath
+sleep 1
+log "sync '$lpath' -> '$rpath' done"
 
 # end
 
-t1=$(t)
-log "elapsed time: $(elapsed $t0 $t1)s"
-
 log "end '$prog'"
-
-# exit
-
 exit 0
