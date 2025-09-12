@@ -1,50 +1,57 @@
-# Name: .include.mk.dist - (dist) include for Makefiles
+# Name: .include.mk - include for Makefiles
 # Usage: include .include.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2023.09.15
+# Date: 2025.09.12
 
-#
+#-----
 # vars
-#
+#-----
 
 # env
 
 SHELL := /usr/bin/bash
+.ONESHELL:
+.SHELLFLAGS := -euo pipefail -c
 
-proj := <PROJECT_NAME>
-prog := rclone_sync
+# main
+
+project  := <PROJECT>
+progname := rclone_sync
 
 hostname := $(shell hostname)
 host     := $(shell hostname -s)
+ip       := $(shell hostname -I | awk '{ print $1 }')
 
 # dirs and files
 
-home := $(CURDIR)
-tmp  := $(home)/tmp
+home := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
 
-logf  := $(home)/log/$(prog).log
-logt  := $(logf).t
-logts := $(logf).ts
+data   := $(home)/data
+logf   := $(home)/log/$(project).log
+logseg := $(home)/log/seg
+stats  := $(data)/stats
+status := $(stats)/status
+tmp    := $(home)/tmp
 
 sizef := $(tmp)/rclone_size.out
 
 # cmds
 
-rclone      := /usr/bin/rclone
-rclone_sync := $(home)/bin/rclone_sync
-sendmail    := /usr/sbin/sendmail
+rclone   := /bin/rclone
+sendmail := /sbin/sendmail
 
-# local
+program := $(home)/bin/$(progname)
 
-lpath := <LPATH>
+# source root and destination prefix
 
-# remote
+src_root := [SRC_ROOT]
+dst_root := [DST_ROOT]
 
-profile := <PROFILE>
+lpath := $(src_root)
+
+remote  := $(project)
 bucket  := <BUCKET>
-remote  := $(profile):$(bucket)
-prefix  := <PREFIX>
-rpath   := $(remote)$(prefix)
+rpath   := $(remote):$(bucket)$(dst_root)
 
 # rclone
 
@@ -52,17 +59,164 @@ rclone_conf := $(home)/etc/rclone.conf
 rclone_list := $(home)/etc/rclone.list
 opts        := -I $(rclone_list) --skip-links -v
 
-# misc
+# os
 
 fstype := xfs
 
-, := ,
+# stats
+
+runid := $(shell date +%Y%m%d.%H%M%S)
 
 # email
 
-mail_From := $(proj) system <<HEADER_FROM>>
-mail_from := <SMTP_FROM>
-mail_To   := backup admin <<HEADER_TO>>
-mail_to   := <SMTP_TO>
+mail_From := $(project) system <MAIL_FROM>
+mail_from := <MAIL_FROM>
+mail_To   := <SYSTEM> admin <MAIL_TO>
+mail_to   := <MAIL_TO>
 
-mail_log := <YES_NO>
+mail_log := yes
+
+# misc
+
+, := ,
+
+#----------
+# functions
+#----------
+
+#
+# count_<stat>() - statistics from a segmented log
+# usage: $(call count_<stat>,segmented_log)
+#
+
+count_chk = $$(v=$$(awk '/^Checks:/ \
+    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
+count_xfer = $$(v=$$(awk '/^Transferred:/ && !/ETA/ \
+    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
+count_xfer_sz = $$(v=$$(awk '/^Transferred:/ && /ETA/ \
+    { print $$2 $$3 "/" $$5 $$6 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
+count_xfer_new = $$(v=$$(grep -c "Copied (new)$$" $(1) \
+    2>/dev/null || true); echo $${v:--})
+count_xfer_repl = $$(v=$$(grep -c "Copied (replaced existing)$$" $(1) \
+    2>/dev/null || true); echo $${v:--})
+count_del = $$(v=$$(awk '/^Deleted:/ \
+    { print $$2 }' $(1) | tail -n 1); echo $${v:--})
+count_elapsed = $$(v=$$(awk '/^Elapsed time:/ \
+    { print $$3 }' $(1) | tail -n 1); echo $${v:--})
+
+#
+# elapsed(), since() - elapsed seconds
+# elapsed_hms(), since_hms() - elapsed in hms format
+# usage: $(call elapsed,t0,t1)
+# usage: $(call since,t0)
+# usage: $(call elapsed_hms,t0,t1)
+# usage: $(call since_hms,t0)
+#
+
+hms = $$(awk -v t=$(1) 'BEGIN { \
+    s = int(t); \
+    ms = 1000 * (t - s); \
+    h = int(s / 3600); s %= 3600; \
+    m = int(s / 60); s %= 60; \
+    if (h > 0) printf("%dh%02dm%02d.%03ds", h, m, s, ms); \
+    else if (m > 0) printf("%dm%02d.%03ds", m, s, ms); \
+    else printf("%d.%03ds", s, ms) }')
+
+elapsed = $$(echo "scale=3; $(2) - $(1)" | bc)
+since = $$(echo "scale=3; $(call t) - $(1)" | bc)
+
+elapsed_hms = $(call hms,$(call elapsed,$(1),$(2)))
+since_hms = $(call hms,$(call since,$(1)))
+
+#
+# filters() - convert config include/exclude filters to rclone options
+# usage: $(call filters,string)
+#
+
+define filters
+$$(printf "%s" "$(1)" |
+    sed -E 's/^[[:space:]]*\[[^]]+\][[:space:]]*//' |
+    awk '{
+        for (i = 1; i <= NF; i++) {
+            s = substr($$i, 1, 1); p = substr($$i, 2);
+            printf "-f \047%s %s\047 ", s, p
+        }
+    }
+    END { printf "-f \047- **\047" }')
+endef
+
+#
+# key() - identifier for log and stat filename
+# usage: $(call key,string)
+#
+
+key = $$(printf "%s" "$(1)" | sed -E ' \
+    s/^[[:space:]]*\[([^]]+)\].*/\1/; t done; \
+    s/^[[:space:]]*([^[:space:]]+).*/\1/; \
+    s/^[+-]//; s|.*/||; \
+    :done; \
+    s/[^[:alnum:]_-]+/_/g')
+
+#
+# log() - timestamped log
+# usage: $(call log,message)
+#
+
+make := $(notdir $(MAKE))
+log = printf '%s [%s(%s):%s] %s\n' $(now) $(make) $@ $$$$ "$(1)" >> $(logf)
+
+#
+# mb() - rounded MiB
+# usage: $(call mb,bytes)
+#
+
+mb = $$((($1 + 524288) / 1048576))
+
+#
+# now() - current formatted timestamp
+# usage: $(now) or $(call now)
+#
+
+now = $$(date +'%Y.%m.%d-%H:%M:%S')
+
+#
+# relpath() - path relative to home
+# usage: $(call relpath,path)
+#
+
+relpath = $$(printf "%s" $(1) | sed 's|$(home)/||')
+
+#
+# t() - current epoch (seconds)
+# usage: $(t) or $(call t)
+#
+
+t = $$(date +%s.%3N)
+
+#
+# set_status() - write "key: value" to (global) status file
+# get_status() - read "key: value" from (global) status file
+# usage: $(call set_status,key,value)
+# usage: $(call get_status,key)
+#
+
+define set_status
+    k="$(1)" v= "$(2)"; \
+    if grep -q "^$$k:" $(status); then \
+        sed -Ei "s|^($$k):.*|\1: $$v|" $(status) \
+    else \
+        printf "%s: %s\n" "$$k" "$$v" >> $(status) \
+    fi
+endef
+
+get_status = $$(sed -En '/^$(1):/s/^[^:]*:[[:space:]]*//' $(status)))
+
+#
+# write_stat() - write "key: value" to stat file
+# usage: $(call write_stat,statfile,key,value)
+#
+
+write_stat = $$(printf "%s: %s\n" "$(2)" "$(3)" >> $(1))
+
+
+# vim: ts=4
