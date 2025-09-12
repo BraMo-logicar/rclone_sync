@@ -1,5 +1,9 @@
 = rclone_sync
 
+IMPORTANT: This README describes the legacy v1.0. A full rewrite (v2) is
+incoming.  Installation/usage below are obsolete for v2. A complete README will
+be published with v2.0.
+
 == usage
 
 [source]
