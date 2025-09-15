@@ -60,12 +60,12 @@ main:
         $(call write_stat,$$keyf,rule_start,$(now)); \
         $(call write_stat,$$keyf,command,$$command); \
         $(call log,[$$key] start '$(progname)'); \
-        $(call log,[$$key] command,$$command); \
+        $(call log,[$$key] command: $$command); \
         \
         klog=$(logrun)/$$key.log; \
         t1=$(t); \
         ( \
-            pid=$$; \
+            pid=$$$$; \
             $(call set_status,rclone_pid,$$pid); \
             $(call write_stat,$$keyf,rclone_pid,$$pid); \
             exec $$command &> $$klog; \
