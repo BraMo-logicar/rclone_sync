@@ -71,7 +71,12 @@ while :; do
     case "$1" in
         -h|--help) echo "$help"; exit 0 ;;
         -H|--Help) echo "$Help"; exit 0 ;;
-        -o|--options) eval "args=($2)"; MYOPTS+=("${args[@]}"); shift 2 ;;
+        -o|--options)
+            optarg=$2
+            eval "args=($optarg)";
+            RAWOPTS+=("$optarg")
+            MYOPTS+=("${args[@]}");
+            shift 2 ;;
         --) shift; break ;;
         *) usage; exit 2 ;;
     esac
@@ -92,14 +97,13 @@ log "start '$progname' ($command)"
 
 # opts
 
-log "rclone options: '${OPTS[@]}'"
-log "rclone extra options: '${MYOPTS[@]}'"
-opts=("${OPTS[@]}" "${MYOPTS[@]}")
+log "rclone options: ${OPTS[@]}"
+log "rclone extra options: ${RAWOPTS[@]}"
 
 # run
 
-log "run '$rclone sync ${opts[@]} $lpath $rpath'"
-#$rclone sync ${opts[@]} $lpath $rpath
+log "run '$rclone sync ${OPTS[@]} ${RAWOPTS[@]} $lpath $rpath'"
+#$rclone sync "${OPTS[@]}" "${MYOPTS[@]}" $lpath $rpath
 sleep 1
 log "sync '$lpath' -> '$rpath' done"
 
