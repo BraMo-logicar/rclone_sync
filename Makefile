@@ -19,19 +19,17 @@ $(project): start main end
 # main
 
 start:
-	@mkdir -p $(stats)
-	rm -f $(status)
-	trap 'rm -f $(status)' EXIT INT TERM
+	@mkdir -p $(stats); > $(status)
 	$(call set_status,running,yes)
 	$(call set_status,project,$(project))
 	$(call set_status,progname,$(progname))
 	$(call set_status,run_start,$(now))
 	$(call set_status,run_start_epoch,$(t))
-	$(call set_status,pid(make),$$)
+	$(call set_status,pid(make),$$$$)
 	$(call set_status,statdir,$(stats))
 	$(call log,start '$(project)' @ $(hostname) ($(ip)))
 	[ -L $(stats)/last ] && ln -fns $$(readlink $(stats)/last) $(stats)/prev
-	rm -rf $(logseg); mkdir -p $(logseg)
+	rm -rf $(logrun); mkdir -p $(logrun)
 	mkdir -p $(stats)/$(runid)
 	ln -fns $(stats)/$(runid) $(stats)/last
 
@@ -64,7 +62,7 @@ main:
         $(call log,[$$key] start '$(progname)'); \
         $(call log,[$$key] command,$$command); \
         \
-        klog=$(logseg)/$$key.log; \
+        klog=$(logrun)/$$key.log; \
         t1=$(t); \
         ( \
             pid=$$; \
@@ -97,7 +95,7 @@ main:
             (new=$$rclone_xfer_new$(,) replaced=$$rclone_xfer_repl)$(,) \
             deleted=$$rclone_del$(,) elapsed=$$rclone_elapsed); \
         \
-        cat $(logseg)/$$key.log >> $(logf); \
+        cat $(logrun)/$$key.log >> $(logf); \
         \
         $(call write_stat,$$keyf,rule_end,$(now)); \
         $(call write_stat,$$keyf,rc,$$rc); \
