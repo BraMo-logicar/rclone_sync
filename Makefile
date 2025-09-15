@@ -25,7 +25,7 @@ start:
 	$(call set_status,progname,$(progname))
 	$(call set_status,start,$(now))
 	$(call set_status,start_epoch,$(t))
-	$(call set_status,pid(make),$$$$)
+	$(call set_status,make_pid,$$$$)
 	$(call set_status,statdir,$(stats))
 	$(call log,start '$(project)' @ $(hostname) ($(ip)))
 	[ -L $(stats)/last ] && ln -fns $$(readlink $(stats)/last) $(stats)/prev
@@ -71,7 +71,7 @@ main:
             exec "$${command[@]}" &> $$klog; \
         ); \
         rc=$$? \
-        $(call set_status,rclone_pid,-); \
+        $(call set_status,pid,-); \
         elapsed=$(call since,$$t1); \
         \
         rclone_chk=$(call count_chk,$$klog); \
@@ -105,6 +105,7 @@ main:
         \
         if [ $$rc -ne 0 ]; then exit $$rc; fi; \
     done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
+	cp $(status) /tmp
 	rm -f $(status)
 
 end:
