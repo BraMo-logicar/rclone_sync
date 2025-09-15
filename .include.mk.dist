@@ -15,7 +15,9 @@ SHELL := /usr/bin/bash
 
 # main
 
-project  := <PROJECT>
+home := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+
+project  := $(notdir $(home))
 progname := rclone_sync
 
 hostname := $(shell hostname)
@@ -23,8 +25,6 @@ host     := $(shell hostname -s)
 ip       := $(shell hostname -I | awk '{ print $1 }')
 
 # dirs and files
-
-home := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
 
 data   := $(home)/data
 logf   := $(home)/log/$(project).log
