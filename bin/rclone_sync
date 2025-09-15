@@ -2,17 +2,16 @@
 
 # Name: rclone_sync - rclone sync to bucket s3
 # Usage:
-#     rclone_sync [ -h|--help ] [ -H|--Help ]
-#         [ -o|--options <rclone_options> ]
+#     rclone_sync [ -hH ] [ -o <rclone_options> ]
 #         <local_path> <remote:bucket/path>
 # Options:
-#     -h|--help                     : print usage
-#     -H|--Help                     : print description
-#     -o|--options <rclone_options> : rclone options
-#     <local_path>                  : local path to sync
-#     <remote:bucket/path>          : remote path
+#     -h                   : print usage
+#     -H                   : print description
+#     -o <rclone_options>  : rclone options
+#     <local_path>         : local path to sync
+#     <remote:bucket/path> : remote path
 # Author: Marco Broglia (marco.broglia@mutex.it)
-# Date: 2025.09.05
+# Date: 2025.09.15
 
 #
 # vars
@@ -64,26 +63,25 @@ OPTS+=(--verbose)                   # more detailed output
 help=$(sed -n '/^# Usage:/,/^# [^ ]/p' $0 | sed '$d;s/^# //')
 Help=$(sed -n '/^# Name:/{:a;/^#/{p;n;ba}}' $0 | sed 's/^# //')
 
-GETOPTS=$(getopt -o hHo: -l help,Help,options -- "$@") || { usage; exit 1; }
-eval set -- "$GETOPTS"
-
-while :; do
-    case "$1" in
-        -h|--help) echo "$help"; exit 0 ;;
-        -H|--Help) echo "$Help"; exit 0 ;;
-        -o|--options)
-            optstr=$2
-            read -a A <<< "$optstr"
-            MYOPTS+=("${A[@]}");
-            shift 2 ;;
-        *) usage; exit 2 ;;
+MYOPTS=()
+while getopts ":hHo:" opt; do
+    case $opt in
+        h) echo "$help"; exit 0 ;;
+        H) echo "$Help"; exit 0 ;;
+        o)
+            read -a A <<< "$OPTARG"
+            MYOPTS+=("${A[@]}")
+            ;;
+        \?) usage; echo 1; exit 1 ;;
     esac
 done
-[ $# != 2 ] && { usage; exit 3; }
+shift $((OPTIND - 1))
+
+[ $# -ne 2 ] && { usage; exit 2; }
 
 # local and remote paths
 
-lpath="$1"; rpath="$2"
+lpath=$1 rpath=$2
 
 #
 # main
