@@ -133,7 +133,6 @@ xstatus:
 	statdir=$$(get statdir); \
 	rclone_pid=$$(get rclone_pid); \
 	rclone_flags=$$(get rclone_flags); \
-	\
 	# detect running: rclone pid alive?
 	is_running=0; \
 	if [ -n "$$rclone_pid" ] && [ "$$rclone_pid" != "-" ] && ps -p $$rclone_pid >/dev/null 2>&1; then \
