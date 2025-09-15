@@ -2,14 +2,15 @@
 
 # Name: rclone_sync - rclone sync to bucket s3
 # Usage:
-#     rclone_sync [ -hH ] [ -o <rclone_options> ]
+#     rclone_sync [ -h|--help ] [ -H|--Help ]
+#         [ -o|--options <rclone_options> ]
 #         <local_path> <remote:bucket/path>
 # Options:
-#     -h                   : print usage
-#     -H                   : print description
-#     -o <rclone_options>  : rclone options
-#     <local_path>         : local path to sync
-#     <remote:bucket/path> : remote path
+#     -h|--help                     : print usage
+#     -H|--Help                     : print description
+#     -o|--options <rclone_options> : rclone options
+#     <local_path>                  : local path to sync
+#     <remote:bucket/path>          : remote path
 # Author: Marco Broglia (marco.broglia@mutex.it)
 # Date: 2025.09.15
 
@@ -63,21 +64,19 @@ OPTS+=(--verbose)                   # more detailed output
 help=$(sed -n '/^# Usage:/,/^# [^ ]/p' $0 | sed '$d;s/^# //')
 Help=$(sed -n '/^# Name:/{:a;/^#/{p;n;ba}}' $0 | sed 's/^# //')
 
-MYOPTS=()
-while getopts ":hHo:" opt; do
-    case $opt in
-        h) echo "$help"; exit 0 ;;
-        H) echo "$Help"; exit 0 ;;
-        o)
-            read -a A <<< "$OPTARG"
-            MYOPTS+=("${A[@]}")
-            ;;
-        \?) usage; echo 1; exit 1 ;;
+GETOPTS=$(getopt -o hHo: -l help,Help,options -- "$@") || { usage; exit 1; }
+eval set -- "$GETOPTS"
+
+while :; do
+    case "$1" in
+        -h|--help) echo "$help"; exit 0 ;;
+        -H|--Help) echo "$Help"; exit 0 ;;
+        -o|--options) eval "args=($2)"; MYOPTS+=("${args[@]}"); shift 2 ;;
+        --) shift; break ;;
+        *) usage; exit 2 ;;
     esac
 done
-shift $((OPTIND - 1))
-
-[ $# -ne 2 ] && { usage; exit 2; }
+[ $# != 2 ] && { usage; exit 3; }
 
 # local and remote paths
 
@@ -89,18 +88,18 @@ lpath=$1 rpath=$2
 
 # start
 
-log "start '$progname' ('$command')"
+log "start '$progname' ($command)"
 
 # opts
 
 log "rclone options: '${OPTS[@]}'"
 log "rclone extra options: '${MYOPTS[@]}'"
-opts="${OPTS[@]} ${MYOPTS[@]}"
+opts=("${OPTS[@]}" "${MYOPTS[@]}")
 
 # run
 
-log "run '$rclone sync $opts $lpath $rpath'"
-#$rclone sync $opts $lpath $rpath
+log "run '$rclone sync ${opts[@]} $lpath $rpath'"
+#$rclone sync ${opts[@]} $lpath $rpath
 sleep 1
 log "sync '$lpath' -> '$rpath' done"
 
