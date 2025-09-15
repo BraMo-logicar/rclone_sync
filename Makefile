@@ -54,7 +54,7 @@ main:
         $(call log,key '$$key' ($$k/$$n ($$pct%))); \
         \
         filters="$(call filters,$$rule)"; \
-        command="$(program) $$filters"; \
+        command="$(program) -o \"$$filters\""; \
         $(call set_status,rule_start,$(now)); \
         $(call set_status,command,$$command); \
         $(call write_stat,$$keyf,rule_start,$(now)); \
