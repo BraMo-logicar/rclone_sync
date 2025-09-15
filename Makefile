@@ -119,7 +119,7 @@ status:
 	@[ -f $(status) ] || { echo "$(progname) not running"; exit 0; }
 	echo $(project)/$(progname) running
 
-status:
+xstatus:
 	@keyf='$(keyf)'; stats_root='data/stats'; last_link="$$stats_root/last"; \
 	[ -f "$$keyf" ] || { echo "status: $(keyf) not found"; exit 0; }; \
 	\
