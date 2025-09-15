@@ -23,8 +23,8 @@ start:
 	$(call set_status,running,yes)
 	$(call set_status,project,$(project))
 	$(call set_status,progname,$(progname))
-	$(call set_status,run_start,$(now))
-	$(call set_status,run_start_epoch,$(t))
+	$(call set_status,start,$(now))
+	$(call set_status,start_epoch,$(t))
 	$(call set_status,pid(make),$$$$)
 	$(call set_status,statdir,$(stats))
 	$(call log,start '$(project)' @ $(hostname) ($(ip)))
@@ -46,18 +46,18 @@ main:
         $(call set_status,rule,$$rule); \
         $(call set_status,key,$$key); \
         $(call set_status,key_file,$$keyf); \
-        $(call set_status,progress,$$k/$$n ($$pct%)); \
+        $(call set_status,progress,$$k/$$n$(,) $$pct%); \
         $(call write_stat,$$keyf,rule,$$rule); \
         $(call write_stat,$$keyf,key,$$key); \
-        $(call write_stat,$$keyf,progress,$$k/$$n ($$pct%)); \
+        $(call write_stat,$$keyf,progress,$$k/$$n$(,) $$pct%); \
         $(call log,rule '$$rule'); \
-        $(call log,key '$$key' ($$k/$$n ($$pct%))); \
+        $(call log,key '$$key' ($$k/$$n$(,) $$pct%)); \
         \
         filters="$(call filters,$$rule)"; \
-        command="$(program) -o \"$$filters\""; \
-        $(call set_status,rule_start,$(now)); \
+        command=($(program) -o "$$filters" $(lpath) $(rpath)); \
+        $(call set_status,start,$(now)); \
         $(call set_status,command,$$command); \
-        $(call write_stat,$$keyf,rule_start,$(now)); \
+        $(call write_stat,$$keyf,start,$(now)); \
         $(call write_stat,$$keyf,command,$$command); \
         $(call log,[$$key] start '$(progname)'); \
         $(call log,[$$key] command: $$command); \
@@ -66,9 +66,9 @@ main:
         t1=$(t); \
         ( \
             pid=$$$$; \
-            $(call set_status,rclone_pid,$$pid); \
-            $(call write_stat,$$keyf,rclone_pid,$$pid); \
-            exec $$command &> $$klog; \
+            $(call set_status,pid,$$pid); \
+            $(call write_stat,$$keyf,pid,$$pid); \
+            exec "$${command[@]}" &> $$klog; \
         ); \
         rc=$$? \
         $(call set_status,rclone_pid,-); \
@@ -97,9 +97,9 @@ main:
         \
         cat $(logrun)/$$key.log >> $(logf); \
         \
-        $(call write_stat,$$keyf,rule_end,$(now)); \
+        $(call write_stat,$$keyf,end,$(now)); \
         $(call write_stat,$$keyf,rc,$$rc); \
-        $(call write_stat,$$keyf,rule_elapsed,$${elapsed}s); \
+        $(call write_stat,$$keyf,elapsed,$${elapsed}s); \
         $(call log,[$$key] end '$(progname)': rc=$$rc \
             (elapsed: $${elapsed}s)); \
         \
@@ -108,9 +108,9 @@ main:
 	rm -f $(status)
 
 end:
-	@t0=$(call get_status,run_start_epoch)
-	$(call set_status,run_end,$(now))
-	$(call set_status,run_elapsed,$(call since_hms,$$t0))
+	@t0=$(call get_status,start_epoch)
+	$(call set_status,end,$(now))
+	$(call set_status,elapsed,$(call since_hms,$$t0))
 	$(call log,end '$(project)' (total elapsed: $(call since_hms,$$t0)))
 
 status:
@@ -123,11 +123,11 @@ xstatus:
 	\
 	# pull fields from keyf
 	get(){ awk -F: -v k="^$$1:" '$$0 ~ k {sub(/^[^:]+:[ \t]*/,""); print; exit}' "$$keyf"; }; \
-	run_start_epoch=$$(get run_start_epoch); \
-	run_start=$$(get start); \
+	start_epoch=$$(get start_epoch); \
+	start=$$(get start); \
 	rule=$$(get rule); \
-	rule_start=$$(get rule_start); \
-	rule_start_epoch=$$(get rule_start_epoch); \
+	start=$$(get start); \
+	start_epoch=$$(get start_epoch); \
 	statdir=$$(get statdir); \
 	rclone_pid=$$(get rclone_pid); \
 	rclone_flags=$$(get rclone_flags); \
@@ -139,18 +139,18 @@ xstatus:
 	\
 	if [ $$is_running -eq 1 ]; then \
 	  echo "$(project) running"; \
-	  if [ -n "$$run_start_epoch" ]; then \
-	    now=$$(date +%s); base=$${run_start_epoch%.*}; dur=$$(( now - base )); \
-	    printf "start : %s (%02dh%02dm%02ds)\n" "$$run_start" $$((dur/3600)) $$(((dur%3600)/60)) $$((dur%60)); \
+	  if [ -n "$$start_epoch" ]; then \
+	    now=$$(date +%s); base=$${start_epoch%.*}; dur=$$(( now - base )); \
+	    printf "start : %s (%02dh%02dm%02ds)\n" "$$start" $$((dur/3600)) $$(((dur%3600)/60)) $$((dur%60)); \
 	  else \
-	    echo "start : $$run_start"; \
+	    echo "start : $$start"; \
 	  fi; \
 	  echo "current rule : '$$rule'"; \
-	  if [ -n "$$rule_start_epoch" ]; then \
-	    now=$$(date +%s); base=$${rule_start_epoch%.*}; rdur=$$(( now - base )); \
-	    printf "  rule start : %s (%02dh%02dm%02ds)\n" "$$rule_start" $$((rdur/3600)) $$(((rdur%3600)/60)) $$((rdur%60)); \
-	  elif [ -n "$$rule_start" ]; then \
-	    echo "  rule start : $$rule_start"; \
+	  if [ -n "$$start_epoch" ]; then \
+	    now=$$(date +%s); base=$${start_epoch%.*}; rdur=$$(( now - base )); \
+	    printf "  rule start : %s (%02dh%02dm%02ds)\n" "$$start" $$((rdur/3600)) $$(((rdur%3600)/60)) $$((rdur%60)); \
+	  elif [ -n "$$start" ]; then \
+	    echo "  rule start : $$start"; \
 	  fi; \
 	  # hot CPU/RSS
 	  read _ pcpu rss _ < <(ps -o pid= -o pcpu= -o rss= -o comm= -p $$rclone_pid | awk '{print $$1,$$2,$$3,$$4}'); \
