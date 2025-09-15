@@ -202,10 +202,10 @@ t = $$(date +%s.%3N)
 
 define set_status
     k="$(1)" v="$(2)"; \
-    if grep -q "^$$k:" $(status); then \
-        sed -Ei "s|^($$k):.*|\1: $$v|" $(status); \
+    if grep -q "^$$_k:" $(status); then \
+        sed -Ei "s|^($$_k):.*|\1: $$_v|" $(status); \
     else \
-        printf "%s: %s\n" "$$k" "$$v" >> $(status); \
+        printf "%s: %s\n" "$$_k" "$$_v" >> $(status); \
     fi
 endef
 
