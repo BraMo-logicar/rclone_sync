@@ -28,7 +28,7 @@ home := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
 
 data   := $(home)/data
 logf   := $(home)/log/$(project).log
-logseg := $(home)/log/seg
+logrun := $(home)/log/run
 stats  := $(data)/stats
 status := $(stats)/status
 tmp    := $(home)/tmp
@@ -85,8 +85,8 @@ mail_log := yes
 #----------
 
 #
-# count_<stat>() - statistics from a segmented log
-# usage: $(call count_<stat>,segmented_log)
+# count_<stat>() - statistics from a per-run log
+# usage: $(call count_<stat>,run_log)
 #
 
 count_chk = $$(v=$$(awk '/^Checks:/ \
@@ -201,7 +201,7 @@ t = $$(date +%s.%3N)
 #
 
 define set_status
-    k="$(1)" v="$(2)"; \
+    _k="$(1)" _v="$(2)"; \
     if grep -q "^$$_k:" $(status); then \
         sed -Ei "s|^($$_k):.*|\1: $$_v|" $(status); \
     else \
