@@ -22,7 +22,7 @@
 
 set -euo pipefail
 
-proj=earthbak
+proj=
 prog=${0##*/}
 
 command="$0"; [ $# -gt 0 ] && command="$command $*"
