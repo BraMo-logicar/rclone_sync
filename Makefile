@@ -19,7 +19,8 @@ $(project): start main end
 # main
 
 start:
-	@rm -f $(status)
+	@mkdir -p $(stats)
+	rm -f $(status)
 	trap 'rm -f $(status)' EXIT INT TERM
 	$(call set_status,running,yes)
 	$(call set_status,project,$(project))
@@ -29,9 +30,7 @@ start:
 	$(call set_status,pid(make),$$)
 	$(call set_status,statdir,$(stats))
 	$(call log,start '$(project)' @ $(hostname) ($(ip)))
-	if [ -L $(stats)/last ]; then \
-	    ln -fns $$(readlink $(stats)/last) $(stats)/prev; \
-    fi
+	[ -L $(stats)/last ] && ln -fns $$(readlink $(stats)/last) $(stats)/prev
 	rm -rf $(logseg); mkdir -p $(logseg)
 	mkdir -p $(stats)/$(runid)
 	ln -fns $(stats)/$(runid) $(stats)/last
@@ -67,7 +66,7 @@ main:
         \
         klog=$(logseg)/$$key.log; \
         t1=$(t); \
-        (
+        ( \
             pid=$$; \
             $(call set_status,rclone_pid,$$pid); \
             $(call write_stat,$$keyf,rclone_pid,$$pid); \
