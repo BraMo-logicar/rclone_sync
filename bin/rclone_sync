@@ -71,8 +71,7 @@ while :; do
     case "$1" in
         -h|--help) echo "$help"; exit 0 ;;
         -H|--Help) echo "$Help"; exit 0 ;;
-        -o|--options) MYOPTS=($2); shift 2 ;;
-        --) shift; break ;;
+        -o|--options) for opt in $2; do MYOPTS+=("$opt"); done; shift 2 ;;
         *) usage; exit 2 ;;
     esac
 done
