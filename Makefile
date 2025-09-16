@@ -1,4 +1,4 @@
-# Name: Makefile - Makefile for rclone_sync
+# Name: Makefile - Makefile for $(project)
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
 # Date: 2025.08.19
@@ -12,7 +12,7 @@ include .include.mk
 .PHONY: help start main end status
 
 help:
-	@echo Makefile: Please specify a target: rclone_sync, rclone_ ...
+	@echo Makefile: Please specify a target: start, main, end, ...
 
 $(project): start main end
 
@@ -25,7 +25,7 @@ start:
 	$(call set_status,progname,$(progname))
 	$(call set_status,start,$(now))
 	$(call set_status,start_epoch,$(t))
-	$(call set_status,make_pid,$$$$)
+	$(call set_status,make_pid,$(MAKE_PID))
 	$(call set_status,statdir,$(stats))
 	$(call log,start '$(project)' @ $(hostname) ($(ip)))
 	[ -L $(stats)/last ] && ln -fns $$(readlink $(stats)/last) $(stats)/prev
@@ -36,38 +36,43 @@ start:
 main:
 	@$(call log,loop over '$(call relpath,$(rclone_list))')
 	trap 'rm -f $(status)' EXIT INT TERM
+	$(call set_status,recipe_shell_pid,$$$$)
 	n=$$(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF' | wc -l); k=0
 	while read rule; do \
         k=$$((k+1)); \
         \
-        key=$(call key,$$rule); \
-        keyf=$(stats)/$(runid)/$$key; \
+        ruleid=$(call ruleid,$$rule); \
+        rulef=$(stats)/$(runid)/$$ruleid; \
         pct=$$(echo "scale=2; 100*$$k/$$n" | bc); \
         $(call set_status,rule,$$rule); \
-        $(call set_status,key,$$key); \
-        $(call set_status,key_file,$$keyf); \
+        $(call set_status,ruleid,$$ruleid); \
+        $(call set_status,rule_file,$$rulef); \
         $(call set_status,progress,$$k/$$n$(,) $$pct%); \
-        $(call write_stat,$$keyf,rule,$$rule); \
-        $(call write_stat,$$keyf,key,$$key); \
-        $(call write_stat,$$keyf,progress,$$k/$$n$(,) $$pct%); \
+        $(call write_stat,$$rulef,rule,$$rule); \
+        $(call write_stat,$$rulef,ruleid,$$ruleid); \
+        $(call write_stat,$$rulef,progress,$$k/$$n$(,) $$pct%); \
         $(call log,rule '$$rule'); \
-        $(call log,key '$$key' ($$k/$$n$(,) $$pct%)); \
+        $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%)); \
         \
         filters="$(call filters,$$rule)"; \
         command=($(program) -o "$$filters" $(lpath) $(rpath)); \
         $(call set_status,start,$(now)); \
         $(call set_status,command,$$command); \
-        $(call write_stat,$$keyf,start,$(now)); \
-        $(call write_stat,$$keyf,command,$$command); \
-        $(call log,[$$key] start '$(progname)'); \
-        $(call log,[$$key] command: $$command); \
+        $(call write_stat,$$rulef,start,$(now)); \
+        $(call write_stat,$$rulef,command,$$command); \
+        $(call log,[$$ruleid] start '$(progname)'); \
+        $(call log,[$$ruleid] command: $$command); \
         \
-        klog=$(logrun)/$$key.log; \
+        klog=$(logrun)/$$ruleid.log; \
         t1=$(t); \
         ( \
-            pid=$$$$; \
-            $(call set_status,pid,$$pid); \
-            $(call write_stat,$$keyf,pid,$$pid); \
+            ppid=$$$$; \
+            $(call set_status,$(progname)_pid,$$ppid); \
+            $(call write_stat,$$rulef,$(progname)_pid,$$ppid); \
+            ( \
+                rclone_pid=$$($(call watch_child,$$ppid,^rclone$$,8,1)); \
+                $(call write_stat,$$rulef,rclone_pid,$$rclone_pid); \
+            ) & \
             exec "$${command[@]}" &> $$klog; \
         ); \
         rc=$$? \
@@ -82,30 +87,30 @@ main:
         rclone_del=$(call count_del,$$klog); \
         rclone_elapsed=$(call count_elapsed,$$klog); \
         \
-        $(call write_stat,$$keyf,rclone_checks,$$rclone_chk); \
-        $(call write_stat,$$keyf,rclone_transferred,$$rclone_xfer); \
-        $(call write_stat,$$keyf,rclone_copied_new,$$rclone_xfer_new); \
-        $(call write_stat,$$keyf,rclone_copied_replaced,$$rclone_xfer_repl); \
-        $(call write_stat,$$keyf,rclone_transferred_size,$$rclone_xfer_sz); \
-        $(call write_stat,$$keyf,rclone_deleted,$$rclone_del); \
-        $(call write_stat,$$keyf,rclone_elapsed,$$rclone_elapsed); \
-        $(call log,[$$key] rclone stats: \
+        $(call write_stat,$$rulef,rclone_checks,$$rclone_chk); \
+        $(call write_stat,$$rulef,rclone_transferred,$$rclone_xfer); \
+        $(call write_stat,$$rulef,rclone_copied_new,$$rclone_xfer_new); \
+        $(call write_stat,$$rulef,rclone_copied_replaced,$$rclone_xfer_repl); \
+        $(call write_stat,$$rulef,rclone_transferred_size,$$rclone_xfer_sz); \
+        $(call write_stat,$$rulef,rclone_deleted,$$rclone_del); \
+        $(call write_stat,$$rulef,rclone_elapsed,$$rclone_elapsed); \
+        $(call log,[$$ruleid] rclone stats: \
             checks=$$rclone_chk$(,) \
             transferred=$$rclone_xfer ($$rclone_xfer_sz) \
             (new=$$rclone_xfer_new$(,) replaced=$$rclone_xfer_repl)$(,) \
             deleted=$$rclone_del$(,) elapsed=$$rclone_elapsed); \
         \
-        cat $(logrun)/$$key.log >> $(logf); \
+        cat $(logrun)/$$ruleid.log >> $(logf); \
         \
-        $(call write_stat,$$keyf,end,$(now)); \
-        $(call write_stat,$$keyf,rc,$$rc); \
-        $(call write_stat,$$keyf,elapsed,$${elapsed}s); \
-        $(call log,[$$key] end '$(progname)': rc=$$rc \
+        $(call write_stat,$$rulef,end,$(now)); \
+        $(call write_stat,$$rulef,rc,$$rc); \
+        $(call write_stat,$$rulef,elapsed,$${elapsed}s); \
+        $(call log,[$$ruleid] end '$(progname)': rc=$$rc \
             (elapsed: $${elapsed}s)); \
         \
         if [ $$rc -ne 0 ]; then exit $$rc; fi; \
     done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
-	cp $(status) /tmp
+	cp $(status) $(tmp)
 	rm -f $(status)
 
 end:
@@ -119,11 +124,11 @@ status:
 	echo $(project)/$(progname) running
 
 xstatus:
-	@keyf='$(keyf)'; stats_root='data/stats'; last_link="$$stats_root/last"; \
-	[ -f "$$keyf" ] || { echo "status: $(keyf) not found"; exit 0; }; \
+	@rulef='$(rulef)'; stats_root='data/stats'; last_link="$$stats_root/last"; \
+	[ -f "$$rulef" ] || { echo "status: $(rulef) not found"; exit 0; }; \
 	\
-	# pull fields from keyf
-	get(){ awk -F: -v k="^$$1:" '$$0 ~ k {sub(/^[^:]+:[ \t]*/,""); print; exit}' "$$keyf"; }; \
+	# pull fields from rulef
+	get(){ awk -F: -v k="^$$1:" '$$0 ~ k {sub(/^[^:]+:[ \t]*/,""); print; exit}' "$$rulef"; }; \
 	start_epoch=$$(get start_epoch); \
 	start=$$(get start); \
 	rule=$$(get rule); \
