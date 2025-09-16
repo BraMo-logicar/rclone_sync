@@ -74,7 +74,7 @@ while :; do
         -o|--options)
             optarg=$2
             eval "args=($optarg)";
-            RAWOPTS+=("$optarg")
+            MYRAWOPTS+=("$optarg")
             MYOPTS+=("${args[@]}");
             shift 2 ;;
         --) shift; break ;;
@@ -98,11 +98,11 @@ log "start '$progname' ($command)"
 # opts
 
 log "rclone options: ${OPTS[@]}"
-log "rclone extra options: ${RAWOPTS[@]}"
+log "rclone extra options: ${MYRAWOPTS[@]}"
 
 # run
 
-log "run '$rclone sync ${OPTS[@]} ${RAWOPTS[@]} $lpath $rpath'"
+log "run '$rclone sync ${OPTS[@]} ${MYRAWOPTS[@]} $lpath $rpath'"
 #$rclone sync "${OPTS[@]}" "${MYOPTS[@]}" $lpath $rpath
 sleep 1
 log "sync '$lpath' -> '$rpath' done"
