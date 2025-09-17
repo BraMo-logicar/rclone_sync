@@ -20,13 +20,13 @@ $(project): start main end
 
 start:
 	@mkdir -p $(stats); > $(status)
-	$(call set_status,running,yes)
+	$(call set_status,running,true)
 	$(call set_status,project,$(project))
 	$(call set_status,progname,$(progname))
-	$(call set_status,start,$(now))
-	$(call set_status,start_epoch,$(t))
-	$(call set_status,make_pid,$(MAKE_PID))
-	$(call set_status,statdir,$(stats))
+	$(call set_status,started_at,$(now))
+	$(call set_status,started_epoch,$(t))
+	$(call set_status,make_pid,$$PPID)
+	$(call set_status,stats_dir,$(stats))
 	$(call log,start '$(project)' @ $(hostname) ($(ip)))
 	[ -L $(stats)/last ] && ln -fns $$(readlink $(stats)/last) $(stats)/prev
 	rm -rf $(logrun); mkdir -p $(logrun)
@@ -35,30 +35,31 @@ start:
 
 main:
 	@$(call log,loop over '$(call relpath,$(rclone_list))')
-	trap 'rm -f $(status)' EXIT INT TERM
+	trap 'rm -f $(status)' INT TERM
 	$(call set_status,recipe_shell_pid,$$$$)
 	n=$$(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF' | wc -l); k=0
 	while read rule; do \
         k=$$((k+1)); \
         \
         ruleid=$(call ruleid,$$rule); \
+        rulestart=$(now); \
         rulef=$(stats)/$(runid)/$$ruleid; \
         pct=$$(echo "scale=2; 100*$$k/$$n" | bc); \
-        $(call set_status,rule,$$rule); \
-        $(call set_status,ruleid,$$ruleid); \
-        $(call set_status,rule_file,$$rulef); \
-        $(call set_status,progress,$$k/$$n$(,) $$pct%); \
+        $(call set_status,current_rule,$$rule); \
+        $(call set_status,current_rule_id,$$ruleid); \
+        $(call set_status,current_rule_started_at,$$rulestart); \
+        $(call set_status,current_rule_path,$$rulef); \
+        $(call set_status,progress,$$k/$$n ($$pct%)); \
         $(call write_stat,$$rulef,rule,$$rule); \
-        $(call write_stat,$$rulef,ruleid,$$ruleid); \
-        $(call write_stat,$$rulef,progress,$$k/$$n$(,) $$pct%); \
+        $(call write_stat,$$rulef,rule_id,$$ruleid); \
+        $(call write_stat,$$rulef,rule_started_at,$$rulestart); \
+        $(call write_stat,$$rulef,progress,$$k/$$n ($$pct%)); \
         $(call log,rule '$$rule'); \
         $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%)); \
         \
         filters="$(call filters,$$rule)"; \
         command=($(program) -o "$$filters" $(lpath) $(rpath)); \
-        $(call set_status,start,$(now)); \
         $(call set_status,command,$$command); \
-        $(call write_stat,$$rulef,start,$(now)); \
         $(call write_stat,$$rulef,command,$$command); \
         $(call log,[$$ruleid] start '$(progname)'); \
         $(call log,[$$ruleid] command: $$command); \
@@ -66,17 +67,17 @@ main:
         klog=$(logrun)/$$ruleid.log; \
         t1=$(t); \
         ( \
-            ppid=$$$$; \
-            $(call set_status,$(progname)_pid,$$ppid); \
-            $(call write_stat,$$rulef,$(progname)_pid,$$ppid); \
+            pid=$$BASHPID; \
+            $(call set_status,$(progname)_pid,$$pid); \
+            $(call write_stat,$$rulef,$(progname)_pid,$$pid); \
             ( \
-                rclone_pid=$$($(call watch_child,$$ppid,^rclone$$,8,1)); \
+                rclone_pid=$$($(call watch_child,$$pid,^rclone$$,8,1)); \
                 $(call write_stat,$$rulef,rclone_pid,$$rclone_pid); \
             ) & \
             exec "$${command[@]}" &> $$klog; \
         ); \
         rc=$$? \
-        $(call set_status,pid,-); \
+        $(call set_status,$(progname)_pid,-); \
         elapsed=$(call since,$$t1); \
         \
         rclone_chk=$(call count_chk,$$klog); \
@@ -110,13 +111,11 @@ main:
         \
         if [ $$rc -ne 0 ]; then exit $$rc; fi; \
     done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
-	cp $(status) $(tmp)
-	rm -f $(status)
 
 end:
 	@t0=$(call get_status,start_epoch)
-	$(call set_status,end,$(now))
-	$(call set_status,elapsed,$(call since_hms,$$t0))
+	cp $(status) $(tmp)
+	rm -f $(status)
 	$(call log,end '$(project)' (total elapsed: $(call since_hms,$$t0)))
 
 status:
