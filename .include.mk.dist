@@ -122,8 +122,8 @@ hms = $$(awk -v t=$(1) 'BEGIN { \
     else if (m > 0) printf("%dm%02d.%03ds", m, s, ms); \
     else printf("%d.%03ds", s, ms) }')
 
-elapsed = $$(echo "scale=3; $(2) - $(1)" | bc)
-since = $$(echo "scale=3; $(call t) - $(1)" | bc)
+elapsed = $$(printf "scale=3; %s - %s\n" $(2) $(1) | bc)
+since = $$(printf "scale=3; %s - %s\n" $(call t) $(1) | bc)
 
 elapsed_hms = $(call hms,$(call elapsed,$(1),$(2)))
 since_hms = $(call hms,$(call since,$(1)))
@@ -146,11 +146,11 @@ define filters
 endef
 
 #
-# key() - identifier for log and stat filename
-# usage: $(call key,string)
+# ruleid() - rule identifier for log and stat filename
+# usage: $(call ruleid,rule)
 #
 
-key = $$(printf "%s" "$(1)" | sed -E ' \
+ruleid = $$(printf "%s" "$(1)" | sed -E ' \
     s/^[[:space:]]*\[([^]]+)\].*/\1/; t done; \
     s/^[[:space:]]*([^[:space:]]+).*/\1/; \
     s/^[+-]//; s|.*/||; \
@@ -209,7 +209,7 @@ define set_status
     fi
 endef
 
-get_status = $$(sed -En '/^$(1):/s/^[^:]*:[[:space:]]*//' $(status)))
+get_status = $$(sed -En '/^$(1):/s/^[^:]*:[[:space:]]*//p' $(status))
 
 #
 # write_stat() - write "key: value" to stat file
@@ -229,7 +229,7 @@ define watch_child
         [ -n $$child ] && break; \
         sleep $(4); \
     done; \
-    printf "%s" "$$child"; \
+    printf "%s" "$$child"
 endef
 
 
