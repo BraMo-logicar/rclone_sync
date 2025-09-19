@@ -24,8 +24,8 @@ start:
 	$(call set_status,project,$(project))
 	$(call set_status,program_name,$(program_name))
 	$(call set_status,program_path,$(program_path))
-	$(call set_status,started_at,$(now))
-	$(call set_status,started_epoch,$(t))
+	$(call set_status,start,$(now))
+	$(call set_status,start_epoch,$(t))
 	$(call set_status,make_pid,$$PPID)
 	$(call set_status,stats_dir,$(stats))
 	$(call log,start '$(project)' @ $(hostname) ($(ip)))
@@ -48,12 +48,12 @@ main:
         pct=$$(echo "scale=2; 100*$$k/$$n" | bc); \
         $(call set_status,current_rule,$$rule); \
         $(call set_status,current_rule_id,$$ruleid); \
-        $(call set_status,current_rule_started_at,$$rulestart); \
+        $(call set_status,current_rule_start,$$rulestart); \
         $(call set_status,current_rule_path,$$rulef); \
         $(call set_status,progress,$$k/$$n ($$pct%)); \
         $(call write_stat,$$rulef,rule,$$rule); \
         $(call write_stat,$$rulef,rule_id,$$ruleid); \
-        $(call write_stat,$$rulef,rule_started_at,$$rulestart); \
+        $(call write_stat,$$rulef,rule_start,$$rulestart); \
         $(call write_stat,$$rulef,progress,$$k/$$n ($$pct%)); \
         $(call log,rule '$$rule'); \
         $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%)); \
@@ -104,7 +104,7 @@ main:
         \
         cat $(logrun)/$$ruleid.log >> $(logf); \
         \
-        $(call write_stat,$$rulef,end,$(now)); \
+        $(call write_stat,$$rulef,rule_end,$(now)); \
         $(call write_stat,$$rulef,rc,$$rc); \
         $(call write_stat,$$rulef,elapsed,$${elapsed}s); \
         $(call log,[$$ruleid] end '$(program_name)': rc=$$rc \
@@ -114,7 +114,7 @@ main:
     done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
 
 end:
-	@t0=$(call get_status,started_epoch)
+	@t0=$(call get_status,start_epoch)
 	cp $(status) $(tmp)
 	rm -f $(status)
 	$(call log,end '$(project)' (total elapsed: $(call since_hms,$$t0)))
