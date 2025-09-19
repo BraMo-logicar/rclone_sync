@@ -133,15 +133,15 @@ since_hms = $(call hms,$(call since,$(1)))
 #
 
 define filters
-    $$(printf "%s" "$(1)" |
-        sed -E 's/^[[:space:]]*\[[^]]+\][[:space:]]*//' |
-        awk '{
-            for (i = 1; i <= NF; i++) {
-                s = substr($$i, 1, 1); p = substr($$i, 2);
-                printf "-f \047%s %s\047 ", s, p
-            }
+$$(printf "%s" "$(1)" |
+    sed -E 's/^[[:space:]]*\[[^]]+\][[:space:]]*//' |
+    awk '{
+        for (i = 1; i <= NF; i++) {
+            s = substr($$i, 1, 1); p = substr($$i, 2);
+            printf "-f \047%s %s\047 ", s, p
         }
-        END { printf "-f \047- **\047" }')
+    }
+    END { printf "-f \047- **\047" }')
 endef
 
 #
@@ -200,12 +200,12 @@ t = $$(date +%s.%3N)
 #
 
 define set_status
-    _k="$(1)" _v="$(2)"; \
-    if grep -q "^$$_k:" $(status); then \
-        sed -Ei "s|^($$_k):.*|\1: $$_v|" $(status); \
-    else \
-        printf "%s: %s\n" "$$_k" "$$_v" >> $(status); \
-    fi
+_k="$(1)" _v="$(2)"; \
+if grep -q "^$$_k:" $(status); then \
+    sed -Ei "s|^($$_k):.*|\1: $$_v|" $(status); \
+else \
+    printf "%s: %s\n" "$$_k" "$$_v" >> $(status); \
+fi
 endef
 
 get_status = $$(sed -En '/^$(1):/s/^[^:]*:[[:space:]]*//p' $(status))
@@ -223,12 +223,12 @@ write_stat = $$(printf "%s: %s\n" "$(2)" "$(3)" >> $(1))
 #
 
 define watch_child
-    for k in {1..$(3)}; do \
-        child=$$(pgrep -P $(1) $(2)); \
-        [ -n $$child ] && break; \
-        sleep $(4); \
-    done; \
-    printf "%s" "$$child"
+for k in {1..$(3)}; do \
+    child=$$(pgrep -P $(1) $(2)); \
+    [ -n $$child ] && break; \
+    sleep $(4); \
+done; \
+printf "%s" "$$child"
 endef
 
 
