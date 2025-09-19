@@ -42,7 +42,8 @@ main:
 	while read rule; do \
         k=$$((k+1)); \
         \
-        ruleid=$(call ruleid,$$rule); \
+        $(call parse_rule,$$rule); \
+        \
         rulestart=$(now); \
         rulef=$(stats)/$(runid)/$$ruleid; \
         pct=$$(echo "scale=2; 100*$$k/$$n" | bc); \
@@ -58,8 +59,9 @@ main:
         $(call log,rule '$$rule'); \
         $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%)); \
         \
-        filters="$(call filters,$$rule)"; \
-        command=($(program_path) -o "$$filters" $(lpath) $(rpath)); \
+        src=$(lpath)/$$relpath; \
+        dst=$(rpath)/$$relpath; \
+        command=($(program_path) ${opts:+-o "$$opts"} $$src $$dst); \
         $(call set_status,command_line,$${command[*]}); \
         $(call write_stat,$$rulef,command_line,$${command[*]}); \
         $(call log,[$$ruleid] start '$(program_name)'); \
