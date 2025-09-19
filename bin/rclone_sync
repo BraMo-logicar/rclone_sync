@@ -95,8 +95,8 @@ log "start '$progname'"
 
 # opts
 
-((${#OPTS[@]}))      && log "rclone base options: ${OPTS[@]}"
-((${#MYRAWOPTS[@]})) && log "rclone extra options: ${MYRAWOPTS[@]}"
+[[ ${OPTS[*]:-}]]      && log "rclone base options: ${OPTS[@]}"
+[[ ${MYRAWOPTS[*]:-}]] && log "rclone extra options: ${MYRAWOPTS[@]}"
 
 # run
 
