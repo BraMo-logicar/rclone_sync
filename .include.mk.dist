@@ -17,8 +17,9 @@ SHELL := /usr/bin/bash
 
 home := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-project  := $(notdir $(home))
-progname := rclone_sync
+project      := $(notdir $(home))
+program_name := rclone_sync
+program_path := $(home)/bin/$(program_name)
 
 hostname := $(shell hostname)
 host     := $(shell hostname -s)
@@ -39,8 +40,6 @@ sizef := $(tmp)/rclone_size.out
 
 rclone   := /bin/rclone
 sendmail := /sbin/sendmail
-
-program := $(home)/bin/$(progname)
 
 # source root and destination prefix
 

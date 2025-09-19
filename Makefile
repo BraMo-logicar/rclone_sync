@@ -22,7 +22,8 @@ start:
 	@mkdir -p $(stats); > $(status)
 	$(call set_status,running,true)
 	$(call set_status,project,$(project))
-	$(call set_status,progname,$(progname))
+	$(call set_status,program_name,$(program_name))
+	$(call set_status,program_path,$(program_path))
 	$(call set_status,started_at,$(now))
 	$(call set_status,started_epoch,$(t))
 	$(call set_status,make_pid,$$PPID)
@@ -58,18 +59,18 @@ main:
         $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%)); \
         \
         filters="$(call filters,$$rule)"; \
-        command=($(program) -o "$$filters" $(lpath) $(rpath)); \
-        $(call set_status,command,$$command); \
-        $(call write_stat,$$rulef,command,$$command); \
-        $(call log,[$$ruleid] start '$(progname)'); \
-        $(call log,[$$ruleid] command: $$command); \
+        command=($(program_path) -o "$$filters" $(lpath) $(rpath)); \
+        $(call set_status,command_line,$${command[@]}); \
+        $(call write_stat,$$rulef,command_line,$${command[@]}); \
+        $(call log,[$$ruleid] start '$(program_name)'); \
+        $(call log,[$$ruleid] command line: $${command[@]}); \
         \
         klog=$(logrun)/$$ruleid.log; \
         t1=$(t); \
         ( \
             pid=$$BASHPID; \
-            $(call set_status,$(progname)_pid,$$pid); \
-            $(call write_stat,$$rulef,$(progname)_pid,$$pid); \
+            $(call set_status,program_pid,$$pid); \
+            $(call write_stat,$$rulef,program_pid,$$pid); \
             ( \
                 rclone_pid=$$($(call watch_child,$$pid,^rclone$$,8,1)); \
                 $(call write_stat,$$rulef,rclone_pid,$$rclone_pid); \
@@ -77,7 +78,7 @@ main:
             exec "$${command[@]}" &> $$klog; \
         ); \
         rc=$$? \
-        $(call set_status,$(progname)_pid,-); \
+        $(call set_status,program_pid,-); \
         elapsed=$(call since,$$t1); \
         \
         rclone_chk=$(call count_chk,$$klog); \
@@ -106,21 +107,21 @@ main:
         $(call write_stat,$$rulef,end,$(now)); \
         $(call write_stat,$$rulef,rc,$$rc); \
         $(call write_stat,$$rulef,elapsed,$${elapsed}s); \
-        $(call log,[$$ruleid] end '$(progname)': rc=$$rc \
+        $(call log,[$$ruleid] end '$(program_name)': rc=$$rc \
             (elapsed: $${elapsed}s)); \
         \
         if [ $$rc -ne 0 ]; then exit $$rc; fi; \
     done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
 
 end:
-	@t0=$(call get_status,start_epoch)
+	@t0=$(call get_status,started_epoch)
 	cp $(status) $(tmp)
 	rm -f $(status)
 	$(call log,end '$(project)' (total elapsed: $(call since_hms,$$t0)))
 
 status:
-	@[ -f $(status) ] || { echo "$(progname) not running"; exit 0; }
-	echo $(project)/$(progname) running
+	@[ -f $(status) ] || { echo "$(program_name) not running"; exit 0; }
+	echo $(project)/$(program_name) running
 
 xstatus:
 	@rulef='$(rulef)'; stats_root='data/stats'; last_link="$$stats_root/last"; \
