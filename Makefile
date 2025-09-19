@@ -61,7 +61,7 @@ main:
         \
         src=$(lpath)/$$relpath; \
         dst=$(rpath)/$$relpath; \
-        command=($(program_path) ${opts:+-o "$$opts"} $$src $$dst); \
+        command=($(program_path) $${opts:+-o "$$opts"} $$src $$dst); \
         $(call set_status,command_line,$${command[*]}); \
         $(call write_stat,$$rulef,command_line,$${command[*]}); \
         $(call log,[$$ruleid] start '$(program_name)'); \
