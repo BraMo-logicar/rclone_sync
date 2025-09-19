@@ -60,10 +60,10 @@ main:
         \
         filters="$(call filters,$$rule)"; \
         command=($(program_path) -o "$$filters" $(lpath) $(rpath)); \
-        $(call set_status,command_line,$${command[@]}); \
-        $(call write_stat,$$rulef,command_line,$${command[@]}); \
+        $(call set_status,command_line,$${command[*]}); \
+        $(call write_stat,$$rulef,command_line,$${command[*]}); \
         $(call log,[$$ruleid] start '$(program_name)'); \
-        $(call log,[$$ruleid] command line: $${command[@]}); \
+        $(call log,[$$ruleid] command line: $${command[*]}); \
         \
         klog=$(logrun)/$$ruleid.log; \
         t1=$(t); \
