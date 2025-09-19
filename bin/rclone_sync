@@ -27,8 +27,6 @@ home=$(dirname $(dirname $0))
 project=$(basename $home)
 progname=${0##*/}
 
-command="$0"; [ $# -gt 0 ] && command="$command $*"
-
 # dirs & files
 
 conf=$home/etc/rclone.conf
@@ -93,11 +91,11 @@ lpath=$1 rpath=$2
 
 # start
 
-log "start '$progname' ($command)"
+log "start '$progname'"
 
 # opts
 
-log "rclone options: ${OPTS[@]}"
+log "rclone base options: ${OPTS[@]}"
 log "rclone extra options: ${MYRAWOPTS[@]}"
 
 # run
