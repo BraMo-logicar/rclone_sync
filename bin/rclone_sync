@@ -52,6 +52,7 @@ usage() { echo "$help"; }
 
 OPTS=(--config $conf)               # rclone config file
 OPTS+=(--local-no-check-updated)    # skip check of local files during upload
+OPTS+=(--skip-links)                # don't warn about skipped symlinks
 OPTS+=(--stats 1h)                  # print stats every hour
 OPTS+=(--update)                    # skip files newer on destination
 OPTS+=(--use-server-modtime)        # use server modtime instead of metadata
@@ -95,8 +96,8 @@ log "start '$progname'"
 
 # opts
 
-[[ ${OPTS[*]:-}]]      && log "rclone base options: ${OPTS[@]}"
-[[ ${MYRAWOPTS[*]:-}]] && log "rclone extra options: ${MYRAWOPTS[@]}"
+[ -n "${OPTS[*]:-}" ]      && log "rclone base options: ${OPTS[@]}"
+[ -n "${MYRAWOPTS[*]:-}" ] && log "rclone extra options: ${MYRAWOPTS[@]}"
 
 # run
 
