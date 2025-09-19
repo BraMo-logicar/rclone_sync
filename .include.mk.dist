@@ -84,24 +84,18 @@ mail_log := yes
 #----------
 
 #
-# count_<stat>() - statistics from a per-run log
-# usage: $(call count_<stat>,run_log)
+# now() - current formatted timestamp
+# usage: $(now) or $(call now)
 #
 
-count_chk = $$(v=$$(awk '/^Checks:/ \
-    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
-count_xfer = $$(v=$$(awk '/^Transferred:/ && !/ETA/ \
-    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
-count_xfer_sz = $$(v=$$(awk '/^Transferred:/ && /ETA/ \
-    { print $$2 $$3 "/" $$5 $$6 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
-count_xfer_new = $$(v=$$(grep -c "Copied (new)$$" $(1) \
-    2>/dev/null || true); echo $${v:--})
-count_xfer_repl = $$(v=$$(grep -c "Copied (replaced existing)$$" $(1) \
-    2>/dev/null || true); echo $${v:--})
-count_del = $$(v=$$(awk '/^Deleted:/ \
-    { print $$2 }' $(1) | tail -n 1); echo $${v:--})
-count_elapsed = $$(v=$$(awk '/^Elapsed time:/ \
-    { print $$3 }' $(1) | tail -n 1); echo $${v:--})
+now = $$(date +'%Y.%m.%d-%H:%M:%S')
+
+#
+# t() - current epoch (seconds)
+# usage: $(t) or $(call t)
+#
+
+t = $$(date +%s.%3N)
 
 #
 # elapsed(), since() - elapsed seconds
@@ -112,6 +106,9 @@ count_elapsed = $$(v=$$(awk '/^Elapsed time:/ \
 # usage: $(call since_hms,t0)
 #
 
+elapsed = $$(printf "scale=3; %s - %s\n" $(2) $(1) | bc)
+since = $$(printf "scale=3; %s - %s\n" $(call t) $(1) | bc)
+
 hms = $$(awk -v t=$(1) 'BEGIN { \
     s = int(t); \
     ms = 1000 * (t - s); \
@@ -120,9 +117,6 @@ hms = $$(awk -v t=$(1) 'BEGIN { \
     if (h > 0) printf("%dh%02dm%02d.%03ds", h, m, s, ms); \
     else if (m > 0) printf("%dm%02d.%03ds", m, s, ms); \
     else printf("%d.%03ds", s, ms) }')
-
-elapsed = $$(printf "scale=3; %s - %s\n" $(2) $(1) | bc)
-since = $$(printf "scale=3; %s - %s\n" $(call t) $(1) | bc)
 
 elapsed_hms = $(call hms,$(call elapsed,$(1),$(2)))
 since_hms = $(call hms,$(call since,$(1)))
@@ -136,32 +130,11 @@ make := $(notdir $(MAKE))
 log = printf '%s [%s(%s):%s] %s\n' $(now) $(make) $@ $$$$ "$(1)" >> $(logf)
 
 #
-# mb() - rounded MiB
-# usage: $(call mb,bytes)
+# write_stat() - write "key: value" to stat file
+# usage: $(call write_stat,statfile,key,value)
 #
 
-mb = $$((($1 + 524288) / 1048576))
-
-#
-# now() - current formatted timestamp
-# usage: $(now) or $(call now)
-#
-
-now = $$(date +'%Y.%m.%d-%H:%M:%S')
-
-#
-# relpath() - path relative to home
-# usage: $(call relpath,path)
-#
-
-relpath = $$(printf "%s" $(1) | sed 's|$(home)/||')
-
-#
-# t() - current epoch (seconds)
-# usage: $(t) or $(call t)
-#
-
-t = $$(date +%s.%3N)
+write_stat = $$(printf "%s: %s\n" "$(2)" "$(3)" >> $(1))
 
 #
 # set_status() - write "key: value" to (global) status file
@@ -182,11 +155,18 @@ endef
 get_status = $$(sed -En '/^$(1):/s/^[^:]*:[[:space:]]*//p' $(status))
 
 #
-# write_stat() - write "key: value" to stat file
-# usage: $(call write_stat,statfile,key,value)
+# relpath() - path relative to home
+# usage: $(call relpath,path)
 #
 
-write_stat = $$(printf "%s: %s\n" "$(2)" "$(3)" >> $(1))
+relpath = $$(printf "%s" $(1) | sed 's|$(home)/||')
+
+#
+# mb() - rounded MiB
+# usage: $(call mb,bytes)
+#
+
+mb = $$((($1 + 524288) / 1048576))
 
 #
 # watch_child() - return pid of a child process
@@ -210,10 +190,30 @@ endef
 define parse_rule
     rule=$$(printf "%s\n" "$(1)"); \
     relpath=$$(printf "%s\n" "$$rule" | awk '{ print $$1 }'); \
-    rest=$$(printf "%s\n" "$$rule" | awk '{ $1 = ""; print }'; \
-    ruleid=$${relpath##*/}}; \
-    set -f; eval "$$rest"; set +f; \
+    rest=$$(printf "%s\n" "$$rule" | awk '{ $1 = ""; print }'); \
+    ruleid=$${relpath##*/}; \
+    set -f; eval "$$rest"; set +f
 endef
+
+#
+# count_<stat>() - statistics from a per-run log
+# usage: $(call count_<stat>,run_log)
+#
+
+count_chk = $$(v=$$(awk '/^Checks:/ \
+    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
+count_xfer = $$(v=$$(awk '/^Transferred:/ && !/ETA/ \
+    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
+count_xfer_sz = $$(v=$$(awk '/^Transferred:/ && /ETA/ \
+    { print $$2 $$3 "/" $$5 $$6 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
+count_xfer_new = $$(v=$$(grep -c "Copied (new)$$" $(1) \
+    2>/dev/null || true); echo $${v:--})
+count_xfer_repl = $$(v=$$(grep -c "Copied (replaced existing)$$" $(1) \
+    2>/dev/null || true); echo $${v:--})
+count_del = $$(v=$$(awk '/^Deleted:/ \
+    { print $$2 }' $(1) | tail -n 1); echo $${v:--})
+count_elapsed = $$(v=$$(awk '/^Elapsed time:/ \
+    { print $$3 }' $(1) | tail -n 1); echo $${v:--})
 
 
 # vim: ts=4
