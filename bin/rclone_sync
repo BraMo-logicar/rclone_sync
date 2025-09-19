@@ -101,8 +101,7 @@ log "rclone extra options: ${MYRAWOPTS[@]}"
 # run
 
 log "run '$rclone sync ${OPTS[@]} ${MYRAWOPTS[@]} $lpath $rpath'"
-#$rclone sync "${OPTS[@]}" "${MYOPTS[@]}" $lpath $rpath
-sleep 1
+$rclone sync "${OPTS[@]}" "${MYOPTS[@]}" $lpath $rpath
 log "sync '$lpath' -> '$rpath' done"
 
 # end
