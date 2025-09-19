@@ -191,7 +191,7 @@ define parse_rule
     rule=$$(printf "%s\n" "$(1)"); \
     relpath=$$(printf "%s\n" "$$rule" | awk '{ print $$1 }'); \
     rest=$$(printf "%s\n" "$$rule" | awk '{ $$1 = ""; print }'); \
-    ruleid=$${relpath##*/}; \
+    ruleid=$${relpath##*/} opts=; \
     set -f; eval "$$rest"; set +f
 endef
 
@@ -201,19 +201,19 @@ endef
 #
 
 count_chk = $$(v=$$(awk '/^Checks:/ \
-    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
+    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:-0})
 count_xfer = $$(v=$$(awk '/^Transferred:/ && !/ETA/ \
-    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
+    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:-0})
 count_xfer_sz = $$(v=$$(awk '/^Transferred:/ && /ETA/ \
-    { print $$2 $$3 "/" $$5 $$6 }' $(1) | tail -n 1 | tr -d ,); echo $${v:--})
+    { print $$2 $$3 "/" $$5 $$6 }' $(1) | tail -n 1 | tr -d ,); echo $${v:-0})
 count_xfer_new = $$(v=$$(grep -c "Copied (new)$$" $(1) \
-    2>/dev/null || true); echo $${v:--})
+    2>/dev/null || true); echo $${v:-0})
 count_xfer_repl = $$(v=$$(grep -c "Copied (replaced existing)$$" $(1) \
-    2>/dev/null || true); echo $${v:--})
+    2>/dev/null || true); echo $${v:-0})
 count_del = $$(v=$$(awk '/^Deleted:/ \
-    { print $$2 }' $(1) | tail -n 1); echo $${v:--})
+    { print $$2 }' $(1) | tail -n 1); echo $${v:-0})
 count_elapsed = $$(v=$$(awk '/^Elapsed time:/ \
-    { print $$3 }' $(1) | tail -n 1); echo $${v:--})
+    { print $$3 }' $(1) | tail -n 1); echo $${v:-0})
 
 
 # vim: ts=4
