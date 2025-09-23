@@ -70,26 +70,17 @@ main:
         klog=$(logrun)/$$ruleid.log; \
         t1=$(t); \
         ( \
-            recipe_pid=$$PPID; \
-            shell_pid=$$BASHPID; \
-            $(call set_status,recipe_pid,$$recipe_pid); \
-            $(call set_status,shell_pid,$$shell_pid); \
-            $(call write_stat,$$rulef,recipe_pid,$$recipe_pid); \
-            $(call write_stat,$$rulef,shell_pid,$$shell_pid); \
-            ( \
-                rclone_pid=$$($(call watch_child,$$shell_pid,rclone,8,1)); \
-                $(call set_status,rclone_pid,$$rclone_pid); \
-                $(call write_stat,$$rulef,rclone_pid,$$rclone_pid); \
-            ) & \
-            \
-            "$${command[@]}" &> $$klog & program_pid=$$!; \
-            $(call set_status,program_pid,$$program_pid); \
-            $(call write_stat,$$rulef,program_pid,$$program_pid); \
-            wait $$program_pid; rc=$$? \
-            $(call set_status,program_rc,$$rc); \
-            $(call write_stat,$$rulef,program_rc,$$rc); \
-            $(call set_status,program_pid,-); \
-        ); \
+            rclone_pid=$$($(call watch_child,$$shell_pid,rclone,8,1)); \
+            $(call set_status,rclone_pid,$$rclone_pid); \
+        ) & \
+        \
+        "$${command[@]}" &> $$klog & program_pid=$$!; \
+        \
+        $(call set_status,program_pid,$$program_pid); \
+        wait $$program_pid; rc=$$? \
+        $(call set_status,rc,$$rc); \
+        $(call write_stat,$$rulef,rc,$$rc); \
+        $(call set_status,program_pid,-); \
         elapsed=$(call since,$$t1); \
         \
         rclone_chk=$(call count_chk,$$klog); \
@@ -116,7 +107,6 @@ main:
         cat $(logrun)/$$ruleid.log >> $(logf); \
         \
         $(call write_stat,$$rulef,rule_end,$(now)); \
-        $(call write_stat,$$rulef,rc,$$rc); \
         $(call write_stat,$$rulef,elapsed,$${elapsed}s); \
         $(call log,[$$ruleid] end '$(program_name)': rc=$$rc \
             (elapsed: $${elapsed}s)); \
