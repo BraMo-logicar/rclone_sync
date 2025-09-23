@@ -71,13 +71,15 @@ main:
         t1=$(t); \
         ( \
             pid=$$BASHPID; \
+            echo "bashpid: $$pid"; \
             $(call set_status,program_pid,$$pid); \
             $(call write_stat,$$rulef,program_pid,$$pid); \
             ( \
-                rclone_pid=$$($(call watch_child,$$pid,^rclone$$,8,1)); \
+                rclone_pid=$$($(call watch_child,$$pid,rclone,8,1)); \
+                echo "rclone_pid: $$rclone_pid"; \
                 $(call write_stat,$$rulef,rclone_pid,$$rclone_pid); \
             ) & \
-            exec "$${command[@]}" &> $$klog; \
+            "$${command[@]}" &> $$klog; \
         ); \
         rc=$$? \
         $(call set_status,program_pid,-); \
@@ -114,6 +116,28 @@ main:
         \
         if [ $$rc -ne 0 ]; then exit $$rc; fi; \
     done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
+
+define w
+for k in {1..$(3)}; do \
+    child=$$(pgrep -P $(1) -x $(2) || true); \
+    echo "child: $$child" >&2; \
+    [ -n "$$child" ] && break; \
+    sleep $(4); \
+done; \
+printf "%s\n" "$$child"
+endef
+
+t:
+	@( \
+        pid=$$BASHPID; \
+        echo "bashpid: $$pid"; \
+        ( \
+            mypid=$$($(call w,$$pid,find,4,1)); \
+            echo "mypid: $$mypid"; \
+        ) & \
+        command=(/usr/bin/find /); \
+        "$${command[@]}" &> /tmp/x; \
+    )
 
 end:
 	@t0=$(call get_status,start_epoch)

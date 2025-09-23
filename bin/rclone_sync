@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Name: rclone_sync - rclone sync to bucket s3
+# Name: rclone_sync - rclone wrapper to sync to bucket s3
 # Usage:
 #     rclone_sync [ -h|--help ] [ -H|--Help ]
 #         [ -o|--options <rclone_options> ]
