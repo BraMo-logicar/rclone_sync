@@ -70,19 +70,26 @@ main:
         klog=$(logrun)/$$ruleid.log; \
         t1=$(t); \
         ( \
-            pid=$$BASHPID; \
-            echo "bashpid: $$pid"; \
-            $(call set_status,program_pid,$$pid); \
-            $(call write_stat,$$rulef,program_pid,$$pid); \
+            recipe_pid=$$PPID; \
+            shell_pid=$$BASHPID; \
+            $(call set_status,recipe_pid,$$recipe_pid); \
+            $(call set_status,shell_pid,$$shell_pid); \
+            $(call write_stat,$$rulef,recipe_pid,$$recipe_pid); \
+            $(call write_stat,$$rulef,shell_pid,$$shell_pid); \
             ( \
-                rclone_pid=$$($(call watch_child,$$pid,rclone,8,1)); \
-                echo "rclone_pid: $$rclone_pid"; \
+                rclone_pid=$$($(call watch_child,$$shell_pid,rclone,8,1)); \
+                $(call set_status,rclone_pid,$$rclone_pid); \
                 $(call write_stat,$$rulef,rclone_pid,$$rclone_pid); \
             ) & \
-            "$${command[@]}" &> $$klog; \
+            \
+            "$${command[@]}" &> $$klog & program_pid=$$!; \
+            $(call set_status,program_pid,$$program_pid); \
+            $(call write_stat,$$rulef,program_pid,$$program_pid); \
+            wait $$program_pid; rc=$$? \
+            $(call set_status,program_rc,$$rc); \
+            $(call write_stat,$$rulef,program_rc,$$rc); \
+            $(call set_status,program_pid,-); \
         ); \
-        rc=$$? \
-        $(call set_status,program_pid,-); \
         elapsed=$(call since,$$t1); \
         \
         rclone_chk=$(call count_chk,$$klog); \
@@ -116,28 +123,6 @@ main:
         \
         if [ $$rc -ne 0 ]; then exit $$rc; fi; \
     done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
-
-define w
-for k in {1..$(3)}; do \
-    child=$$(pgrep -P $(1) -x $(2) || true); \
-    echo "child: $$child" >&2; \
-    [ -n "$$child" ] && break; \
-    sleep $(4); \
-done; \
-printf "%s\n" "$$child"
-endef
-
-t:
-	@( \
-        pid=$$BASHPID; \
-        echo "bashpid: $$pid"; \
-        ( \
-            mypid=$$($(call w,$$pid,find,4,1)); \
-            echo "mypid: $$mypid"; \
-        ) & \
-        command=(/usr/bin/find /); \
-        "$${command[@]}" &> /tmp/x; \
-    )
 
 end:
 	@t0=$(call get_status,start_epoch)
