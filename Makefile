@@ -37,7 +37,8 @@ start:
 main:
 	@$(call log,loop over '$(call relpath,$(rclone_list))')
 	trap 'rm -f $(status)' INT TERM
-	$(call set_status,recipe_shell_pid,$$$$)
+	recipe_shell_pid=$$$$
+	$(call set_status,recipe_shell_pid,$$recipe_shell_pid)
 	n=$$(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF' | wc -l); k=0
 	while read rule; do \
         k=$$((k+1)); \
@@ -69,15 +70,18 @@ main:
         \
         klog=$(logrun)/$$ruleid.log; \
         t1=$(t); \
-        ( \
-            rclone_pid=$$($(call watch_child,$$shell_pid,rclone,8,1)); \
-            $(call set_status,rclone_pid,$$rclone_pid); \
-        ) & \
         \
         "$${command[@]}" &> $$klog & program_pid=$$!; \
         \
+        ( \
+            rclone_pid=$$($(call watch_child,$$program_pid,rclone, \
+                $(strip $(watch_tries)),$(watch_delay))); \
+            $(call set_status,rclone_pid,$$rclone_pid); \
+        ) & watcher_pid=$$!; \
+        \
         $(call set_status,program_pid,$$program_pid); \
-        wait $$program_pid; rc=$$? \
+        wait $$program_pid; rc=$$?; \
+        wait $$watcher_pid || true; \
         $(call set_status,rc,$$rc); \
         $(call write_stat,$$rulef,rc,$$rc); \
         $(call set_status,program_pid,-); \
