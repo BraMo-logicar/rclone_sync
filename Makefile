@@ -48,10 +48,12 @@ main:
         rulestart=$(now); \
         rulef=$(stats)/$(runid)/$$ruleid; \
         pct=$$(echo "scale=2; 100*$$k/$$n" | bc); \
+        rule_log=$(logrun)/$$ruleid.log; \
         $(call set_status,current_rule,$$rule); \
         $(call set_status,current_rule_id,$$ruleid); \
         $(call set_status,current_rule_start,$$rulestart); \
         $(call set_status,current_rule_path,$$rulef); \
+        $(call set_status,current_rule_log,$$rule_log); \
         $(call set_status,progress,$$k/$$n ($$pct%)); \
         $(call write_stat,$$rulef,rule,$$rule); \
         $(call write_stat,$$rulef,rule_id,$$ruleid); \
@@ -68,10 +70,9 @@ main:
         $(call log,[$$ruleid] start '$(program_name)'); \
         $(call log,[$$ruleid] command line: $${command[*]}); \
         \
-        klog=$(logrun)/$$ruleid.log; \
         t1=$(t); \
         \
-        "$${command[@]}" &> $$klog & program_pid=$$!; \
+        "$${command[@]}" &> $$rule_log & program_pid=$$!; \
         \
         ( \
             rclone_pid=$$($(call watch_child,$$program_pid,rclone, \
@@ -87,13 +88,13 @@ main:
         $(call set_status,program_pid,-); \
         elapsed=$(call since,$$t1); \
         \
-        rclone_chk=$(call count_chk,$$klog); \
-        rclone_xfer=$(call count_xfer,$$klog); \
-        rclone_xfer_sz=$(call count_xfer_sz,$$klog); \
-        rclone_xfer_new=$(call count_xfer_new,$$klog); \
-        rclone_xfer_repl=$(call count_xfer_repl,$$klog); \
-        rclone_del=$(call count_del,$$klog); \
-        rclone_elapsed=$(call count_elapsed,$$klog); \
+        rclone_chk=$(call count_chk,$$rule_log); \
+        rclone_xfer=$(call count_xfer,$$rule_log); \
+        rclone_xfer_sz=$(call count_xfer_sz,$$rule_log); \
+        rclone_xfer_new=$(call count_xfer_new,$$rule_log); \
+        rclone_xfer_repl=$(call count_xfer_repl,$$rule_log); \
+        rclone_del=$(call count_del,$$rule_log); \
+        rclone_elapsed=$(call count_elapsed,$$rule_log); \
         \
         $(call write_stat,$$rulef,rclone_checks,$$rclone_chk); \
         $(call write_stat,$$rulef,rclone_transferred,$$rclone_xfer); \
@@ -102,13 +103,17 @@ main:
         $(call write_stat,$$rulef,rclone_transferred_size,$$rclone_xfer_sz); \
         $(call write_stat,$$rulef,rclone_deleted,$$rclone_del); \
         $(call write_stat,$$rulef,rclone_elapsed,$$rclone_elapsed); \
+        \
+        ( \
+            echo "-- begin rclone log '$(logf)' --"; \
+            cat $$rule_log >> $(logf); \
+            echo "-- end rclone log --"; \
+        ) >> $(logf); \
         $(call log,[$$ruleid] rclone stats: \
             checks=$$rclone_chk$(,) \
             transferred=$$rclone_xfer ($$rclone_xfer_sz) \
             (new=$$rclone_xfer_new$(,) replaced=$$rclone_xfer_repl)$(,) \
             deleted=$$rclone_del$(,) elapsed=$$rclone_elapsed); \
-        \
-        cat $(logrun)/$$ruleid.log >> $(logf); \
         \
         $(call write_stat,$$rulef,rule_end,$(now)); \
         $(call write_stat,$$rulef,elapsed,$${elapsed}s); \
