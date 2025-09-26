@@ -66,6 +66,9 @@ fstype := xfs
 
 runid := $(shell date +%Y%m%d.%H%M%S)
 
+watch_tries := 8
+watch_delay := .42
+
 # email
 
 mail_From := $(project) system <MAIL_FROM>
@@ -175,8 +178,8 @@ mb = $$((($1 + 524288) / 1048576))
 
 define watch_child
 for k in {1..$(3)}; do \
-    child=$$(pgrep -P $(1) $(2)); \
-    [ -n $$child ] && break; \
+    child=$$(pgrep -P $(1) -x $(2) || true); \
+    [ -n "$$child" ] && break; \
     sleep $(4); \
 done; \
 printf "%s" "$$child"
