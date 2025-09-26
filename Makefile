@@ -71,9 +71,7 @@ main:
         $(call log,[$$ruleid] command line: $${command[*]}); \
         \
         t1=$(t); \
-        \
         "$${command[@]}" &> $$rule_log & program_pid=$$!; \
-        \
         ( \
             rclone_pid=$$($(call watch_child,$$program_pid,rclone, \
                 $(strip $(watch_tries)),$(watch_delay))); \
