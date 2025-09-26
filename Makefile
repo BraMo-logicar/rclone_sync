@@ -16,11 +16,13 @@ help:
 
 $(project): start main end
 
-# main
+# list
 
 list:
 	@n=$$(ls -1 $(src_root) | tee $(rclone_list) | wc -l); \
 	$(call log,list $$n entries from '$(src_root)' to '$(rclone_list)')
+
+# main
 
 start:
 	@mkdir -p $(stats); > $(status)
