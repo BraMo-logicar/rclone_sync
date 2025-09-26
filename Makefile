@@ -9,7 +9,7 @@ include .include.mk
 # targets
 #
 
-.PHONY: help start main end status
+.PHONY: help list start main end status
 
 help:
 	@echo Makefile: Please specify a target: start, main, end, ...
@@ -17,6 +17,10 @@ help:
 $(project): start main end
 
 # main
+
+list:
+	@n=$$(ls -1 $(src_root) | tee $(rclone_list) | wc -l); \
+	$(call log,list $$n entries from '$(src_root)' to '$(rclone_list)')
 
 start:
 	@mkdir -p $(stats); > $(status)
