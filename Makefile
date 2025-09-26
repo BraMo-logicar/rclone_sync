@@ -87,7 +87,6 @@ main:
         $(call set_status,program_pid,$$program_pid); \
         rc=0; wait $$program_pid || rc=$$?; \
         wait $$watcher_pid || true; \
-        $(call set_status,rc,$$rc); \
         $(call write_stat,$$rulef,rc,$$rc); \
         $(call set_status,program_pid,-); \
         elapsed=$(call since,$$t1); \
