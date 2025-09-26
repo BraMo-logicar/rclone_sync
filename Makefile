@@ -121,10 +121,9 @@ main:
         \
         $(call write_stat,$$rulef,rule_end,$(now)); \
         $(call write_stat,$$rulef,elapsed,$${elapsed}s); \
-        $(call log,[$$ruleid] end '$(program_name)': rc=$$rc \
+        [ $$rc -ne 0 ] && warn=" WARN" || warn=""; \
+        $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
             (elapsed: $${elapsed}s)); \
-        \
-        if [ $$rc -ne 0 ]; then exit $$rc; fi; \
     done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
 
 end:
