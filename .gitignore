@@ -3,3 +3,4 @@
 /log
 /tmp
 .include.mk
+.site.mk

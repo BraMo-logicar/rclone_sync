@@ -18,7 +18,7 @@ $(project): start main end
 
 # list
 
-list:
+list::
 	@n=$$(ls -1 $(src_root) | tee $(rclone_list) | wc -l); \
 	$(call log,list $$n entries from '$(src_root)' to '$(rclone_list)')
 
@@ -131,9 +131,22 @@ end:
 	rm -f $(status)
 	$(call log,end '$(project)' (total elapsed: $(call since_hms,$$t0)))
 
+# status
+
 status:
 	@[ -f $(status) ] || { echo "$(program_name) not running"; exit 0; }
 	echo $(project)/$(program_name) running
+
+# logs
+
+log-last:
+	@start=$$(grep -Fn '[make(start):' $(logf) | tail -n 1 | cut -d: -f1); \
+    sed -n "$$start,/\[make(end):/p" $(logf)
+
+# site targets
+
+include .site.mk
+
 
 xstatus:
 	@rulef='$(rulef)'; stats_root='data/stats'; last_link="$$stats_root/last"; \
