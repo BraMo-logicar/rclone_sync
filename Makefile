@@ -9,7 +9,7 @@ include .include.mk
 # targets
 #
 
-.PHONY: help list start main end status
+.PHONY: help list start main end stop kill status usage
 
 help:
 	@echo Makefile: Please specify a target: start, main, end, ...
@@ -93,9 +93,9 @@ main:
         \
         rclone_chk=$(call count_chk,$$rule_log); \
         rclone_xfer=$(call count_xfer,$$rule_log); \
-        rclone_xfer_sz=$(call count_xfer_sz,$$rule_log); \
         rclone_xfer_new=$(call count_xfer_new,$$rule_log); \
         rclone_xfer_repl=$(call count_xfer_repl,$$rule_log); \
+        rclone_xfer_sz=$(call count_xfer_sz,$$rule_log); \
         rclone_del=$(call count_del,$$rule_log); \
         rclone_elapsed=$(call count_elapsed,$$rule_log); \
         \
@@ -108,9 +108,9 @@ main:
         $(call write_stat,$$rulef,rclone_elapsed,$$rclone_elapsed); \
         \
         ( \
-            echo "-- begin rclone log '$(logf)' --"; \
+            printf "-- begin rclone log '%s' --\n" $(logf); \
             cat $$rule_log >> $(logf); \
-            echo "-- end rclone log --"; \
+            printf "-- end rclone log --\n"; \
         ) >> $(logf); \
         $(call log,[$$ruleid] rclone stats: \
             checks=$$rclone_chk$(,) \
@@ -123,19 +123,66 @@ main:
         [ $$rc -ne 0 ] && warn=" (WARN)" || warn=""; \
         $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
             (elapsed: $${elapsed}s)); \
+        if [ -f $(stop) ]; then \
+	        printf "[$(project)] stop flag found: exit after current rule\n"; \
+	        rm -f $(stop); \
+	        $(call log,stop flag found: exit after current rule); \
+	        exit 0; \
+	    fi; \
     done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
 
 end:
 	@t0=$(call get_status,start_epoch)
-	cp $(status) $(tmp)
 	rm -f $(status)
 	$(call log,end '$(project)' (total elapsed: $(call since_hms,$$t0)))
+
+# stop & kill
+
+stop:
+    @printf "[$(project)] graceful stop requested: exit after current rule\n"
+	: > $(stop)
+    $(call log,graceful stop requested: exit after current rule$(,) \
+        flag '$(stop)' created)
+
+kill:
+	@recipe_shell_pid=$(call get_status,recipe_shell_pid); \
+    program_pid=$(call get_status,program_pid); \
+    rclone_pid=$(call get_status,rclone_pid); \
+    printf "[%s] global kill requested (%s=%d, %s=%d, %s=%d)\n" \
+        $(project) recipe_shell $$recipe_shell_pid \
+        program $$program_pid rclone $$rclone_pid; \
+    $(call log,global kill requested (recipe_shell=$$recipe_shell_pid$(,) \
+        program=$$program_pid$(,) rclone=$$rclone_pid)); \
+    for sig in INT TERM KILL; do \
+        for pid in $$rclone_pid $$program_pid $$recipe_shell_pid; do \
+             if kill -0 $$pid 2>/dev/null; then \
+                 printf "  send SIG%s to %s\n" $$sig $$pid; \
+                 kill -s $$sig $$pid 2>/dev/null || true; \
+             fi; \
+        done; \
+        sleep 1; \
+    done; \
+    $(call log,global kill: sent signals to rclone=$$rclone_pid$(,) \
+        program=$$program_pid$(,) recipe_shell=$$recipe_shell_pid)
 
 # status
 
 status:
 	@[ -f $(status) ] || { echo "$(program_name) not running"; exit 0; }
-	echo $(project)/$(program_name) running
+	echo "$(project)/$(program_name) running"
+
+# usage
+
+usage:
+	@( \
+        printf "Bucket usage (%s)\n" $$(date '+%a %d %b %Y'); \
+        printf "    excluding versions:\n"; \
+        printf "        %s\n" \
+            $$($(rclone) --config $(rclone_conf) size $(rpath)); \
+        printf "    including versions:\n"; \
+        printf "        %s\n" \
+            $$($(rclone) --config $(rclone_conf) size --s3-versions $(rpath)) \
+    ) > $(usage)
 
 # logs
 
@@ -148,117 +195,115 @@ log-last:
 include .site.mk
 
 
-xstatus:
-	@rulef='$(rulef)'; stats_root='data/stats'; last_link="$$stats_root/last"; \
-	[ -f "$$rulef" ] || { echo "status: $(rulef) not found"; exit 0; }; \
-	\
-	# pull fields from rulef
-	get(){ awk -F: -v k="^$$1:" '$$0 ~ k {sub(/^[^:]+:[ \t]*/,""); print; exit}' "$$rulef"; }; \
-	start_epoch=$$(get start_epoch); \
-	start=$$(get start); \
-	rule=$$(get rule); \
-	start=$$(get start); \
-	start_epoch=$$(get start_epoch); \
-	statdir=$$(get statdir); \
-	rclone_pid=$$(get rclone_pid); \
-	rclone_flags=$$(get rclone_flags); \
-	# detect running: rclone pid alive?
-	is_running=0; \
-	if [ -n "$$rclone_pid" ] && [ "$$rclone_pid" != "-" ] && ps -p $$rclone_pid >/dev/null 2>&1; then \
-	  is_running=1; \
-	fi; \
-	\
-	if [ $$is_running -eq 1 ]; then \
-	  echo "$(project) running"; \
-	  if [ -n "$$start_epoch" ]; then \
-	    now=$$(date +%s); base=$${start_epoch%.*}; dur=$$(( now - base )); \
-	    printf "start : %s (%02dh%02dm%02ds)\n" "$$start" $$((dur/3600)) $$(((dur%3600)/60)) $$((dur%60)); \
-	  else \
-	    echo "start : $$start"; \
-	  fi; \
-	  echo "current rule : '$$rule'"; \
-	  if [ -n "$$start_epoch" ]; then \
-	    now=$$(date +%s); base=$${start_epoch%.*}; rdur=$$(( now - base )); \
-	    printf "  rule start : %s (%02dh%02dm%02ds)\n" "$$start" $$((rdur/3600)) $$(((rdur%3600)/60)) $$((rdur%60)); \
-	  elif [ -n "$$start" ]; then \
-	    echo "  rule start : $$start"; \
-	  fi; \
-	  # hot CPU/RSS
-	  read _ pcpu rss _ < <(ps -o pid= -o pcpu= -o rss= -o comm= -p $$rclone_pid | awk '{print $$1,$$2,$$3,$$4}'); \
-	  rssmb=$$(awk 'BEGIN{printf("%.1f", '$$rss'/1024.0)}'); \
-	  echo "  rclone pid : $$rclone_pid"; \
-	  echo "  rclone cpu : $$pcpu%"; \
-	  echo "  rclone mem : $$rssmb MB (RSS)"; \
-	  # rclone version + flags
-	  rv=$$($(RCLONE) --version 2>/dev/null | head -1); \
-	  echo "rclone : $$rv"; \
-	  echo "flags  : $$rclone_flags"; \
-	  # statdir and processed rules
-	  [ -n "$$statdir" ] && echo "statdir: $$statdir"; \
-	  if [ -d "$$statdir" ]; then \
-	    echo "ended|finished|processed rules"; \
-	    i=1; \
-	    for f in $$(find "$$statdir" -maxdepth 1 -type f -name '*.stat' | sort); do \
-	      grep -q '^end:' "$$f" || continue; \
-	      r=$$(basename "$$f" .stat); printf "  %d. %s\n" "$$i" "$$r"; i=$$((i+1)); \
-	    done; \
-	  fi; \
-	else \
-	  echo "$(project) not running"; \
-	  echo "last run"; \
-	  # resolve last stats dir
-	  if [ -L "$$last_link" ] || [ -d "$$last_link" ]; then \
-	    ldir=$$(readlink -f "$$last_link" 2>/dev/null || echo "$$last_link"); \
-	    # times
-	    start=$$(awk -F: '/^start:/{sub(/^[^:]+:[ \t]*/,""); print; exit}' "$$ldir/run.stat" 2>/dev/null); \
-	    stop=$$(awk  -F: '/^end:/{sub(/^[^:]+:[ \t]*/,""); print; exit}'   "$$ldir/run.stat" 2>/dev/null); \
-	    elapsed=$$(awk -F: '/^elapsed:/{sub(/^[^:]+:[ \t]*/,""); print; exit}' "$$ldir/run.stat" 2>/dev/null); \
-	    [ -z "$$start" ] && start=$$(grep -h '^start:' "$$ldir"/*.stat 2>/dev/null | head -1 | sed 's/^start:[ \t]*//'); \
-	    [ -z "$$stop"  ] && stop=$$(grep -h '^end:'   "$$ldir"/*.stat 2>/dev/null | tail -1 | sed 's/^end:[ \t]*//'); \
-	    rules=$$(ls "$$ldir"/*.stat 2>/dev/null | wc -l | tr -d ' '); \
-	    printf "  start   : %s\n" "$$start"; \
-	    printf "  stop    : %s\n" "$$stop"; \
-	    printf "  elapsed : %s\n" "$$elapsed"; \
-	    printf "  rules   : %s\n" "$$rules"; \
-	    printf "  statdir : %s -> %s\n" "$$stats_root/last" "$$ldir"; \
-	    # totals: checks, files, size
-	    total_chk=$$(awk -F: '/^rclone_?chk/ {gsub(/[^0-9]/,"",$$2); s+= $$2} END{print s+0}' "$$ldir"/*.stat 2>/dev/null); \
-	    total_xfer=$$(awk -F: '/^rclone_?xfer:/ {gsub(/[^0-9]/,"",$$2); s+= $$2} END{print s+0}' "$$ldir"/*.stat 2>/dev/null); \
-	    total_sz=$$(awk -F: '\
-	      function parse(x){gsub(/^[ \t]+|[ \t]+$$/,"",x); \
-	        if(x==""){return 0} \
-	        if(x ~ /[Kk][Bb]?$$/){sub(/[Kk][Bb]?$$/,"",x); return x*1024} \
-	        if(x ~ /[Mm][Bb]?$$/){sub(/[Mm][Bb]?$$/,"",x); return x*1024*1024} \
-	        if(x ~ /[Gg][Bb]?$$/){sub(/[Gg][Bb]?$$/,"",x); return x*1024*1024*1024} \
-	        if(x ~ /[Tt][Bb]?$$/){sub(/[Tt][Bb]?$$/,"",x); return x*1024*1024*1024*1024} \
-	        gsub(/[^0-9]/,"",x); return x+0 } \
-	      /^rclone_?xfer_?sz:/ { s += parse($$2) } END{print s+0}' "$$ldir"/*.stat 2>/dev/null); \
-	    to_human() { \
-	      b=$$1; \
-	      if   [ $$b -ge 1099511627776 ]; then printf "%.2f TB\n" $$(awk 'BEGIN{print '$$b'/1099511627776}'); \
-	      elif [ $$b -ge 1073741824 ]; then printf "%.2f GB\n" $$(awk 'BEGIN{print '$$b'/1073741824}'); \
-	      elif [ $$b -ge 1048576 ]; then printf "%.2f MB\n" $$(awk 'BEGIN{print '$$b'/1048576}'); \
-	      elif [ $$b -ge 1024 ]; then printf "%.2f KB\n" $$(awk 'BEGIN{print '$$b'/1024}'); \
-	      else printf "%d B\n" $$b; fi; \
-	    }; \
-	    echo "totals:"; \
-	    printf "  checks : %s\n" "$${total_chk:-0}"; \
-	    printf "  files  : %s\n" "$${total_xfer:-0}"; \
-	    printf "  size   : "; to_human $${total_sz:-0}; \
-	    echo "ended|finished|processed rules"; \
-	    i=1; for f in $$(find "$$ldir" -maxdepth 1 -type f -name '*.stat' | sort); do \
-	      grep -q '^end:' "$$f" || continue; r=$$(basename "$$f" .stat); \
-	      printf "  %d. %s\n" "$$i" "$$r"; i=$$((i+1)); \
-	    done; \
-	  else \
-	    echo "  (no previous runs found)"; \
-	  fi; \
-	fi
+
+#xstatus:
+#	@rulef='$(rulef)'; stats_root='data/stats'; last_link="$$stats_root/last"; \
+#	[ -f "$$rulef" ] || { echo "status: $(rulef) not found"; exit 0; }; \
+#	\
+#	# pull fields from rulef
+#	get(){ awk -F: -v k="^$$1:" '$$0 ~ k {sub(/^[^:]+:[ \t]*/,""); print; exit}' "$$rulef"; }; \
+#	start_epoch=$$(get start_epoch); \
+#	start=$$(get start); \
+#	rule=$$(get rule); \
+#	start=$$(get start); \
+#	start_epoch=$$(get start_epoch); \
+#	statdir=$$(get statdir); \
+#	rclone_pid=$$(get rclone_pid); \
+#	rclone_flags=$$(get rclone_flags); \
+#	# detect running: rclone pid alive?
+#	is_running=0; \
+#	if [ -n "$$rclone_pid" ] && [ "$$rclone_pid" != "-" ] && ps -p $$rclone_pid >/dev/null 2>&1; then \
+#	  is_running=1; \
+#	fi; \
+#	\
+#	if [ $$is_running -eq 1 ]; then \
+#	  echo "$(project) running"; \
+#	  if [ -n "$$start_epoch" ]; then \
+#	    now=$$(date +%s); base=$${start_epoch%.*}; dur=$$(( now - base )); \
+#	    printf "start : %s (%02dh%02dm%02ds)\n" "$$start" $$((dur/3600)) $$(((dur%3600)/60)) $$((dur%60)); \
+#	  else \
+#	    echo "start : $$start"; \
+#	  fi; \
+#	  echo "current rule : '$$rule'"; \
+#	  if [ -n "$$start_epoch" ]; then \
+#	    now=$$(date +%s); base=$${start_epoch%.*}; rdur=$$(( now - base )); \
+#	    printf "  rule start : %s (%02dh%02dm%02ds)\n" "$$start" $$((rdur/3600)) $$(((rdur%3600)/60)) $$((rdur%60)); \
+#	  elif [ -n "$$start" ]; then \
+#	    echo "  rule start : $$start"; \
+#	  fi; \
+#	  # hot CPU/RSS
+#	  read _ pcpu rss _ < <(ps -o pid= -o pcpu= -o rss= -o comm= -p $$rclone_pid | awk '{print $$1,$$2,$$3,$$4}'); \
+#	  rssmb=$$(awk 'BEGIN{printf("%.1f", '$$rss'/1024.0)}'); \
+#	  echo "  rclone pid : $$rclone_pid"; \
+#	  echo "  rclone cpu : $$pcpu%"; \
+#	  echo "  rclone mem : $$rssmb MB (RSS)"; \
+#	  # rclone version + flags
+#	  rv=$$($(RCLONE) --version 2>/dev/null | head -1); \
+#	  echo "rclone : $$rv"; \
+#	  echo "flags  : $$rclone_flags"; \
+#	  # statdir and processed rules
+#	  [ -n "$$statdir" ] && echo "statdir: $$statdir"; \
+#	  if [ -d "$$statdir" ]; then \
+#	    echo "ended|finished|processed rules"; \
+#	    i=1; \
+#	    for f in $$(find "$$statdir" -maxdepth 1 -type f -name '*.stat' | sort); do \
+#	      grep -q '^end:' "$$f" || continue; \
+#	      r=$$(basename "$$f" .stat); printf "  %d. %s\n" "$$i" "$$r"; i=$$((i+1)); \
+#	    done; \
+#	  fi; \
+#	else \
+#	  echo "$(project) not running"; \
+#	  echo "last run"; \
+#	  # resolve last stats dir
+#	  if [ -L "$$last_link" ] || [ -d "$$last_link" ]; then \
+#	    ldir=$$(readlink -f "$$last_link" 2>/dev/null || echo "$$last_link"); \
+#	    # times
+#	    start=$$(awk -F: '/^start:/{sub(/^[^:]+:[ \t]*/,""); print; exit}' "$$ldir/run.stat" 2>/dev/null); \
+#	    stop=$$(awk  -F: '/^end:/{sub(/^[^:]+:[ \t]*/,""); print; exit}'   "$$ldir/run.stat" 2>/dev/null); \
+#	    elapsed=$$(awk -F: '/^elapsed:/{sub(/^[^:]+:[ \t]*/,""); print; exit}' "$$ldir/run.stat" 2>/dev/null); \
+#	    [ -z "$$start" ] && start=$$(grep -h '^start:' "$$ldir"/*.stat 2>/dev/null | head -1 | sed 's/^start:[ \t]*//'); \
+#	    [ -z "$$stop"  ] && stop=$$(grep -h '^end:'   "$$ldir"/*.stat 2>/dev/null | tail -1 | sed 's/^end:[ \t]*//'); \
+#	    rules=$$(ls "$$ldir"/*.stat 2>/dev/null | wc -l | tr -d ' '); \
+#	    printf "  start   : %s\n" "$$start"; \
+#	    printf "  stop    : %s\n" "$$stop"; \
+#	    printf "  elapsed : %s\n" "$$elapsed"; \
+#	    printf "  rules   : %s\n" "$$rules"; \
+#	    printf "  statdir : %s -> %s\n" "$$stats_root/last" "$$ldir"; \
+#	    # totals: checks, files, size
+#	    total_chk=$$(awk -F: '/^rclone_?chk/ {gsub(/[^0-9]/,"",$$2); s+= $$2} END{print s+0}' "$$ldir"/*.stat 2>/dev/null); \
+#	    total_xfer=$$(awk -F: '/^rclone_?xfer:/ {gsub(/[^0-9]/,"",$$2); s+= $$2} END{print s+0}' "$$ldir"/*.stat 2>/dev/null); \
+#	    total_sz=$$(awk -F: '\
+#	      function parse(x){gsub(/^[ \t]+|[ \t]+$$/,"",x); \
+#	        if(x==""){return 0} \
+#	        if(x ~ /[Kk][Bb]?$$/){sub(/[Kk][Bb]?$$/,"",x); return x*1024} \
+#	        if(x ~ /[Mm][Bb]?$$/){sub(/[Mm][Bb]?$$/,"",x); return x*1024*1024} \
+#	        if(x ~ /[Gg][Bb]?$$/){sub(/[Gg][Bb]?$$/,"",x); return x*1024*1024*1024} \
+#	        if(x ~ /[Tt][Bb]?$$/){sub(/[Tt][Bb]?$$/,"",x); return x*1024*1024*1024*1024} \
+#	        gsub(/[^0-9]/,"",x); return x+0 } \
+#	      /^rclone_?xfer_?sz:/ { s += parse($$2) } END{print s+0}' "$$ldir"/*.stat 2>/dev/null); \
+#	    to_human() { \
+#	      b=$$1; \
+#	      if   [ $$b -ge 1099511627776 ]; then printf "%.2f TB\n" $$(awk 'BEGIN{print '$$b'/1099511627776}'); \
+#	      elif [ $$b -ge 1073741824 ]; then printf "%.2f GB\n" $$(awk 'BEGIN{print '$$b'/1073741824}'); \
+#	      elif [ $$b -ge 1048576 ]; then printf "%.2f MB\n" $$(awk 'BEGIN{print '$$b'/1048576}'); \
+#	      elif [ $$b -ge 1024 ]; then printf "%.2f KB\n" $$(awk 'BEGIN{print '$$b'/1024}'); \
+#	      else printf "%d B\n" $$b; fi; \
+#	    }; \
+#	    echo "totals:"; \
+#	    printf "  checks : %s\n" "$${total_chk:-0}"; \
+#	    printf "  files  : %s\n" "$${total_xfer:-0}"; \
+#	    printf "  size   : "; to_human $${total_sz:-0}; \
+#	    echo "ended|finished|processed rules"; \
+#	    i=1; for f in $$(find "$$ldir" -maxdepth 1 -type f -name '*.stat' | sort); do \
+#	      grep -q '^end:' "$$f" || continue; r=$$(basename "$$f" .stat); \
+#	      printf "  %d. %s\n" "$$i" "$$r"; i=$$((i+1)); \
+#	    done; \
+#	  else \
+#	    echo "  (no previous runs found)"; \
+#	  fi; \
+#	fi
 
 # sync
-
-#$(rclone) --config $(rclone_conf) size $(rpath)
-#$(rclone) --config $(rclone_conf) size --s3-versions $(rpath)
 
 #rclone_sync.mail:
 #	@c=`awk '/^Checks:/ { print $$2 }' $(logt)`; \
@@ -306,15 +351,5 @@ xstatus:
 #        fi;                                                      \
 #    ) | $(sendmail) -f $(mail_from) $(mail_to) && \
 #    $(call log,"mail sent (from: <$(mail_from)>, to: <$(mail_to)>)")
-
-# stats
-
-#rclone_size:
-#	@echo "Bucket usage:"
-#	@$(rclone) --config $(rclone_conf) size $(rpath) | sed 's/^/  /'
-#	@echo "Bucket usage (including versions):"
-#	@$(rclone) --config $(rclone_conf) size --s3-versions $(rpath) | \
-#        sed 's/^/  /'
-
 
 # vim: ts=4
