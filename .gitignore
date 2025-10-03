@@ -1,6 +1,7 @@
 /data
 /etc
 /log
+/misc
 /tmp
 .include.mk
 .site.mk
