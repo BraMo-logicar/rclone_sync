@@ -28,13 +28,15 @@ ip       := $(shell hostname -I | awk '{ print $$1 }')
 # dirs and files
 
 data   := $(home)/data
-logf   := $(home)/log/$(project).log
-logrun := $(home)/log/run
 stats  := $(data)/stats
 status := $(stats)/status
-tmp    := $(home)/tmp
+usage  := $(home)/data/usage
 
-sizef := $(tmp)/rclone_size.out
+logf   := $(home)/log/$(project).log
+logrun := $(home)/log/run
+
+tmp    := $(home)/tmp
+stop   := $(tmp)/stop
 
 # cmds
 
@@ -182,6 +184,17 @@ for k in {1..$(3)}; do \
     sleep $(4); \
 done; \
 printf "%s" "$$child"
+endef
+
+#
+# get_command_by_pid() - get command line by pid from /proc
+# usage: $(call get_command_by_pid,pid)
+#
+
+define get_command_by_pid
+mapfile -d '' -t argv < /proc/$(1)/cmdline
+printf -v cmd_q '%q ' "$${argv[@]}"
+printf "%s\n" $${cmd_q% }
 endef
 
 #
