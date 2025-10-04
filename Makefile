@@ -25,7 +25,7 @@ list::
 # main
 
 start:
-	@mkdir -p $(stats); > $(status)
+	@mkdir -p $(stats); : > $(status)
 	$(call set_status,running,true)
 	$(call set_status,project,$(project))
 	$(call set_status,program_name,$(program_name))
@@ -82,6 +82,8 @@ main:
             rclone_pid=$$($(call watch_child,$$program_pid,rclone, \
                 $(strip $(watch_tries)),$(watch_delay))); \
             $(call set_status,rclone_pid,$$rclone_pid); \
+            rclone_cmd=$(call get_command_by_pid,$$rclone_pid); \
+            $(call set_status,rclone_cmd,$$rclone_cmd); \
         ) & watcher_pid=$$!; \
         \
         $(call set_status,program_pid,$$program_pid); \
@@ -136,12 +138,16 @@ end:
 	rm -f $(status)
 	$(call log,end '$(project)' (total elapsed: $(call since_hms,$$t0)))
 
+t:
+	date > /tmp/x
+	echo $(rclone_list) >> /tmp/x
+
 # stop & kill
 
 stop:
     @printf "[$(project)] graceful stop requested: exit after current rule\n"
 	: > $(stop)
-    $(call log,graceful stop requested: exit after current rule$(,) \
+	$(call log,graceful stop requested: exit after current rule$(,) \
         flag '$(stop)' created)
 
 kill:
