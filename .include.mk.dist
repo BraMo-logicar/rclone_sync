@@ -67,8 +67,8 @@ fstype := xfs
 
 runid := $(shell date +%Y%m%d.%H%M%S)
 
-watch_tries := 8
-watch_delay := .42
+watch_tries := 100
+watch_delay := .01
 
 # email
 
