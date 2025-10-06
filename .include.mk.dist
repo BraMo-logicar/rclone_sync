@@ -29,8 +29,8 @@ ip       := $(shell hostname -I | awk '{ print $$1 }')
 
 data   := $(home)/data
 stats  := $(data)/stats
-status := $(stats)/status
-usage  := $(stats)/usage
+status := $(data)/status
+usage  := $(data)/usage
 
 logf   := $(home)/log/$(project).log
 logrun := $(home)/log/run
