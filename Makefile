@@ -81,8 +81,9 @@ main:
         ( \
             rclone_pid=$$($(call watch_child,$$program_pid,rclone, \
                 $(strip $(watch_tries)),$(watch_delay))); \
+printf "rclone_pid: $$rclone_pid\n"; \
             $(call set_status,rclone_pid,$$rclone_pid); \
-            rclone_cmd=$(call get_command_by_pid,$$rclone_pid); \
+            rclone_cmd=$$($(call get_command_by_pid,$$rclone_pid)); \
             $(call write_stat,$$rulef,rclone_cmd,$$rclone_cmd); \
             $(call set_status,rclone_cmd,$$rclone_cmd); \
         ) & watcher_pid=$$!; \
@@ -111,9 +112,9 @@ main:
         $(call write_stat,$$rulef,rclone_elapsed,$$rclone_elapsed); \
         \
         ( \
-            printf "-- begin rclone log '%s' --\n" $(logf); \
+            printf -- "-- begin rclone log '%s' --\n" $(logf); \
             cat $$rule_log >> $(logf); \
-            printf "-- end rclone log --\n"; \
+            printf -- "-- end rclone log --\n"; \
         ) >> $(logf); \
         $(call log,[$$ruleid] rclone stats: \
             checks=$$rclone_chk$(,) \
@@ -136,6 +137,7 @@ main:
 
 end:
 	@t0=$(call get_status,start_epoch)
+	cp $(status) $(tmp)
 	rm -f $(status)
 	$(call log,end '$(project)' (total elapsed: $(call since_hms,$$t0)))
 
