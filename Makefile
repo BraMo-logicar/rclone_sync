@@ -181,15 +181,25 @@ status:
 # usage
 
 usage:
-	@( \
+	@t0=$(t); \
+    $(call log,start bucket usage (excluding versions)); \
+    ( \
         printf "Bucket usage (%s)\n" "$$(date '+%a %d %b %Y')"; \
         printf "    excluding versions:\n"; \
         $(rclone) --config $(rclone_conf) size $(rpath) | \
             sed 's/^/        /'; \
+    ) > $(usage); \
+    $(call log,end bucket usage (excluding versions) \
+        (elapsed: $(call since_hms,$$t0))); \
+    t0=$(t); \
+    $(call log,start bucket usage (including versions)); \
+    ( \
         printf "    including versions:\n"; \
         $(rclone) --config $(rclone_conf) size --s3-versions $(rpath) | \
             sed 's/^/        /'; \
-    ) > $(usage)
+    ) >> $(usage); \
+    $(call log,end bucket usage (including versions) \
+        (elapsed: $(call since_hms,$$t0))); \
 
 # logs
 
