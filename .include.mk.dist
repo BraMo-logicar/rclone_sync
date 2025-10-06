@@ -51,7 +51,7 @@ dst_root := [DST_ROOT]
 lpath := $(src_root)
 
 remote  := $(project)
-bucket  := <BUCKET>
+bucket  := [BUCKET]
 rpath   := $(remote):$(bucket)$(dst_root)
 
 # rclone
@@ -72,10 +72,10 @@ watch_delay := .01
 
 # email
 
-mail_From := $(project) system <MAIL_FROM>
-mail_from := <MAIL_FROM>
-mail_To   := $(project) admin <MAIL_TO>
-mail_to   := <MAIL_TO>
+mail_From := $(project) system [MAIL_FROM]
+mail_from := [MAIL_FROM]
+mail_To   := $(project) admin [MAIL_TO]
+mail_to   := [MAIL_TO]
 
 mail_log := yes
 
