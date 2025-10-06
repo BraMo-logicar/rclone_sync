@@ -83,6 +83,7 @@ main:
                 $(strip $(watch_tries)),$(watch_delay))); \
             $(call set_status,rclone_pid,$$rclone_pid); \
             rclone_cmd=$(call get_command_by_pid,$$rclone_pid); \
+            $(call write_stat,$$rulef,rclone_cmd,$$rclone_cmd); \
             $(call set_status,rclone_cmd,$$rclone_cmd); \
         ) & watcher_pid=$$!; \
         \
