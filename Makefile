@@ -70,14 +70,14 @@ main:
         \
         src=$(lpath)/$$relpath; \
         dst=$(rpath)/$$relpath; \
-        command=($(program_path) $${opts:+-o "$$opts"} $$src $$dst); \
-        $(call set_status,command_line,$${command[*]}); \
-        $(call write_stat,$$rulef,command_line,$${command[*]}); \
+        program_cmd=($(program_path) $${opts:+-o "$$opts"} $$src $$dst); \
+        $(call set_status,program_cmd,$${program_cmd[*]}); \
+        $(call write_stat,$$rulef,program_cmd,$${program_cmd[*]}); \
         $(call log,[$$ruleid] start '$(program_name)'); \
-        $(call log,[$$ruleid] command line: $${command[*]}); \
+        $(call log,[$$ruleid] command line: $${program_cmd[*]}); \
         \
         t1=$(t); \
-        "$${command[@]}" &> $$rule_log & program_pid=$$!; \
+        "$${program_cmd[@]}" &> $$rule_log & program_pid=$$!; \
         ( \
             rclone_pid=$$($(call watch_child,$$program_pid,rclone, \
                 $(strip $(watch_tries)),$(watch_delay))); \
@@ -182,13 +182,13 @@ status:
 
 usage:
 	@( \
-        printf "Bucket usage (%s)\n" $$(date '+%a %d %b %Y'); \
+        printf "Bucket usage (%s)\n" "$$(date '+%a %d %b %Y')"; \
         printf "    excluding versions:\n"; \
-        printf "        %s\n" \
-            $$($(rclone) --config $(rclone_conf) size $(rpath)); \
+        $(rclone) --config $(rclone_conf) size $(rpath) | \
+            sed 's/^/        /'; \
         printf "    including versions:\n"; \
-        printf "        %s\n" \
-            $$($(rclone) --config $(rclone_conf) size --s3-versions $(rpath)) \
+        $(rclone) --config $(rclone_conf) size --s3-versions $(rpath) | \
+            sed 's/^/        /'; \
     ) > $(usage)
 
 # logs
