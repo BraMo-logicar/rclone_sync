@@ -194,7 +194,7 @@ endef
 define get_command_by_pid
 mapfile -d '' -t argv < /proc/$(1)/cmdline
 printf -v cmd_q '%q ' "$${argv[@]}"
-printf "%s\n" $${cmd_q% }
+printf "%s\n" "$${cmd_q% }"
 endef
 
 #
