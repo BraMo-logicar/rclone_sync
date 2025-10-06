@@ -211,7 +211,7 @@ log-last:
 
 # site targets
 
-include .site.mk
+-include .site.mk
 
 
 
