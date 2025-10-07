@@ -19,17 +19,11 @@ $(project): start main end
 # list
 
 list::
-	@find $(src_root) -mindepth 1 -maxdepth 1 -type d -printf "%f\n" | \
-        sort > $(rclone_list)
-	nd=$$(wc -l < $(rclone_list)); \
-	$(call log,list $$nd entries (dirs) \
-        from '$(src_root)' to '$(rclone_list)'); \
-    \
-	find $(src_root) -mindepth 1 -maxdepth 1 -type f -printf "%f\n" | \
-        sort > $(rclone_list_files)
-	nf=$$(wc -l < $(rclone_list_files)); \
-    [ $$nf -gt 0 ] && $(call log,list $$nf entries (files) \
-        from '$(src_root)' to '$(rclone_list_files)') || true
+	@printf ". ruleid=root opts=\"--max-depth 1\"\n" > $(rclone_list)
+	find $(src_root) -mindepth 1 -maxdepth 1 -type d -printf "%f\n" | \
+        sort >> $(rclone_list)
+	n=$$(wc -l < $(rclone_list)); \
+    $(call log,list $$n entries from '$(src_root)' to '$(rclone_list)')
 
 # main
 
