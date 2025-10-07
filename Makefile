@@ -19,8 +19,17 @@ $(project): start main end
 # list
 
 list::
-	@n=$$(ls -1 $(src_root) | tee $(rclone_list) | wc -l); \
-	$(call log,list $$n entries from '$(src_root)' to '$(rclone_list)')
+	@find $(src_root) -mindepth 1 -maxdepth 1 -type d -printf "%f\n" | \
+        sort > $(rclone_list)
+	nd=$$(wc -l < $(rclone_list)); \
+	$(call log,list $$nd entries (dirs) \
+        from '$(src_root)' to '$(rclone_list)'); \
+    \
+	find $(src_root) -mindepth 1 -maxdepth 1 -type f -printf "%f\n" | \
+        sort > $(rclone_list_files)
+	nf=$$(wc -l < $(rclone_list_files)); \
+    [ $$nf -gt 0 ] && $(call log,list $$nf entries (files) \
+        from '$(src_root)' to '$(rclone_list_files)') || true
 
 # main
 
@@ -81,7 +90,6 @@ main:
         ( \
             rclone_pid=$$($(call watch_child,$$program_pid,rclone, \
                 $(strip $(watch_tries)),$(watch_delay))); \
-printf "rclone_pid: $$rclone_pid\n"; \
             $(call set_status,rclone_pid,$$rclone_pid); \
             rclone_cmd=$$($(call get_command_by_pid,$$rclone_pid)); \
             $(call write_stat,$$rulef,rclone_cmd,$$rclone_cmd); \
@@ -193,6 +201,7 @@ usage:
     ) > $(usage); \
     $(call log,end bucket usage (excluding versions) \
         (elapsed: $(call since_hms,$$t0))); \
+    \
     t0=$(t); \
     $(call log,start bucket usage (including versions)); \
     ( \
