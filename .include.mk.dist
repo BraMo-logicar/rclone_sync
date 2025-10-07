@@ -206,8 +206,9 @@ endef
 define parse_rule
     rule=$$(printf "%s\n" "$(1)"); \
     relpath=$$(printf "%s\n" "$$rule" | awk '{ print $$1 }'); \
-    rest=$$(printf "%s\n" "$$rule" | awk '{ $$1 = ""; print }'); \
+    [ "$$relpath" = "." ] && relpath=; \
     ruleid=$${relpath##*/} opts=; \
+    rest=$$(printf "%s\n" "$$rule" | awk '{ $$1 = ""; print }'); \
     set -f; eval "$$rest"; set +f
 endef
 
