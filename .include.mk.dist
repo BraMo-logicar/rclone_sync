@@ -56,9 +56,8 @@ rpath   := $(remote):$(bucket)$(dst_root)
 
 # rclone
 
-rclone_conf       := $(home)/etc/rclone.conf
-rclone_list       := $(home)/etc/rclone.list
-rclone_list_files := $(home)/etc/rclone.list-files
+rclone_conf := $(home)/etc/rclone.conf
+rclone_list := $(home)/etc/rclone.list
 
 # os
 
