@@ -173,7 +173,7 @@ define watch_rclone
     else
         $(call set_status,rclone_pid,unknown); \
     fi; \
-) & watcher_pid=$$!; \
+) & watcher_pid=$$!
 endef
 
 #
@@ -225,7 +225,7 @@ define append_rule_log
     printf -- "-- begin rclone log --\n"; \
     sed '$${/^$$/d}' "$(1)"; \
     printf -- "-- end rclone log --\n"; \
-} >> $(logf); \
+} >> $(logf)
 endef
 
 #
