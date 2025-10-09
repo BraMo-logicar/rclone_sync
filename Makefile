@@ -58,44 +58,30 @@ main:
         rulef=$(stats)/$(runid)/$$ruleid; \
         pct=$$(echo "scale=2; 100*$$k/$$n" | bc); \
         rule_log=$(logrun)/$$ruleid.log; \
+        $(call write_stat,$$rulef,rule,$$rule); \
+        $(call write_stat,$$rulef,rule_id,$$ruleid); \
+        $(call write_stat,$$rulef,rule_start,$$rulestart); \
+        $(call write_stat,$$rulef,progress,$$k/$$n ($$pct%)); \
         $(call set_status,current_rule,$$rule); \
         $(call set_status,current_rule_id,$$ruleid); \
         $(call set_status,current_rule_start,$$rulestart); \
         $(call set_status,current_rule_path,$$rulef); \
         $(call set_status,current_rule_log,$$rule_log); \
         $(call set_status,progress,$$k/$$n ($$pct%)); \
-        $(call write_stat,$$rulef,rule,$$rule); \
-        $(call write_stat,$$rulef,rule_id,$$ruleid); \
-        $(call write_stat,$$rulef,rule_start,$$rulestart); \
-        $(call write_stat,$$rulef,progress,$$k/$$n ($$pct%)); \
         $(call log,rule '$$rule'); \
         $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%)); \
         \
         src=$(lpath)/$$relpath; \
         dst=$(rpath)/$$relpath; \
         program_cmd=($(program_path) $${opts:+-o "$$opts"} $$src $$dst); \
-        $(call set_status,program_cmd,$${program_cmd[*]}); \
         $(call write_stat,$$rulef,program_cmd,$${program_cmd[*]}); \
+        $(call set_status,program_cmd,$${program_cmd[*]}); \
         $(call log,[$$ruleid] start '$(program_name)'); \
         $(call log,[$$ruleid] command line: $${program_cmd[*]}); \
         \
         t1=$(t); \
         "$${program_cmd[@]}" &> $$rule_log & program_pid=$$!; \
-        ( \
-            rclone_pid=$$($(call watch_child,$$program_pid,rclone, \
-                $(strip $(watch_tries)),$(watch_delay))); \
-            if [ -n "$$rclone_pid" ]; then \
-                $(call set_status,rclone_pid,$$rclone_pid); \
-                rclone_cmd=$$($(call get_command_by_pid,$$rclone_pid)); \
-                if [ -n "$$rclone_cmd" ]; then \
-                    $(call set_status,rclone_cmd,$$rclone_cmd); \
-                    $(call write_stat,$$rulef,rclone_cmd,$$rclone_cmd); \
-                fi; \
-            else
-                $(call set_status,rclone_pid,unknown); \
-            fi; \
-        ) & watcher_pid=$$!; \
-        \
+        $(watch_rclone); \
         $(call set_status,program_pid,$$program_pid); \
         rc=0; wait $$program_pid || rc=$$?; \
         wait $$watcher_pid || true; \
@@ -103,27 +89,8 @@ main:
         $(call set_status,program_pid,-); \
         elapsed=$(call since,$$t1); \
         \
-        rclone_chk=$(call count_chk,$$rule_log); \
-        rclone_xfer=$(call count_xfer,$$rule_log); \
-        rclone_xfer_new=$(call count_xfer_new,$$rule_log); \
-        rclone_xfer_repl=$(call count_xfer_repl,$$rule_log); \
-        rclone_xfer_sz=$(call count_xfer_sz,$$rule_log); \
-        rclone_del=$(call count_del,$$rule_log); \
-        rclone_elapsed=$(call count_elapsed,$$rule_log); \
-        \
-        $(call write_stat,$$rulef,rclone_checks,$$rclone_chk); \
-        $(call write_stat,$$rulef,rclone_transferred,$$rclone_xfer); \
-        $(call write_stat,$$rulef,rclone_copied_new,$$rclone_xfer_new); \
-        $(call write_stat,$$rulef,rclone_copied_replaced,$$rclone_xfer_repl); \
-        $(call write_stat,$$rulef,rclone_transferred_size,$$rclone_xfer_sz); \
-        $(call write_stat,$$rulef,rclone_deleted,$$rclone_del); \
-        $(call write_stat,$$rulef,rclone_elapsed,$$rclone_elapsed); \
-        \
-        ( \
-            printf -- "-- begin rclone log '%s' --\n" $(logf); \
-            cat $$rule_log >> $(logf); \
-            printf -- "-- end rclone log --\n"; \
-        ) >> $(logf); \
+        $(call write_rclone_stats,$$rule_log,$$rulef); \
+        $(call append_rule_log,$$rule_log); \
         $(call log,[$$ruleid] rclone stats: \
             checks=$$rclone_chk$(,) \
             transferred=$$rclone_xfer ($$rclone_xfer_sz) \
@@ -135,12 +102,7 @@ main:
         [ $$rc -ne 0 ] && warn=" (WARN)" || warn=""; \
         $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
             (elapsed: $(call hms,$$elapsed))); \
-        if [ -f $(stop) ]; then \
-	        printf "[$(project)] stop flag found: exit after current rule\n"; \
-	        rm -f $(stop); \
-	        $(call log,stop flag found: exit after current rule); \
-	        exit 0; \
-	    fi; \
+        $(stop_guard); \
     done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
 
 end:
@@ -193,22 +155,22 @@ status:
 usage:
 	@t0=$(t); \
     $(call log,start bucket usage (excluding versions)); \
-    ( \
+    { \
         printf "Bucket usage (%s)\n" "$$(date '+%a %d %b %Y')"; \
         printf "    excluding versions:\n"; \
         $(rclone) --config $(rclone_conf) size $(rpath) | \
             sed 's/^/        /'; \
-    ) > $(usage); \
+    } > $(usage); \
     $(call log,end bucket usage (excluding versions) \
         (elapsed: $(call since_hms,$$t0))); \
     \
     t0=$(t); \
     $(call log,start bucket usage (including versions)); \
-    ( \
+    { \
         printf "    including versions:\n"; \
         $(rclone) --config $(rclone_conf) size --s3-versions $(rpath) | \
             sed 's/^/        /'; \
-    ) >> $(usage); \
+    } >> $(usage); \
     $(call log,end bucket usage (including versions) \
         (elapsed: $(call since_hms,$$t0))); \
 
