@@ -45,7 +45,7 @@ start:
 
 main:
 	@$(call log,loop over '$(call relpath,$(rclone_list))')
-	trap 'rm -f $(status)' INT TERM
+	trap '$(call log,(WARN) caught INT/TERM signal); rm -f $(status)' INT TERM
 	recipe_shell_pid=$$$$
 	$(call set_status,recipe_shell_pid,$$recipe_shell_pid)
 	n=$$(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF' | wc -l); k=0
