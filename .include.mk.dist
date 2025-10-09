@@ -131,7 +131,7 @@ since_hms = $(call hms,$(call since,$(1)))
 #
 
 make := $(notdir $(MAKE))
-log = printf '%s [%s(%s):%s] %s\n' $(now) $(make) $@ $$$$ "$(1)" >> $(logf)
+log = printf "%s [%s(%s):%s] %s\n" $(now) $(make) $@ $$$$ "$(1)" >> $(logf)
 
 #
 # relpath() - path relative to home
