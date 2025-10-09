@@ -1,7 +1,7 @@
 # Name: .include.mk - include for Makefiles
 # Usage: include .include.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.09.12
+# Date: 2025.10.09
 
 #-----
 # vars
@@ -216,31 +216,6 @@ fi
 endef
 
 #
-# write_rclone_stats() - write metrics to the rule stats file
-# usage: $(call write_rclone_stats,rule_log,rulef)
-#
-
-define write_rclone_stats
-_rule_log=$(1) _rulef=$(2); \
-\
-rclone_chk=$(call count_chk,$$rule_log); \
-rclone_xfer=$(call count_xfer,$$rule_log); \
-rclone_xfer_new=$(call count_xfer_new,$$rule_log); \
-rclone_xfer_repl=$(call count_xfer_repl,$$rule_log); \
-rclone_xfer_sz=$(call count_xfer_sz,$$rule_log); \
-rclone_del=$(call count_del,$$rule_log); \
-rclone_elapsed=$(call count_elapsed,$$rule_log); \
-\
-$(call write_stat,$$_rulef,rclone_checks,$$rclone_chk); \
-$(call write_stat,$$_rulef,rclone_transferred,$$rclone_xfer); \
-$(call write_stat,$$_rulef,rclone_copied_new,$$rclone_xfer_new); \
-$(call write_stat,$$_rulef,rclone_copied_replaced,$$rclone_xfer_repl); \
-$(call write_stat,$$_rulef,rclone_transferred_size,$$rclone_xfer_sz); \
-$(call write_stat,$$_rulef,rclone_deleted,$$rclone_del); \
-$(call write_stat,$$_rulef,rclone_elapsed,$$rclone_elapsed); \
-endef
-
-#
 # append_rule_log() - append rclone rule log to the main log
 # usage: $(call append_rule_log,rule_log)
 #
@@ -279,24 +254,43 @@ endef
 get_status = $$(sed -En '/^$(1):/s/^[^:]*:[[:space:]]*//p' $(status))
 
 #
-# count_<stat>() - statistics from a per-run log
-# usage: $(call count_<stat>,run_log)
+# get_rclone_stats() - parse an rclone per-run log and get key/value metrics
+# usage: $(call get_rclone_stats,rule_log)
 #
 
-count_chk = $$(v=$$(awk '/^Checks:/ \
-    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:-0})
-count_xfer = $$(v=$$(awk '/^Transferred:/ && !/ETA/ \
-    { print $$2 "/" $$4 }' $(1) | tail -n 1 | tr -d ,); echo $${v:-0})
-count_xfer_sz = $$(v=$$(awk '/^Transferred:/ && /ETA/ \
-    { print $$2 $$3 "/" $$5 $$6 }' $(1) | tail -n 1 | tr -d ,); echo $${v:-0})
-count_xfer_new = $$(v=$$(grep -c "Copied (new)$$" $(1) \
-    2>/dev/null || true); echo $${v:-0})
-count_xfer_repl = $$(v=$$(grep -c "Copied (replaced existing)$$" $(1) \
-    2>/dev/null || true); echo $${v:-0})
-count_del = $$(v=$$(awk '/^Deleted:/ \
-    { print $$2 }' $(1) | tail -n 1); echo $${v:-0})
-count_elapsed = $$(v=$$(awk '/^Elapsed time:/ \
-    { print $$3 }' $(1) | tail -n 1); echo $${v:-0})
+define get_rclone_stats
+$$(awk '
+    BEGIN { chk=0; xfer=0; xfer_sz=0; xfer_new=0; xfer_repl=0; del=0; ela=0 }
+        /^Checks:/                       { chk=$$2 "/" $$4 }
+        /^Transferred:/ && !/ETA/        { xfer=$$2 "/" $$4 }
+        /^Transferred:/ && /ETA/         { xfer_sz=$$2 $$3 "/" $$5 $$6 }
+        /Copied \(new\)$$/               { xfer_new++ }
+        /Copied \(replaced existing\)$$/ { xfer_repl++ }
+        /^Deleted:/                      { del=$$2 }
+        /^Elapsed time:/                 { ela=$$3 }
+    END {
+        printf "rclone_checks %s\n",           chk
+        printf "rclone_transferred %s\n",      xfer
+        printf "rclone_transferred_size %s\n", xfer_sz
+        printf "rclone_copied_new %s\n",       xfer_new
+        printf "rclone_copied_replaced %s\n",  xfer_repl
+        printf "rclone_deleted %s\n",          del
+        printf "rclone_elapsed %s\n",          ela
+    }
+' $(1))
+endef
+
+#
+# write_rclone_stats() - write rclone metrics into the rule stats file
+# usage: $(call write_rclone_stats,rule_log,rulef)
+#
+
+define write_rclone_stats
+_rule_log=$(1) _rulef=$(2); \
+$(call get_rclone_stats,$$_rule_log) | while read _k _v; do \
+    $(call write_stat,$$_rulef,$$_k,$$_v); \
+done
+endef
 
 #
 # mb() - rounded MiB
