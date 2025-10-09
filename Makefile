@@ -84,10 +84,16 @@ main:
         ( \
             rclone_pid=$$($(call watch_child,$$program_pid,rclone, \
                 $(strip $(watch_tries)),$(watch_delay))); \
-            $(call set_status,rclone_pid,$$rclone_pid); \
-            rclone_cmd=$$($(call get_command_by_pid,$$rclone_pid)); \
-            $(call write_stat,$$rulef,rclone_cmd,$$rclone_cmd); \
-            $(call set_status,rclone_cmd,$$rclone_cmd); \
+            if [ -n "$$rclone_pid" ]; then \
+                $(call set_status,rclone_pid,$$rclone_pid); \
+                rclone_cmd=$$($(call get_command_by_pid,$$rclone_pid)); \
+                if [ -n "$$rclone_cmd" ]; then \
+                    $(call set_status,rclone_cmd,$$rclone_cmd); \
+                    $(call write_stat,$$rulef,rclone_cmd,$$rclone_cmd); \
+                fi; \
+            else
+                $(call set_status,rclone_pid,unknown); \
+            fi; \
         ) & watcher_pid=$$!; \
         \
         $(call set_status,program_pid,$$program_pid); \
