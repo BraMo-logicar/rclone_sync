@@ -90,14 +90,8 @@ main:
         $(call set_status,program_pid,-); \
         elapsed=$(call since,$$t1); \
         \
-        $(call write_rclone_stats,$$rule_log,$$rulef); \
         $(call append_rule_log,$$rule_log); \
-        $(call log,[$$ruleid] rclone stats: \
-            checks=$$rclone_chk$(,) \
-            transferred=$$rclone_xfer ($$rclone_xfer_sz) \
-            (new=$$rclone_xfer_new$(,) replaced=$$rclone_xfer_repl)$(,) \
-            deleted=$$rclone_del$(,) elapsed=$$rclone_elapsed); \
-        \
+        $(call rclone_stats,$$ruleid,$$rulef,$$rule_log); \
         $(call write_stat,$$rulef,rule_end,$(now)); \
         $(call write_stat,$$rulef,elapsed,$${elapsed}s); \
         [ $$rc -ne 0 ] && warn=" (WARN)" || warn=""; \
@@ -111,10 +105,6 @@ end:
 	cp $(status) $(tmp)
 	rm -f $(status)
 	$(call log,end '$(project)' (total elapsed: $(call since_hms,$$t0)))
-
-t:
-	date > /tmp/x
-	echo $(rclone_list) >> /tmp/x
 
 # stop & kill
 

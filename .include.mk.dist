@@ -113,14 +113,19 @@ t = $$(date +%s.%3N)
 elapsed = $$(printf "scale=3; %s - %s\n" $(2) $(1) | bc)
 since = $$(printf "scale=3; %s - %s\n" $(call t) $(1) | bc)
 
-hms = $$(awk -v t=$(1) 'BEGIN { \
-    s = int(t); \
-    ms = 1000 * (t - s); \
-    h = int(s / 3600); s %= 3600; \
-    m = int(s / 60); s %= 60; \
-    if (h > 0) printf("%dh%02dm%02d.%03ds", h, m, s, ms); \
-    else if (m > 0) printf("%dm%02d.%03ds", m, s, ms); \
-    else printf("%d.%03ds", s, ms) }')
+define hms
+$$(awk -v t=$(1) '
+    BEGIN {
+        s = int(t);
+        ms = 1000 * (t - s);
+        h = int(s / 3600); s %= 3600;
+        m = int(s / 60); s %= 60;
+        if (h > 0) printf("%dh%02dm%02d.%03ds", h, m, s, ms);
+        else if (m > 0) printf("%dm%02d.%03ds", m, s, ms);
+        else printf("%d.%03ds", s, ms)
+    }
+')
+endef
 
 elapsed_hms = $(call hms,$(call elapsed,$(1),$(2)))
 since_hms = $(call hms,$(call since,$(1)))
@@ -216,19 +221,6 @@ fi
 endef
 
 #
-# append_rule_log() - append rclone rule log to the main log
-# usage: $(call append_rule_log,rule_log)
-#
-
-define append_rule_log
-{ \
-    printf -- "-- begin rclone log --\n"; \
-    sed '$${/^$$/d}' "$(1)"; \
-    printf -- "-- end rclone log --\n"; \
-} >> $(logf)
-endef
-
-#
 # write_stat() - write "key: value" to stat file
 # usage: $(call write_stat,statfile,key,value)
 #
@@ -259,37 +251,59 @@ get_status = $$(sed -En '/^$(1):/s/^[^:]*:[[:space:]]*//p' $(status))
 #
 
 define get_rclone_stats
-$$(awk '
-    BEGIN { chk=0; xfer=0; xfer_sz=0; xfer_new=0; xfer_repl=0; del=0; ela=0 }
-        /^Checks:/                       { chk=$$2 "/" $$4 }
-        /^Transferred:/ && !/ETA/        { xfer=$$2 "/" $$4 }
-        /^Transferred:/ && /ETA/         { xfer_sz=$$2 $$3 "/" $$5 $$6 }
-        /Copied \(new\)$$/               { xfer_new++ }
-        /Copied \(replaced existing\)$$/ { xfer_repl++ }
-        /^Deleted:/                      { del=$$2 }
-        /^Elapsed time:/                 { ela=$$3 }
+awk '
+    function xc(s) { sub(/,$$/,"",s); return s }
+    BEGIN { xfer_new = 0; xfer_replaced = 0; }
+    /^Checks:/                       { checks = $$2 "/" xc($$4) }
+    /^Transferred:/ && !/ETA/        { xfer = $$2 "/" xc($$4) }
+    /^Transferred:/ && /ETA/         { xfer_size = $$2 $$3 "/" $$5 xc($$6) }
+    /Copied \(new\)$$/               { xfer_new++ }
+    /Copied \(replaced existing\)$$/ { xfer_replaced++ }
+    /^Deleted:/                      { deleted = $$2 }
+    /^Elapsed time:/                 { elapsed = $$3 }
     END {
-        printf "rclone_checks %s\n",           chk
+        printf "rclone_checks %s\n",           checks
         printf "rclone_transferred %s\n",      xfer
-        printf "rclone_transferred_size %s\n", xfer_sz
+        printf "rclone_transferred_size %s\n", xfer_size
         printf "rclone_copied_new %s\n",       xfer_new
-        printf "rclone_copied_replaced %s\n",  xfer_repl
-        printf "rclone_deleted %s\n",          del
-        printf "rclone_elapsed %s\n",          ela
+        printf "rclone_copied_replaced %s\n",  xfer_replaced
+        printf "rclone_deleted %s\n",          deleted
+        printf "rclone_elapsed %s\n",          elapsed
     }
-' $(1))
+' $(1)
 endef
 
 #
-# write_rclone_stats() - write rclone metrics into the rule stats file
-# usage: $(call write_rclone_stats,rule_log,rulef)
+# rclone_stats() - write rclone metrics into the rule stats file and log
+# usage: $(call rclone_stats,ruleid,rulef,rule_log)
 #
 
-define write_rclone_stats
-_rule_log=$(1) _rulef=$(2); \
-$(call get_rclone_stats,$$_rule_log) | while read _k _v; do \
-    $(call write_stat,$$_rulef,$$_k,$$_v); \
-done
+define rclone_stats
+declare -A S
+while read k v; do
+    S[$$k]="$${v:-0}"; \
+    $(call write_stat,$(2),$$k,$$v); \
+done < <($(call get_rclone_stats,$(3)))
+printf -v stats_log "checks=%s, transferred=%s (%s) (new=%s, replaced=%s), \
+    deleted=%s, elapsed=%s" \
+    "$${S[rclone_checks]}" \
+    "$${S[rclone_transferred]}" "$${S[rclone_transferred_size]}" \
+    "$${S[rclone_copied_new]}" "$${S[rclone_copied_replaced]}" \
+    "$${S[rclone_deleted]}" "$${S[rclone_elapsed]}"
+$(call log,[$(1)] rclone stats: $$stats_log)
+endef
+
+#
+# append_rule_log() - append rclone rule log to the main log
+# usage: $(call append_rule_log,rule_log)
+#
+
+define append_rule_log
+{ \
+    printf -- "-- begin rclone log --\n"; \
+    sed '$${/^$$/d}' "$(1)"; \
+    printf -- "-- end rclone log --\n"; \
+} >> $(logf)
 endef
 
 #
