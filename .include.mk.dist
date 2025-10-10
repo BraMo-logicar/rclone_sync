@@ -187,7 +187,7 @@ endef
 #
 
 define watch_child
-for k in {1..$(3)}; do
+for _ in {1..$(3)}; do
     child=$$(pgrep -n -P $(1) -x $(2) || true)
     [ -n "$$child" ] && break
     sleep $(4)
@@ -280,9 +280,9 @@ endef
 
 define rclone_stats
 declare -A S
-while read k v; do
-    S[$$k]="$${v:-0}"
-    $(call write_stat,$(2),$$k,$$v)
+while read _k _v; do
+    S[$$_k]="$${_v:-0}"
+    $(call write_stat,$(2),$$_k,$$_v)
 done < <($(call get_rclone_stats,$(3)))
 printf -v stats_log "checks=%s, transferred=%s (%s) (new=%s, replaced=%s), \
     deleted=%s, elapsed=%s" \
