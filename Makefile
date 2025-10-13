@@ -121,15 +121,15 @@ stop:
         flag '$(stop)' created)
 
 kill:
-	@recipe_shell_pid=$(call get_status,recipe_shell_pid); \
-    program_pid=$(call get_status,program_pid); \
-    rclone_pid=$(call get_status,rclone_pid); \
-    printf "[%s] global kill requested (%s=%d, %s=%d, %s=%d)\n" \
+	@recipe_shell_pid=$(call get_status,recipe_shell_pid)
+	program_pid=$(call get_status,program_pid)
+	rclone_pid=$(call get_status,rclone_pid)
+	printf "[%s] global kill requested (%s=%d, %s=%d, %s=%d)\n" \
         $(project) recipe_shell $$recipe_shell_pid \
-        program $$program_pid rclone $$rclone_pid; \
-    $(call log,global kill requested (recipe_shell=$$recipe_shell_pid$(,) \
-        program=$$program_pid$(,) rclone=$$rclone_pid)); \
-    for sig in INT TERM KILL; do \
+        program $$program_pid rclone $$rclone_pid
+	$(call log,global kill requested (recipe_shell=$$recipe_shell_pid$(,) \
+        program=$$program_pid$(,) rclone=$$rclone_pid))
+	for sig in INT TERM KILL; do \
         for pid in $$rclone_pid $$program_pid $$recipe_shell_pid; do \
              if kill -0 $$pid 2>/dev/null; then \
                  printf "  send SIG%s to %s\n" $$sig $$pid; \
@@ -137,8 +137,8 @@ kill:
              fi; \
         done; \
         sleep 1; \
-    done; \
-    $(call log,global kill: sent signals to rclone=$$rclone_pid$(,) \
+    done
+	$(call log,global kill: sent signals to rclone=$$rclone_pid$(,) \
         program=$$program_pid$(,) recipe_shell=$$recipe_shell_pid)
 
 # status
@@ -150,26 +150,27 @@ status:
 # usage
 
 usage:
-	@t0=$(t); \
-    $(call log,start bucket usage (excluding versions)); \
-    { \
-        printf "Bucket usage (%s)\n" "$$(date '+%a %d %b %Y')"; \
+	@t0=$(t)
+	$(call log,start bucket usage (excluding versions))
+	printf "Bucket usage (%s, %s)\n" $(hostname) "$$(date '+%a %d %b %Y')"
+	printf "    bucket: %s\n" $(bucket)
+	printf "    prefix: %s\n" $(dst_root)
+	{ \
         printf "    excluding versions:\n"; \
         $(rclone) --config $(rclone_conf) size $(rpath) | \
             sed 's/^/        /'; \
-    } > $(usage); \
-    $(call log,end bucket usage (excluding versions) \
-        (elapsed: $(call since_hms,$$t0))); \
-    \
-    t0=$(t); \
-    $(call log,start bucket usage (including versions)); \
-    { \
+    } > $(usage)
+	$(call log,end bucket usage (excluding versions) \
+        (elapsed: $(call since_hms,$$t0)))
+	t0=$(t)
+	$(call log,start bucket usage (including versions))
+	{ \
         printf "    including versions:\n"; \
         $(rclone) --config $(rclone_conf) size --s3-versions $(rpath) | \
             sed 's/^/        /'; \
-    } >> $(usage); \
-    $(call log,end bucket usage (including versions) \
-        (elapsed: $(call since_hms,$$t0))); \
+    } >> $(usage)
+	$(call log,end bucket usage (including versions) \
+        (elapsed: $(call since_hms,$$t0)))
 
 # logs
 
