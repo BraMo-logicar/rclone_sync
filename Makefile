@@ -48,7 +48,8 @@ start:
 	ln -fns $(stats)/$(runid) $(stats)/last
 
 main:
-	@$(call log,loop over '$(call relpath,$(rclone_list))')
+	@n=$$(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF' | wc -l)
+	$(call log,loop over '$(call relpath,$(rclone_list))' ($$n rules))
 	trap '$(call log,(WARN) caught INT/TERM signal); rm -f $(status)' INT TERM
 	recipe_shell_pid=$$$$
 	$(call set_status,recipe_shell_pid,$$recipe_shell_pid)
