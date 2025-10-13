@@ -19,11 +19,15 @@ $(project): start main end
 # list
 
 list::
-	@printf ". ruleid=root opts=\"--max-depth 1\"\n" > $(rclone_list)
+	@: > $(rclone_list)
+	if find $(src_root) -mindepth 1 -maxdepth 1 -type f | read; then \
+        printf ". ruleid=root-files opts=\"--max-depth 1\"\n" \
+            >> $(rclone_list); \
+    fi
 	find $(src_root) -mindepth 1 -maxdepth 1 -type d -printf "%f\n" | \
         sort >> $(rclone_list)
-	n=$$(wc -l < $(rclone_list)); \
-    $(call log,list $$n entries from '$(src_root)' to '$(rclone_list)')
+	n=$$(wc -l < $(rclone_list))
+	$(call log,list $$n entries from '$(src_root)' to '$(rclone_list)')
 
 # main
 
@@ -169,8 +173,8 @@ usage:
 # logs
 
 log-last:
-	@start=$$(grep -Fn '[make(start):' $(logf) | tail -n 1 | cut -d: -f1); \
-    sed -n "$$start,/\[make(end):/p" $(logf)
+	@start=$$(grep -Fn '[make(start):' $(logf) | tail -n 1 | cut -d: -f1)
+	sed -n "$$start,/\[make(end):/p" $(logf)
 
 # site targets
 
