@@ -33,14 +33,30 @@ list::
 
 start:
 	@mkdir -p $(stats); : > $(status)
-	$(call set_status,running,true)
+	$(call set_status,status,RUNNING)
 	$(call set_status,project,$(project))
 	$(call set_status,program_name,$(program_name))
 	$(call set_status,program_path,$(program_path))
-	$(call set_status,start,$(now))
-	$(call set_status,start_epoch,$(t))
-	$(call set_status,make_pid,$$PPID)
+	$(call set_status,runid,$(runid))
+	$(call set_status,started_at,$(now))
+	$(call set_status,started_at_epoch,$(t))
 	$(call set_status,stats_dir,$(stats))
+	$(call set_status,progress,0/0 (0%))
+	$(call set_status,current_rule,-)
+	$(call set_status,current_rule_id,-)
+	$(call set_status,current_rule_started_at,-)
+	$(call set_status,current_rule_path,-)
+	$(call set_status,current_rule_log,-)
+	$(call set_status,program_cmd,-)
+	$(call set_status,rclone_cmd,-)
+	$(call set_status,make_pid,$$PPID)
+	$(call set_status,shell_pid,-)
+	$(call set_status,program_pid,-)
+	$(call set_status,rclone_pid,-)
+	$(call set_status,ended_at,-)
+	$(call set_status,total_elapsed,-)
+	$(call set_status,rc,0)
+
 	$(call log,start '$(project)' @ $(hostname) ($(ip)))
 	[ -L $(stats)/last ] && ln -fns $$(readlink $(stats)/last) $(stats)/prev
 	rm -rf $(logrun); mkdir -p $(logrun)
@@ -50,38 +66,44 @@ start:
 main:
 	@n=$$(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF' | wc -l)
 	$(call log,loop over '$(call relpath,$(rclone_list))' ($$n rules))
-	trap '$(call log,(WARN) caught INT/TERM signal); rm -f $(status)' INT TERM
-	recipe_shell_pid=$$$$
-	$(call set_status,recipe_shell_pid,$$recipe_shell_pid)
-	n=$$(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF' | wc -l)
+	$(trap_on_signal)
+	trap 'trap_on_signal SIGINT 2' INT
+	trap 'trap_on_signal SIGTERM 15' TERM
+	shell_pid=$$$$
+	$(call set_status,shell_pid,$$shell_pid)
+
 	k=0
 	while read rule; do \
         k=$$((k+1)); \
-        \
         $(call parse_rule,$$rule); \
         \
-        rulestart=$(now); \
+        rule_started_at=$(now); \
         rulef=$(stats)/$(runid)/$$ruleid; \
         pct=$$(echo "scale=2; 100*$$k/$$n" | bc); \
         rule_log=$(logrun)/$$ruleid.log; \
+        \
         $(call write_stat,$$rulef,rule,$$rule); \
-        $(call write_stat,$$rulef,rule_id,$$ruleid); \
-        $(call write_stat,$$rulef,rule_start,$$rulestart); \
+        $(call write_stat,$$rulef,ruleid,$$ruleid); \
+        $(call write_stat,$$rulef,rule_started_at,$$rule_started_at); \
         $(call write_stat,$$rulef,progress,$$k/$$n ($$pct%)); \
+        \
+        $(call set_status,progress,$$k/$$n ($$pct%)); \
         $(call set_status,current_rule,$$rule); \
-        $(call set_status,current_rule_id,$$ruleid); \
-        $(call set_status,current_rule_start,$$rulestart); \
+        $(call set_status,current_ruleid,$$ruleid); \
+        $(call set_status,current_rule_started_at,$$rule_started_at); \
         $(call set_status,current_rule_path,$$rulef); \
         $(call set_status,current_rule_log,$$rule_log); \
-        $(call set_status,progress,$$k/$$n ($$pct%)); \
+        \
         $(call log,rule '$$rule'); \
         $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%)); \
         \
         src=$(lpath)/$$relpath; \
         dst=$(rpath)/$$relpath; \
         program_cmd=($(program_path) $${opts:+-o "$$opts"} $$src $$dst); \
+        \
         $(call write_stat,$$rulef,program_cmd,$${program_cmd[*]}); \
         $(call set_status,program_cmd,$${program_cmd[*]}); \
+        \
         $(call log,[$$ruleid] start '$(program_name)'); \
         $(call log,[$$ruleid] command line: $${program_cmd[*]}); \
         \
@@ -92,24 +114,33 @@ main:
         rc=0; wait $$program_pid || rc=$$?; \
         wait $$watcher_pid || true; \
         \
-        $(call write_stat,$$rulef,rc,$$rc); \
-        $(call set_status,program_pid,-); \
-        elapsed=$(call since,$$t1); \
+        rule_ended_at=$(now); \
+        end_epoch=$(t); \
+        rule_elapsed=$(call since,$$t1); \
         \
         $(call append_rule_log,$$rule_log); \
+        \
         $(call rclone_stats,$$ruleid,$$rulef,$$rule_log); \
-        $(call write_stat,$$rulef,rule_end,$(now)); \
-        $(call write_stat,$$rulef,elapsed,$${elapsed}s); \
+        $(call write_stat,$$rulef,rule_ended_at,$(now)); \
+        $(call write_stat,$$rulef,rule_elapsed,$${rule_elapsed}s); \
+        $(call write_stat,$$rulef,rc,$$rc); \
+        \
+        $(call set_status,program_pid,-); \
+        $(call set_status,rclone_pid,-); \
+        if [ $$rc -ne 0 ]; then $(call set_status,rc,$$rc); fi; \
+        \
         [ $$rc -ne 0 ] && warn=" (WARN)" || warn=""; \
         $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
-            (elapsed: $(call hms,$$elapsed))); \
+            (elapsed: $(call hms,$$rule_elapsed))); \
+        \
         $(stop_guard); \
     done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
 
 end:
-	@t0=$(call get_status,start_epoch)
-	cp $(status) $(tmp)
-	rm -f $(status)
+	@t0=$(call get_status,started_at_epoch)
+	$(call set_status,ended_at,$(now))
+	$(call set_status,total_elapsed,$(call since_hms,$$t0))
+	$(call set_status,status,NOT RUNNING (completed))
 	$(call log,end '$(project)' (total elapsed: $(call since_hms,$$t0)))
 
 # stop & kill
@@ -121,16 +152,16 @@ stop:
         flag '$(stop)' created)
 
 kill:
-	@recipe_shell_pid=$(call get_status,recipe_shell_pid)
+	@shell_pid=$(call get_status,shell_pid)
 	program_pid=$(call get_status,program_pid)
 	rclone_pid=$(call get_status,rclone_pid)
 	printf "[%s] global kill requested (%s=%d, %s=%d, %s=%d)\n" \
-        $(project) recipe_shell $$recipe_shell_pid \
+        $(project) recipe_shell $$shell_pid \
         program $$program_pid rclone $$rclone_pid
-	$(call log,global kill requested (recipe_shell=$$recipe_shell_pid$(,) \
+	$(call log,global kill requested (recipe_shell=$$shell_pid$(,) \
         program=$$program_pid$(,) rclone=$$rclone_pid))
 	for sig in INT TERM KILL; do \
-        for pid in $$rclone_pid $$program_pid $$recipe_shell_pid; do \
+        for pid in $$rclone_pid $$program_pid $$shell_pid; do \
              if kill -0 $$pid 2>/dev/null; then \
                  printf "  send SIG%s to %s\n" $$sig $$pid; \
                  kill -s $$sig $$pid 2>/dev/null || true; \
@@ -139,7 +170,7 @@ kill:
         sleep 1; \
     done
 	$(call log,global kill: sent signals to rclone=$$rclone_pid$(,) \
-        program=$$program_pid$(,) recipe_shell=$$recipe_shell_pid)
+        program=$$program_pid$(,) recipe_shell=$$shell_pid)
 
 # status
 
