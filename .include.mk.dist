@@ -1,7 +1,7 @@
 # Name: .include.mk - include for Makefiles
 # Usage: include .include.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.10.09
+# Date: 2025.10.16
 
 #-----
 # vars
@@ -82,36 +82,37 @@ mail_log := yes
 # misc
 
 , := ,
+#rclone_v := $(shell rclone version | sed -n '1s/.* v//p')
 
 #----------
 # functions
 #----------
 
 #
-# now() - current formatted timestamp
-# usage: $(now) or $(call now)
-#
-
-now = $$(date +'%Y.%m.%d-%H:%M:%S')
-
-#
-# t() - current epoch (seconds)
+# t() - current epoch (sec.msec)
 # usage: $(t) or $(call t)
 #
 
 t = $$(date +%s.%3N)
 
 #
-# elapsed(), since() - elapsed seconds
-# elapsed_hms(), since_hms() - elapsed in hms format
-# usage: $(call elapsed,t0,t1)
-# usage: $(call since,t0)
-# usage: $(call elapsed_hms,t0,t1)
-# usage: $(call since_hms,t0)
+# now() - current timestamp (yyyy.mm.dd-hh:mm:ss)
+# usage: $(now) or $(call now)
 #
 
-elapsed = $$(printf "scale=3; %s - %s\n" $(2) $(1) | bc)
-since = $$(printf "scale=3; %s - %s\n" $(call t) $(1) | bc)
+now = $$(date +%Y.%m.%d-%H:%M:%S)
+
+#
+# at(epoch) – format an epoch (sec.msec -> yyyy.mm.dd-hh:mm:ss)
+# usage: $(call at,epoch)
+#
+
+at = $$(date -d @$(1) +%Y.%m.%d-%H:%M:%S)
+
+#
+# hms() - format delta times (sec.msec)
+# usage: $(call hms,t_delta)
+#
 
 define hms
 $$(awk -v t=$(1) '
@@ -127,8 +128,15 @@ $$(awk -v t=$(1) '
 ')
 endef
 
-elapsed_hms = $(call hms,$(call elapsed,$(1),$(2)))
-since_hms = $(call hms,$(call since,$(1)))
+#
+# t_delta() - time difference (sec.msec)
+# t_delta_hms() - time difference (hms)
+# usage: $(call elapsed,t0,t1)
+# usage: $(call t_delta_hms,t0,t1)
+#
+
+t_delta = $$(awk -v t0=$(1) -v t1=$(2) 'BEGIN { printf("%.3f", t2 - t1) }')
+t_delta_hms = $(call hms,$(call t_delta,$(1),$(2)))
 
 #
 # log() - timestamped log
@@ -253,7 +261,9 @@ get_status = $$(sed -En '/^$(1):/s/^[^:]*:[[:space:]]*//p' $(status))
 define get_rclone_stats
 awk '
     function xc(s) { sub(/,$$/,"",s); return s }
-    BEGIN { xfer_new = 0; xfer_replaced = 0; }
+
+    BEGIN { xfer = 0; xfer_new = 0; xfer_replaced = 0; deleted = 0; }
+
     /^Checks:/                       { checks = $$2 "/" xc($$4) }
     /^Transferred:/ && !/ETA/        { xfer = $$2 "/" xc($$4) }
     /^Transferred:/ && /ETA/         { xfer_size = $$2 $$3 "/" $$5 xc($$6) }
@@ -261,6 +271,7 @@ awk '
     /Copied \(replaced existing\)$$/ { xfer_replaced++ }
     /^Deleted:/                      { deleted = $$2 }
     /^Elapsed time:/                 { elapsed = $$3 }
+
     END {
         printf "rclone_checks %s\n",           checks
         printf "rclone_transferred %s\n",      xfer
@@ -281,7 +292,7 @@ endef
 define rclone_stats
 declare -A S
 while read _k _v; do
-    S[$$_k]="$${_v:-0}"
+    S[$$_k]="$$_v"
     $(call write_stat,$(2),$$_k,$$_v)
 done < <($(call get_rclone_stats,$(3)))
 printf -v stats_log "checks=%s, transferred=%s (%s) (new=%s, replaced=%s), \
@@ -307,11 +318,45 @@ define append_rule_log
 endef
 
 #
-# mb() - rounded MiB
-# usage: $(call mb,bytes)
+# trap_on_signal() - signal handler
+# usage: $(call trap_on_signal,signal,rc)
 #
 
-#mb = $$((($1 + 524288) / 1048576))
+define trap_on_signal
+trap_on_signal() {
+    local sig=$1 sigcode=$2
+    local rc=$$((128 + sigcode))
+
+    $(call log,(WARN) caught $$sig signal)
+
+    rule_elapsed=$(call t_delta,$$t1,$(t))
+    $(call append_rule_log,$$rule_log)
+    $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
+    $(call write_stat,$$rulef,rule_ended_at,$(now))
+    $(call write_stat,$$rulef,rule_elapsed,$${rule_elapsed}s)
+    $(call write_stat,$$rulef,rc,$$rc)
+    $(call log,[$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
+        (elapsed: $(call hms,$$rule_elapsed)))
+
+    $(call set_status,status,NOT RUNNING (interrupted))
+    $(call set_status,program_pid,-)
+    $(call set_status,rclone_pid,-)
+    $(call set_status,ended_at,$(now))
+    $(call set_status,rc,$$rc)
+    t0=$(call get_status,start_epoch)
+    $(call log,end '$(project)' \
+        (total elapsed: $(call t_delta_hms,$$t0,$(t))))
+
+    exit $$rc
+}
+endef
+
+#
+# mib() - rounded MiB
+# usage: $(call mib,bytes)
+#
+
+mib = $$((($1 + 524288) / 1048576))
 
 
 # vim: ts=4
