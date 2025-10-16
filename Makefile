@@ -43,7 +43,6 @@ start:
 	$(call set_status,runid,$(runid))
 	$(call set_status,started_at,$(call at,$$t0))
 	$(call set_status,started_at_epoch,$$t0)
-	$(call set_status,stats_dir,$(stats))
 	$(call set_status,progress,0/0 (0%))
 	$(call set_status,current_rule,-)
 	$(call set_status,current_ruleid,-)
