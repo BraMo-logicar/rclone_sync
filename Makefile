@@ -33,7 +33,6 @@ list::
 
 start:
 	@t0=$(t)
-	printf "\n" >> $(logf)
 	mkdir -p $(stats); : > $(status)
 	$(call set_status,state,RUNNING)
 	$(call set_status,project,$(project))
