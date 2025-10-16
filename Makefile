@@ -32,14 +32,15 @@ list::
 # main
 
 start:
-	@mkdir -p $(stats); : > $(status)
+	@t0=$(t)
+	mkdir -p $(stats); : > $(status)
 	$(call set_status,status,RUNNING)
 	$(call set_status,project,$(project))
 	$(call set_status,program_name,$(program_name))
 	$(call set_status,program_path,$(program_path))
 	$(call set_status,runid,$(runid))
-	$(call set_status,started_at,$(now))
-	$(call set_status,started_at_epoch,$(t))
+	$(call set_status,started_at,$(call at,$$t0))
+	$(call set_status,started_at_epoch,$t0)
 	$(call set_status,stats_dir,$(stats))
 	$(call set_status,progress,0/0 (0%))
 	$(call set_status,current_rule,-)
@@ -116,7 +117,7 @@ main:
         \
         rule_ended_at=$(now); \
         end_epoch=$(t); \
-        rule_elapsed=$(call since,$$t1); \
+        rule_elapsed=$(call t_delta,$$t1,$(t)); \
         \
         $(call append_rule_log,$$rule_log); \
         \
@@ -139,9 +140,10 @@ main:
 end:
 	@t0=$(call get_status,started_at_epoch)
 	$(call set_status,ended_at,$(now))
-	$(call set_status,total_elapsed,$(call since_hms,$$t0))
+	$(call set_status,total_elapsed,$(call t_delta,$$t0,$(t)))
 	$(call set_status,status,NOT RUNNING (completed))
-	$(call log,end '$(project)' (total elapsed: $(call since_hms,$$t0)))
+	$(call log,end '$(project)' \
+        (total elapsed: $(call t_delta_hms,$$t0,$(t))))
 
 # stop & kill
 
@@ -183,16 +185,19 @@ status:
 usage:
 	@t0=$(t)
 	$(call log,start bucket usage (excluding versions))
-	printf "Bucket usage (%s, %s)\n" $(hostname) "$$(date '+%a %d %b %Y')"
-	printf "    bucket: %s\n" $(bucket)
-	printf "    prefix: %s\n" $(dst_root)
+	{ \
+        printf "Bucket usage (%s, %s)\n" \
+            $(hostname) "$$(date '+%a %d %b %Y')"; \
+        printf "    bucket: %s\n" $(bucket); \
+        printf "    prefix: %s\n" $(dst_root); \
+    } > $(usage)
 	{ \
         printf "    excluding versions:\n"; \
         $(rclone) --config $(rclone_conf) size $(rpath) | \
             sed 's/^/        /'; \
-    } > $(usage)
+    } >> $(usage)
 	$(call log,end bucket usage (excluding versions) \
-        (elapsed: $(call since_hms,$$t0)))
+        (elapsed: $(call t_delta_hms,$$t0,$(t))))
 	t0=$(t)
 	$(call log,start bucket usage (including versions))
 	{ \
@@ -201,7 +206,7 @@ usage:
             sed 's/^/        /'; \
     } >> $(usage)
 	$(call log,end bucket usage (including versions) \
-        (elapsed: $(call since_hms,$$t0)))
+        (elapsed: $(call t_delta_hms,$$t0,$(t))))
 
 # logs
 
