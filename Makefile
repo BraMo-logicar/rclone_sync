@@ -9,10 +9,10 @@ include .include.mk
 # targets
 #
 
-.PHONY: help list start main end stop kill status usage
+.PHONY: help list start main end stop kill status status-v usage
 
 help:
-	@echo Makefile: Please specify a target: start, main, end, ...
+	@echo Makefile: Please specify a target: list, start, main, end, ...
 
 $(project): start main end
 
@@ -20,12 +20,12 @@ $(project): start main end
 
 list::
 	@: > $(rclone_list)
-	if find $(src_root) -mindepth 1 -maxdepth 1 -type f | read; then \
-        printf ". ruleid=root-files opts=\"--max-depth 1\"\n" \
-            >> $(rclone_list); \
-    fi
-	find $(src_root) -mindepth 1 -maxdepth 1 -type d -printf "%f\n" | \
-        sort >> $(rclone_list)
+	if find $(src_root) -mindepth 1 -maxdepth 1 -type f | read; then
+	    printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n" \
+            >> $(rclone_list)
+	fi
+	find $(src_root) -mindepth 1 -maxdepth 1 -type d -printf "%f\n" |
+	    sort >> $(rclone_list)
 	n=$$(wc -l < $(rclone_list))
 	$(call log,list $$n entries from '$(src_root)' to '$(rclone_list)')
 
@@ -37,6 +37,7 @@ start:
 	mkdir -p $(stats); : > $(status)
 	$(call set_status,status,RUNNING)
 	$(call set_status,project,$(project))
+	$(call set_status,version,$(version))
 	$(call set_status,program_name,$(program_name))
 	$(call set_status,program_path,$(program_path))
 	$(call set_status,runid,$(runid))
@@ -51,6 +52,7 @@ start:
 	$(call set_status,current_rule_log,-)
 	$(call set_status,program_cmd,-)
 	$(call set_status,rclone_cmd,-)
+	$(call set_status,rclone_ver,$(rclone_ver))
 	$(call set_status,make_pid,$$PPID)
 	$(call set_status,shell_pid,-)
 	$(call set_status,program_pid,-)
@@ -59,7 +61,7 @@ start:
 	$(call set_status,total_elapsed,-)
 	$(call set_status,rc,0)
 
-	$(call log,start '$(project)' @ $(hostname) ($(ip)))
+	$(call log,start '$(project)' (v$(version)) @ $(hostname) ($(ip)))
 	[ -L $(stats)/last ] && ln -fns $$(readlink $(stats)/last) $(stats)/prev
 	rm -rf $(logrun); mkdir -p $(logrun)
 	mkdir -p $(stats)/$(runid)
@@ -148,7 +150,7 @@ end:
 # stop & kill
 
 stop:
-    @printf "[$(project)] graceful stop requested: exit after current rule\n"
+	@printf "[$(project)] graceful stop requested: exit after current rule\n"
 	: > $(stop)
 	$(call log,graceful stop requested: exit after current rule$(,) \
         flag '$(stop)' created)
@@ -162,49 +164,85 @@ kill:
         program $$program_pid rclone $$rclone_pid
 	$(call log,global kill requested (recipe_shell=$$shell_pid$(,) \
         program=$$program_pid$(,) rclone=$$rclone_pid))
-	for sig in INT TERM KILL; do \
-        for pid in $$rclone_pid $$program_pid $$shell_pid; do \
-             if kill -0 $$pid 2>/dev/null; then \
-                 printf "  send SIG%s to %s\n" $$sig $$pid; \
-                 kill -s $$sig $$pid 2>/dev/null || true; \
-             fi; \
-        done; \
-        sleep 1; \
-    done
+	for sig in INT TERM KILL; do
+	    for pid in $$rclone_pid $$program_pid $$shell_pid; do
+	         if kill -0 $$pid 2>/dev/null; then
+	             printf "  send SIG%s to %s\n" $$sig $$pid
+	             kill -s $$sig $$pid 2>/dev/null || true
+	         fi
+	    done
+	    sleep 1
+	done
 	$(call log,global kill: sent signals to rclone=$$rclone_pid$(,) \
         program=$$program_pid$(,) recipe_shell=$$shell_pid)
 
 # status
 
-status:
-	@[ -f $(status) ] || { echo "$(program_name) not running"; exit 0; }
-	echo "$(project)/$(program_name) running"
+status status-v:
+	@[ $@ = status-v ] && verbose=: || verbose=false
+	status="$(call get_kv,status)"
+	[ "$$status" = RUNNING ] && running=: || running=false
+
+	started_at=$(call get_kv,started_at)
+	started_at_epoch=$(call get_kv,started_at_epoch)
+	elapsed=$(call t_delta_hms,$$started_at_epoch,$(t))
+	current_rule="$(call get_kv,current_rule)"
+	flow=
+	pids=
+	rclone_ver="$(rclone_ver)"
+
+	#progress="$$([ -f '$(RUN_META)' ] && $(call meta,progress) || echo '-')"
+
+	printf "%s (v%s) @ %s (%s)\n\n" $(project) $(version) $(hostname) $(now)
+	printf "%-16s : %s\n" status "$$status"
+	printf "%-16s : %s\n" runid $(runid)
+
+	running=:
+	if $$running; then
+	    make_pid=$(call get_kv,make_pid)
+	    shell_pid=$(call get_kv,shell_pid)
+	    program_pid=$(call get_kv,program_pid)
+	    rclone_pid=$(call get_kv,rclone_pid)
+	    pids="make=$$make_pid, shell=$$shell_pid, "
+	    pids+="rclone_sync=$$program_pid, rclone=$$rclone_pid"
+
+	    printf "%-16s : %s  (elapsed: %s)\n" \
+            "started at" $$started_at $$elapsed
+	    printf "%-16s : %s\n" "current rule" $$current_rule
+	    printf "%-16s : %s -> %s\n" flow $(lpath) $(rpath)
+	    printf "%-16s : %s\n" pids "$$pids"
+	    printf "%-16s : %s\n" "rclone ver" $(rclone_ver)
+	else
+	    printf "%-16s : %s\n" "started at" $$started_at
+	    printf "%-16s : %s -> %s\n" flow $(lpath) $(rpath)
+	    printf "%-16s : %s\n" "rclone ver" $(rclone_ver)
+	fi
 
 # usage
 
 usage:
 	@t0=$(t)
 	$(call log,start bucket usage (excluding versions))
-	{ \
-        printf "Bucket usage (%s, %s)\n" \
-            $(hostname) "$$(date '+%a %d %b %Y')"; \
-        printf "    bucket: %s\n" $(bucket); \
-        printf "    prefix: %s\n" $(dst_root); \
-    } > $(usage)
-	{ \
-        printf "    excluding versions:\n"; \
-        $(rclone) --config $(rclone_conf) size $(rpath) | \
-            sed 's/^/        /'; \
-    } >> $(usage)
+	{
+	    printf "Bucket usage (%s, %s)\n" \
+            $(hostname) "$$(date '+%a %d %b %Y')"
+	    printf "    bucket: %s\n" $(bucket)
+	    printf "    prefix: %s\n" $(dst_root)
+	} > $(usage)
+	{
+	    printf "    excluding versions:\n"
+	    $(rclone) --config $(rclone_conf) size $(rpath) |
+	        sed 's/^/        /'
+	} >> $(usage)
 	$(call log,end bucket usage (excluding versions) \
         (elapsed: $(call t_delta_hms,$$t0,$(t))))
 	t0=$(t)
 	$(call log,start bucket usage (including versions))
-	{ \
-        printf "    including versions:\n"; \
-        $(rclone) --config $(rclone_conf) size --s3-versions $(rpath) | \
-            sed 's/^/        /'; \
-    } >> $(usage)
+	{
+	    printf "    including versions:\n"
+	    $(rclone) --config $(rclone_conf) size --s3-versions $(rpath) |
+	        sed 's/^/        /'
+	} >> $(usage)
 	$(call log,end bucket usage (including versions) \
         (elapsed: $(call t_delta_hms,$$t0,$(t))))
 
@@ -218,52 +256,5 @@ log-last:
 
 -include .site.mk
 
-
-#rclone_sync.mail:
-#	@c=`awk '/^Checks:/ { print $$2 }' $(logt)`; \
-#    x=`grep ^Transferred: $(logt) | grep -v 'ETA' | awk '{ print $$2 }'`; \
-#    xn=`grep -c "Copied (new)" $(logt)`; \
-#    xr=`grep -c "Copied (replaced existing)" $(logt)`; \
-#    s=`grep ^Transferred: $(logt) | grep 'ETA' | awk '{ print $$2, $$3 }'`; \
-#    d=`awk '/^Deleted:/ { print $$2 }' $(logt)`; \
-#    runat=`cat $(logts)`; \
-#    elapsed=`awk '/Elapsed time:/ { print $$3 }' $(logt)`; \
-#    subj="[$(project)@$(host)] rclone sync to s3 bucket $(remote)"; \
-#    subj+=" ($${xn-=0}+/$${xr-=0}=/$${d:-0}-)"; \
-#    (                                                            \
-#        echo "From: $(mail_From)";                               \
-#        echo "To: $(mail_To)";                                   \
-#        echo "Subject: $$subj";                                  \
-#        echo;                                                    \
-#        echo "Sync by rclone: '$(host):$(lpath)' -> '$(rpath)'"; \
-#        echo;                                                    \
-#        echo "Host                : $(hostname)";                \
-#        echo "Local path          : $(lpath)";                   \
-#        echo "Bucket              : $(bucket)";                  \
-#        echo "Prefix              : $(prefix)";                  \
-#        echo "Objects checked     : $${c:-0}";                   \
-#        echo "Objects transferred : $${x:-0}";                   \
-#        echo "  new               : $${xn:-0}";                  \
-#        echo "  replaced          : $${xr:-0}";                  \
-#        echo "Data transferred    : $${s:-0}";                   \
-#        echo "Objects deleted     : $${d:-0}";                   \
-#        echo "Run at              : $$runat";                    \
-#        echo "Elapsed             : $$elapsed";                  \
-#        echo;                                                    \
-#        echo "Disk usage:";                                      \
-#        df -t $(fstype) -h | sed 's/^/  /';                      \
-#        echo;                                                    \
-#        echo "Bucket usage:";                                    \
-#        sed -n '1,2s/^/  /p' $(sizef);                           \
-#        echo "Bucket usage (including versions):";               \
-#        sed -n '3,4s/^/  /p' $(sizef);                           \
-#        echo;                                                    \
-#        if [ $(mail_log) = "yes" ]; then                         \
-#            echo "--- log ---";                                  \
-#            cat $(logt);                                         \
-#            echo;                                                \
-#        fi;                                                      \
-#    ) | $(sendmail) -f $(mail_from) $(mail_to) && \
-#    $(call log,"mail sent (from: <$(mail_from)>, to: <$(mail_to)>)")
 
 # vim: ts=4
