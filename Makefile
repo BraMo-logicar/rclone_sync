@@ -33,6 +33,7 @@ list::
 
 start:
 	@t0=$(t)
+	printf "\n" >> $(logf)
 	mkdir -p $(stats); : > $(status)
 	$(call set_status,status,RUNNING)
 	$(call set_status,project,$(project))
@@ -40,11 +41,11 @@ start:
 	$(call set_status,program_path,$(program_path))
 	$(call set_status,runid,$(runid))
 	$(call set_status,started_at,$(call at,$$t0))
-	$(call set_status,started_at_epoch,$t0)
+	$(call set_status,started_at_epoch,$$t0)
 	$(call set_status,stats_dir,$(stats))
 	$(call set_status,progress,0/0 (0%))
 	$(call set_status,current_rule,-)
-	$(call set_status,current_rule_id,-)
+	$(call set_status,current_ruleid,-)
 	$(call set_status,current_rule_started_at,-)
 	$(call set_status,current_rule_path,-)
 	$(call set_status,current_rule_log,-)
