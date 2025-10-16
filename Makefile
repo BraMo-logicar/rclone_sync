@@ -47,7 +47,7 @@ start:
 	$(call set_status,current_rule,-)
 	$(call set_status,current_ruleid,-)
 	$(call set_status,current_rule_started_at,-)
-	$(call set_status,current_rule_path,-)
+	$(call set_status,current_rule_status,-)
 	$(call set_status,current_rule_log,-)
 	$(call set_status,program_cmd,-)
 	$(call set_status,rclone_cmd,-)
@@ -91,7 +91,7 @@ main:
         $(call set_status,progress,$$k/$$n ($$pct%)); \
         $(call set_status,current_rule,$$rule); \
         $(call set_status,current_ruleid,$$ruleid); \
-        $(call set_status,current_rule_path,$$rulef); \
+        $(call set_status,current_rule_status,$$rulef); \
         $(call set_status,current_rule_log,$$rule_log); \
         \
         src=$(lpath)/$$relpath; \
