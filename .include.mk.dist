@@ -18,6 +18,7 @@ SHELL := /usr/bin/bash
 home := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 project      := $(notdir $(home))
+version      := 2.0
 program_name := rclone_sync
 program_path := $(home)/bin/$(program_name)
 
@@ -58,6 +59,7 @@ rpath   := $(remote):$(bucket)$(dst_root)
 
 rclone_conf := $(home)/etc/rclone.conf
 rclone_list := $(home)/etc/rclone.list
+rclone_ver  := $(shell rclone version | sed -n '1s/.* v//p')
 
 # os
 
@@ -82,11 +84,10 @@ mail_log := yes
 # misc
 
 , := ,
-#rclone_v := $(shell rclone version | sed -n '1s/.* v//p')
 
-#----------
-# functions
-#----------
+#---------------
+# core functions
+#---------------
 
 #
 # t() - current epoch (sec.msec)
@@ -159,12 +160,18 @@ relpath = $$(printf "%s" $(1) | sed 's|$(home)/||')
 #
 
 define parse_rule
+unset opts
 rule=$$(printf "%s\n" "$(1)")
-relpath=$$(printf "%s\n" "$$rule" | awk '{ print $$1 }')
-[ "$$relpath" = "." ] && relpath=
-ruleid=$${relpath##*/} opts=
-rest=$$(printf "%s\n" "$$rule" | awk '{ $$1 = ""; print }')
-set -f; eval "$$rest"; set +f
+if printf "%s" "$$rule" | grep -q " -- "; then
+    path=$${rule%% -- *}
+    opts=$${rule#* -- }
+else
+    path=$$(printf "%s\n" "$$rule" | awk '{ print $$1 }')
+    opts=$$(printf "%s\n" "$$rule" | awk '{ $$1 = ""; print }')
+fi
+[ "$$path" = "." ] && path=
+ruleid=$$(printf "%s" "$${path##*/}" | tr '[:space:]' '_')
+set -f; eval "$$opts"; set +f
 endef
 
 #
@@ -324,39 +331,65 @@ endef
 
 define trap_on_signal
 trap_on_signal() {
-    local sig=$1 sigcode=$2
+    local sig=$$1 sigcode=$$2
     local rc=$$((128 + sigcode))
 
     $(call log,(WARN) caught $$sig signal)
 
-    rule_elapsed=$(call t_delta,$$t1,$(t))
+    t2=$(t);
+    rule_ended_at=$(call at,$$t2)
+    if [ -n "$$t1" ]; then
+        rule_elapsed=$(call t_delta,$$t1,$$t2)
+        rule_elapsed_hms=$(call hms,$$rule_elapsed)
+    else
+        rule_elapsed=
+        rule_elapsed_hms=unknown
+    fi
+
     $(call append_rule_log,$$rule_log)
     $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
-    $(call write_stat,$$rulef,rule_ended_at,$(now))
-    $(call write_stat,$$rulef,rule_elapsed,$${rule_elapsed}s)
+    $(call write_stat,$$rulef,rule_ended_at,$$rule_ended_at)
+    [ -n "$$rule_elapsed" ] && \
+        $(call write_stat,$$rulef,rule_elapsed,$$rule_elapsed)
     $(call write_stat,$$rulef,rc,$$rc)
-    $(call log,[$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
-        (elapsed: $(call hms,$$rule_elapsed)))
 
-    $(call set_status,status,NOT RUNNING (interrupted))
     $(call set_status,program_pid,-)
     $(call set_status,rclone_pid,-)
-    $(call set_status,ended_at,$(now))
     $(call set_status,rc,$$rc)
-    t0=$(call get_status,start_epoch)
+    $(call log,[$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
+        (elapsed: $$rule_elapsed_hms))
+
+    t0=$(call get_status,started_at_epoch)
+    t3=$(t)
+    $(call set_status,ended_at,$(call at,$$t3))
+    $(call set_status,total_elapsed,$(call t_delta_hms,$$t0,$$t3))
+    $(call set_status,status,NOT RUNNING (interrupted))
     $(call log,end '$(project)' \
-        (total elapsed: $(call t_delta_hms,$$t0,$(t))))
+        (total elapsed: $(call t_delta_hms,$$t0,$$t3)))
 
     exit $$rc
 }
 endef
+
+#-----------------
+# report functions
+#-----------------
+
+#
+# get_kv() - get a value of a given key from the status file (default: global)
+# usage: $(call get_kv,key,[file])
+#
+
+get_kv = $$(awk -F': ' -v k=$(1) ' \
+    $$1 == k { sub(/^ +/, "", $$2); print $$2 } \
+' $(if $(2),$(2),$(status)))
 
 #
 # mib() - rounded MiB
 # usage: $(call mib,bytes)
 #
 
-mib = $$((($1 + 524288) / 1048576))
+mib = $$((($$1 + 524288) / 1048576))
 
 
 # vim: ts=4
