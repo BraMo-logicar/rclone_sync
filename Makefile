@@ -76,54 +76,52 @@ main:
 	k=0
 	while read rule; do \
         k=$$((k+1)); \
-        $(call parse_rule,$$rule); \
         \
-        rule_started_at=$(now); \
+        $(call parse_rule,$$rule); \
         rulef=$(stats)/$(runid)/$$ruleid; \
-        pct=$$(echo "scale=2; 100*$$k/$$n" | bc); \
         rule_log=$(logrun)/$$ruleid.log; \
+        pct=$$(echo "scale=2; 100*$$k/$$n" | bc); \
         \
         $(call write_stat,$$rulef,rule,$$rule); \
         $(call write_stat,$$rulef,ruleid,$$ruleid); \
-        $(call write_stat,$$rulef,rule_started_at,$$rule_started_at); \
         $(call write_stat,$$rulef,progress,$$k/$$n ($$pct%)); \
         \
         $(call set_status,progress,$$k/$$n ($$pct%)); \
         $(call set_status,current_rule,$$rule); \
         $(call set_status,current_ruleid,$$ruleid); \
-        $(call set_status,current_rule_started_at,$$rule_started_at); \
         $(call set_status,current_rule_path,$$rulef); \
         $(call set_status,current_rule_log,$$rule_log); \
-        \
-        $(call log,rule '$$rule'); \
-        $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%)); \
         \
         src=$(lpath)/$$relpath; \
         dst=$(rpath)/$$relpath; \
         program_cmd=($(program_path) $${opts:+-o "$$opts"} $$src $$dst); \
-        \
         $(call write_stat,$$rulef,program_cmd,$${program_cmd[*]}); \
         $(call set_status,program_cmd,$${program_cmd[*]}); \
         \
+        $(call log,rule '$$rule'); \
+        $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%)); \
         $(call log,[$$ruleid] start '$(program_name)'); \
         $(call log,[$$ruleid] command line: $${program_cmd[*]}); \
         \
         t1=$(t); \
+        rule_started_at=$(call at,$$t1); \
+        $(call write_stat,$$rulef,rule_started_at,$$rule_started_at); \
+        $(call set_status,current_rule_started_at,$$rule_started_at); \
+        \
         "$${program_cmd[@]}" &> $$rule_log & program_pid=$$!; \
         $(watch_rclone); \
         $(call set_status,program_pid,$$program_pid); \
         rc=0; wait $$program_pid || rc=$$?; \
         wait $$watcher_pid || true; \
         \
-        rule_ended_at=$(now); \
-        end_epoch=$(t); \
-        rule_elapsed=$(call t_delta,$$t1,$(t)); \
+        t2=$(t); \
+        rule_ended_at=$(call at,$$t2); \
+        rule_elapsed=$(call t_delta,$$t1,$$t2); \
         \
         $(call append_rule_log,$$rule_log); \
-        \
         $(call rclone_stats,$$ruleid,$$rulef,$$rule_log); \
-        $(call write_stat,$$rulef,rule_ended_at,$(now)); \
-        $(call write_stat,$$rulef,rule_elapsed,$${rule_elapsed}s); \
+        $(call write_stat,$$rulef,rule_ended_at,$$rule_ended_at); \
+        $(call write_stat,$$rulef,rule_elapsed,$$rule_elapsed); \
         $(call write_stat,$$rulef,rc,$$rc); \
         \
         $(call set_status,program_pid,-); \
@@ -139,11 +137,12 @@ main:
 
 end:
 	@t0=$(call get_status,started_at_epoch)
-	$(call set_status,ended_at,$(now))
-	$(call set_status,total_elapsed,$(call t_delta,$$t0,$(t)))
+	t3=$(t)
+	$(call set_status,ended_at,$(call at,$$t3))
+	$(call set_status,total_elapsed,$(call hms,$(call t_delta,$$t0,$$t3)))
 	$(call set_status,status,NOT RUNNING (completed))
 	$(call log,end '$(project)' \
-        (total elapsed: $(call t_delta_hms,$$t0,$(t))))
+        (total elapsed: $(call t_delta_hms,$$t0,$$t3)))
 
 # stop & kill
 
