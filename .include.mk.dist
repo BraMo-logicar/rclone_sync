@@ -363,7 +363,7 @@ trap_on_signal() {
     t3=$(t)
     $(call set_status,ended_at,$(call at,$$t3))
     $(call set_status,total_elapsed,$(call t_delta_hms,$$t0,$$t3))
-    $(call set_status,status,NOT RUNNING (interrupted))
+    $(call set_status,state,NOT RUNNING (interrupted))
     $(call log,end '$(project)' \
         (total elapsed: $(call t_delta_hms,$$t0,$$t3)))
 

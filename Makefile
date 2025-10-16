@@ -35,7 +35,7 @@ start:
 	@t0=$(t)
 	printf "\n" >> $(logf)
 	mkdir -p $(stats); : > $(status)
-	$(call set_status,status,RUNNING)
+	$(call set_status,state,RUNNING)
 	$(call set_status,project,$(project))
 	$(call set_status,version,$(version))
 	$(call set_status,program_name,$(program_name))
@@ -143,7 +143,7 @@ end:
 	t3=$(t)
 	$(call set_status,ended_at,$(call at,$$t3))
 	$(call set_status,total_elapsed,$(call hms,$(call t_delta,$$t0,$$t3)))
-	$(call set_status,status,NOT RUNNING (completed))
+	$(call set_status,state,NOT RUNNING (completed))
 	$(call log,end '$(project)' \
         (total elapsed: $(call t_delta_hms,$$t0,$$t3)))
 
@@ -180,8 +180,8 @@ kill:
 
 status status-v:
 	@[ $@ = status-v ] && verbose=: || verbose=false
-	status="$(call get_kv,status)"
-	[ "$$status" = RUNNING ] && running=: || running=false
+	state="$(call get_kv,state)"
+	[ "$$state" = RUNNING ] && running=: || running=false
 
 	started_at=$(call get_kv,started_at)
 	started_at_epoch=$(call get_kv,started_at_epoch)
@@ -194,7 +194,7 @@ status status-v:
 	#progress="$$([ -f '$(RUN_META)' ] && $(call meta,progress) || echo '-')"
 
 	printf "%s (v%s) @ %s (%s)\n\n" $(project) $(version) $(hostname) $(now)
-	printf "%-16s : %s\n" status "$$status"
+	printf "%-16s : %s\n" state "$$state"
 	printf "%-16s : %s\n" runid $(runid)
 
 	running=:
