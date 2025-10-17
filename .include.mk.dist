@@ -376,6 +376,26 @@ endef
 #-----------------
 
 #
+# colors() - initialize ansi colors
+# usage: $(colors)
+#
+
+define colors
+ESC="\033"
+if [ -t 1 ]; then
+	BLD="$$ESC[1m" RST="$$ESC[0m"
+
+	RED="$$ESC[31m"
+	GRN="$$ESC[32m"
+	YEL="$$ESC[33m"
+	BLU="$$ESC[34m"
+	MAG="$$ESC[35m"
+else
+	BLD= RST= RED= GRN= YEL= BLU= MAG=
+fi
+endef
+
+#
 # get_kv() - get a value of a given key from the status file (default: global)
 # usage: $(call get_kv,key,[file])
 #
