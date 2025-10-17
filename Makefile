@@ -94,9 +94,9 @@ main:
 	    $(call write_stat,$$rulef,ruleid,$$ruleid)
 	    $(call write_stat,$$rulef,progress,$$k/$$n ($$pct%))
 
-	    src=$(lpath)/$$relpath
-	    dst=$(rpath)/$$relpath
-	    program_cmd=($(program_path) $${opts:+-o "$$opts"} $$src $$dst)
+	    src="$(lpath)/$$path"
+	    dst="$(rpath)/$$path"
+	    program_cmd=($(program_path) $${opts:+-o "$$opts"} "$$src" "$$dst")
 
 	    $(call write_stat,$$rulef,rule_src,$$src)
 	    $(call write_stat,$$rulef,rule_dst,$$dst)
@@ -189,7 +189,9 @@ kill:
 # status
 
 status status-v:
-	@printf "%s (v%s) @ %s (%s)\n\n" $(project) $(version) $(hostname) $(now)
+	@$(colors)
+	printf "$$BLD%s (v%s) @ %s (%s)$$RST\n\n" \
+        $(project) $(version) $(hostname) $(now)
 
 	[ $@ = status-v ] && verbose=: || verbose=false
 	state="$(call get_kv,state)"
@@ -214,11 +216,11 @@ status status-v:
 	    pids="make=$${make_pid:--}, shell=$${shell_pid:--}, "
 	    pids+="rclone_sync=$${program_pid:--}, rclone=$${rclone_pid:--}"
 
-	    printf "%-16s : %s\n" state "$$state"
+	    printf "%-16s : $$RED%s$$RST\n" state "$$state"
 	    printf "%-16s : %s\n" runid $(runid)
 	    printf "%-16s : %s  (elapsed: %s)\n" "started at" \
             $$started_at $$elapsed
-	    printf "%-16s : %s (%s)\n" "current rule" \
+	    printf "%-16s : $$RED%s$$RST ($$RED%s$$RST)\n" "current rule" \
             $$current_ruleid "$$progress"
 	    printf "%-16s : %s -> %s\n" flow \
             "$$current_rule_src" "$$current_rule_dst"
@@ -228,7 +230,7 @@ status status-v:
 	    ended_at=$(call get_kv,ended_at)
 	    total_elapsed=$(call get_kv,total_elapsed)
 
-	    printf "%-16s : %s\n" state "$$state"
+	    printf "%-16s : $$RED%s$$RST\n" state "$$state"
 	    printf "%-16s : %s\n" runid $(runid)
 	    printf "%-16s : %s\n" "started at" $$started_at
 	    printf "%-16s : %s\n" "ended at" $$ended_at
