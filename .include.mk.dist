@@ -163,11 +163,9 @@ define parse_rule
 unset opts
 rule=$$(printf "%s\n" "$(1)")
 if printf "%s" "$$rule" | grep -q " -- "; then
-    path=$${rule%% -- *}
-    opts=$${rule#* -- }
+    path="$${rule%% -- *}" opts="$${rule#* -- }"
 else
-    path=$$(printf "%s\n" "$$rule" | awk '{ print $$1 }')
-    opts=$$(printf "%s\n" "$$rule" | awk '{ $$1 = ""; print }')
+    path="$$rule" opts=
 fi
 [ "$$path" = "." ] && path=
 ruleid=$$(printf "%s" "$${path##*/}" | tr '[:space:]' '_')
