@@ -37,24 +37,31 @@ start:
 	$(call set_status,state,RUNNING)
 	$(call set_status,project,$(project))
 	$(call set_status,version,$(version))
-	$(call set_status,program_name,$(program_name))
-	$(call set_status,program_path,$(program_path))
 	$(call set_status,runid,$(runid))
+
 	$(call set_status,started_at,$(call at,$$t0))
 	$(call set_status,started_at_epoch,$$t0)
 	$(call set_status,progress,0/0 (0%))
+
 	$(call set_status,current_rule,-)
 	$(call set_status,current_ruleid,-)
+	$(call set_status,current_rule_src,-)
+	$(call set_status,current_rule_dst,-)
 	$(call set_status,current_rule_started_at,-)
 	$(call set_status,current_rule_status,-)
 	$(call set_status,current_rule_log,-)
+
+	$(call set_status,program_name,$(program_name))
+	$(call set_status,program_path,$(program_path))
 	$(call set_status,program_cmd,-)
 	$(call set_status,rclone_cmd,-)
 	$(call set_status,rclone_ver,$(rclone_ver))
+
 	$(call set_status,make_pid,$$PPID)
 	$(call set_status,shell_pid,-)
 	$(call set_status,program_pid,-)
 	$(call set_status,rclone_pid,-)
+
 	$(call set_status,ended_at,-)
 	$(call set_status,total_elapsed,-)
 	$(call set_status,rc,0)
@@ -75,66 +82,71 @@ main:
 	$(call set_status,shell_pid,$$shell_pid)
 
 	k=0
-	while read rule; do \
-        k=$$((k+1)); \
-        \
-        $(call parse_rule,$$rule); \
-        rulef=$(stats)/$(runid)/$$ruleid; \
-        rule_log=$(logrun)/$$ruleid.log; \
-        pct=$$(echo "scale=2; 100*$$k/$$n" | bc); \
-        \
-        $(call write_stat,$$rulef,rule,$$rule); \
-        $(call write_stat,$$rulef,ruleid,$$ruleid); \
-        $(call write_stat,$$rulef,progress,$$k/$$n ($$pct%)); \
-        \
-        $(call set_status,progress,$$k/$$n ($$pct%)); \
-        $(call set_status,current_rule,$$rule); \
-        $(call set_status,current_ruleid,$$ruleid); \
-        $(call set_status,current_rule_status,$$rulef); \
-        $(call set_status,current_rule_log,$$rule_log); \
-        \
-        src=$(lpath)/$$relpath; \
-        dst=$(rpath)/$$relpath; \
-        program_cmd=($(program_path) $${opts:+-o "$$opts"} $$src $$dst); \
-        $(call write_stat,$$rulef,program_cmd,$${program_cmd[*]}); \
-        $(call set_status,program_cmd,$${program_cmd[*]}); \
-        \
-        $(call log,rule '$$rule'); \
-        $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%)); \
-        $(call log,[$$ruleid] start '$(program_name)'); \
-        $(call log,[$$ruleid] command line: $${program_cmd[*]}); \
-        \
-        t1=$(t); \
-        rule_started_at=$(call at,$$t1); \
-        $(call write_stat,$$rulef,rule_started_at,$$rule_started_at); \
-        $(call set_status,current_rule_started_at,$$rule_started_at); \
-        \
-        "$${program_cmd[@]}" &> $$rule_log & program_pid=$$!; \
-        $(watch_rclone); \
-        $(call set_status,program_pid,$$program_pid); \
-        rc=0; wait $$program_pid || rc=$$?; \
-        wait $$watcher_pid || true; \
-        \
-        t2=$(t); \
-        rule_ended_at=$(call at,$$t2); \
-        rule_elapsed=$(call t_delta,$$t1,$$t2); \
-        \
-        $(call append_rule_log,$$rule_log); \
-        $(call rclone_stats,$$ruleid,$$rulef,$$rule_log); \
-        $(call write_stat,$$rulef,rule_ended_at,$$rule_ended_at); \
-        $(call write_stat,$$rulef,rule_elapsed,$$rule_elapsed); \
-        $(call write_stat,$$rulef,rc,$$rc); \
-        \
-        $(call set_status,program_pid,-); \
-        $(call set_status,rclone_pid,-); \
-        if [ $$rc -ne 0 ]; then $(call set_status,rc,$$rc); fi; \
-        \
-        [ $$rc -ne 0 ] && warn=" (WARN)" || warn=""; \
-        $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
-            (elapsed: $(call hms,$$rule_elapsed))); \
-        \
-        $(stop_guard); \
-    done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
+	while read rule; do
+	    k=$$((k+1));
+
+	    $(call parse_rule,$$rule)
+	    rulef=$(stats)/$(runid)/$$ruleid
+	    rule_log=$(logrun)/$$ruleid.log
+	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
+
+	    $(call write_stat,$$rulef,rule,$$rule)
+	    $(call write_stat,$$rulef,ruleid,$$ruleid)
+	    $(call write_stat,$$rulef,progress,$$k/$$n ($$pct%))
+
+	    src=$(lpath)/$$relpath
+	    dst=$(rpath)/$$relpath
+	    program_cmd=($(program_path) $${opts:+-o "$$opts"} $$src $$dst)
+
+	    $(call write_stat,$$rulef,rule_src,$$src)
+	    $(call write_stat,$$rulef,rule_dst,$$dst)
+	    $(call write_stat,$$rulef,program_cmd,$${program_cmd[*]})
+
+	    $(call set_status,progress,$$k/$$n ($$pct%))
+	    $(call set_status,current_rule,$$rule)
+	    $(call set_status,current_ruleid,$$ruleid)
+	    $(call set_status,current_rule_src,$$src)
+	    $(call set_status,current_rule_dst,$$dst)
+	    $(call set_status,current_rule_status,$$rulef)
+	    $(call set_status,current_rule_log,$$rule_log)
+	    $(call set_status,program_cmd,$${program_cmd[*]})
+
+	    $(call log,rule '$$rule')
+	    $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%))
+	    $(call log,[$$ruleid] start '$(program_name)')
+	    $(call log,[$$ruleid] command line: $${program_cmd[*]})
+
+	    t1=$(t)
+	    rule_started_at=$(call at,$$t1)
+	    $(call write_stat,$$rulef,rule_started_at,$$rule_started_at)
+	    $(call set_status,current_rule_started_at,$$rule_started_at)
+
+	    "$${program_cmd[@]}" &> $$rule_log & program_pid=$$!
+	    $(call set_status,program_pid,$$program_pid)
+	    $(watch_rclone)
+	    rc=0; wait $$program_pid || rc=$$?
+	    wait $$watcher_pid || true
+
+	    t2=$(t)
+	    rule_ended_at=$(call at,$$t2)
+	    rule_elapsed=$(call t_delta,$$t1,$$t2)
+
+	    $(call append_rule_log,$$rule_log)
+	    $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
+	    $(call write_stat,$$rulef,rule_ended_at,$$rule_ended_at)
+	    $(call write_stat,$$rulef,rule_elapsed,$$rule_elapsed)
+	    $(call write_stat,$$rulef,rc,$$rc)
+
+	    $(call set_status,program_pid,-)
+	    $(call set_status,rclone_pid,-)
+	    if [ $$rc -ne 0 ]; then $(call set_status,rc,$$rc); fi
+
+	    [ $$rc -ne 0 ] && warn=" (WARN)" || warn=""
+	    $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
+            (elapsed: $(call hms,$$rule_elapsed)))
+
+	    $(stop_guard);
+	done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
 
 end:
 	@t0=$(call get_status,started_at_epoch)
@@ -177,43 +189,52 @@ kill:
 # status
 
 status status-v:
-	@[ $@ = status-v ] && verbose=: || verbose=false
+	@printf "%s (v%s) @ %s (%s)\n\n" $(project) $(version) $(hostname) $(now)
+
+	[ $@ = status-v ] && verbose=: || verbose=false
 	state="$(call get_kv,state)"
 	[ "$$state" = RUNNING ] && running=: || running=false
 
 	started_at=$(call get_kv,started_at)
-	started_at_epoch=$(call get_kv,started_at_epoch)
-	elapsed=$(call t_delta_hms,$$started_at_epoch,$(t))
-	current_rule="$(call get_kv,current_rule)"
-	flow=
-	pids=
+	current_ruleid="$(call get_kv,current_ruleid)"
 	rclone_ver="$(rclone_ver)"
-
-	#progress="$$([ -f '$(RUN_META)' ] && $(call meta,progress) || echo '-')"
-
-	printf "%s (v%s) @ %s (%s)\n\n" $(project) $(version) $(hostname) $(now)
-	printf "%-16s : %s\n" state "$$state"
-	printf "%-16s : %s\n" runid $(runid)
 
 	running=:
 	if $$running; then
+	    started_at_epoch=$(call get_kv,started_at_epoch)
+	    elapsed=$(call t_delta_hms,$$started_at_epoch,$(t))
+	    current_ruleid=$(call get_kv,current_ruleid)
+	    progress=$$(echo $(call get_kv,progress) | sed 's/ (/, /;s/)//')
+	    current_rule_src="$(call get_kv,current_rule_src)"
+	    current_rule_dst="$(call get_kv,current_rule_dst)"
 	    make_pid=$(call get_kv,make_pid)
 	    shell_pid=$(call get_kv,shell_pid)
 	    program_pid=$(call get_kv,program_pid)
 	    rclone_pid=$(call get_kv,rclone_pid)
-	    pids="make=$$make_pid, shell=$$shell_pid, "
-	    pids+="rclone_sync=$$program_pid, rclone=$$rclone_pid"
+	    pids="make=$${make_pid:--}, shell=$${shell_pid:--}, "
+	    pids+="rclone_sync=$${program_pid:--}, rclone=$${rclone_pid:--}"
 
-	    printf "%-16s : %s  (elapsed: %s)\n" \
-            "started at" $$started_at $$elapsed
-	    printf "%-16s : %s\n" "current rule" $$current_rule
-	    printf "%-16s : %s -> %s\n" flow $(lpath) $(rpath)
+	    printf "%-16s : %s\n" state "$$state"
+	    printf "%-16s : %s\n" runid $(runid)
+	    printf "%-16s : %s  (elapsed: %s)\n" "started at" \
+            $$started_at $$elapsed
+	    printf "%-16s : %s (%s)\n" "current rule" \
+            $$current_ruleid "$$progress"
+	    printf "%-16s : %s -> %s\n" flow \
+            "$$current_rule_src" "$$current_rule_dst"
 	    printf "%-16s : %s\n" pids "$$pids"
-	    printf "%-16s : %s\n" "rclone ver" $(rclone_ver)
+	    printf "%-16s : %s\n" rclone $(rclone_ver)
 	else
+	    ended_at=$(call get_kv,ended_at)
+	    total_elapsed=$(call get_kv,total_elapsed)
+
+	    printf "%-16s : %s\n" state "$$state"
+	    printf "%-16s : %s\n" runid $(runid)
 	    printf "%-16s : %s\n" "started at" $$started_at
+	    printf "%-16s : %s\n" "ended at" $$ended_at
+	    printf "%-16s : %s\n" elapsed $$total_elapsed
 	    printf "%-16s : %s -> %s\n" flow $(lpath) $(rpath)
-	    printf "%-16s : %s\n" "rclone ver" $(rclone_ver)
+	    printf "%-16s : %s\n" rclone $(rclone_ver)
 	fi
 
 # usage

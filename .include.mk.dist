@@ -104,7 +104,7 @@ t = $$(date +%s.%3N)
 now = $$(date +%Y.%m.%d-%H:%M:%S)
 
 #
-# at(epoch) – format an epoch (sec.msec -> yyyy.mm.dd-hh:mm:ss)
+# at(epoch) - format an epoch (sec.msec -> yyyy.mm.dd-hh:mm:ss)
 # usage: $(call at,epoch)
 #
 
