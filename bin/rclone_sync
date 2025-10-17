@@ -12,7 +12,7 @@
 #     <local_path>                  : local path to sync
 #     <remote:bucket/path>          : remote path
 # Author: Marco Broglia (marco.broglia@mutex.it)
-# Date: 2025.09.15
+# Date: 2025.10.17
 
 #
 # vars
@@ -102,7 +102,7 @@ log "start '$progname'"
 # run
 
 log "run '$rclone sync ${OPTS[@]} ${MYRAWOPTS[@]} $lpath $rpath'"
-$rclone sync "${OPTS[@]}" "${MYOPTS[@]}" $lpath $rpath
+$rclone sync "${OPTS[@]}" "${MYOPTS[@]}" "$lpath" "$rpath"
 log "sync '$lpath' -> '$rpath' done"
 
 # end
