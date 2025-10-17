@@ -101,7 +101,9 @@ log "start '$progname'"
 
 # run
 
-log "run '$rclone sync ${OPTS[@]} ${MYRAWOPTS[@]} $lpath $rpath'"
+printf -v cmd "%q " \
+    $rclone sync "${OPTS[@]}" "${MYRAWOPTS[@]}" "$lpath" "$rpath"
+log "run '${cmd% }'"
 $rclone sync "${OPTS[@]}" "${MYOPTS[@]}" "$lpath" "$rpath"
 log "sync '$lpath' -> '$rpath' done"
 

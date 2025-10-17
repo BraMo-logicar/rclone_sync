@@ -97,10 +97,12 @@ main:
 	    src="$(lpath)/$$path"
 	    dst="$(rpath)/$$path"
 	    program_cmd=($(program_path) $${opts:+-o "$$opts"} "$$src" "$$dst")
+	    printf -v program_cmd_q "%q " "$${program_cmd[@]}"
+	    program_cmd_q="$${program_cmd_q% }"
 
 	    $(call write_stat,$$rulef,rule_src,$$src)
 	    $(call write_stat,$$rulef,rule_dst,$$dst)
-	    $(call write_stat,$$rulef,program_cmd,$${program_cmd[*]})
+	    $(call write_stat,$$rulef,program_cmd,$$program_cmd_q)
 
 	    $(call set_status,progress,$$k/$$n ($$pct%))
 	    $(call set_status,current_rule,$$rule)
@@ -109,12 +111,12 @@ main:
 	    $(call set_status,current_rule_dst,$$dst)
 	    $(call set_status,current_rule_status,$$rulef)
 	    $(call set_status,current_rule_log,$$rule_log)
-	    $(call set_status,program_cmd,$${program_cmd[*]})
+	    $(call set_status,program_cmd,$$program_cmd_q)
 
 	    $(call log,rule '$$rule')
 	    $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%))
 	    $(call log,[$$ruleid] start '$(program_name)')
-	    $(call log,[$$ruleid] command line: $${program_cmd[*]})
+	    $(call log,[$$ruleid] command line: $$program_cmd_q)
 
 	    t1=$(t)
 	    rule_started_at=$(call at,$$t1)
@@ -201,7 +203,6 @@ status status-v:
 	current_ruleid="$(call get_kv,current_ruleid)"
 	rclone_ver="$(rclone_ver)"
 
-	running=:
 	if $$running; then
 	    started_at_epoch=$(call get_kv,started_at_epoch)
 	    elapsed=$(call t_delta_hms,$$started_at_epoch,$(t))
@@ -238,6 +239,8 @@ status status-v:
 	    printf "%-16s : %s -> %s\n" flow $(lpath) $(rpath)
 	    printf "%-16s : %s\n" rclone $(rclone_ver)
 	fi
+
+	printf "\n"
 
 # usage
 
