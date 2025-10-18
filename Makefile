@@ -245,9 +245,9 @@ status status-v:
 	if $$verbose; then
 	    printf "\n"
 	    fmt_hdr=$$(printf "%%-%ds  %s" $$(($(rule_width)+1)) \
-            "%-7s  %-8s  %-8s  %8s  %10s  %8s  %8s  %6s  %3s")
+            "%-5s  %-8s  %-8s  %8s  %10s  %8s  %8s  %6s  %3s")
 	    fmt_row=$$(printf "%%-%ds  %s" $$(($(rule_width)+1)) \
-            "%-7s  %-8s  %-8s  %8s  %10d  %8d  %8s  %6d  %3d")
+            "%-5s  %-8s  %-8s  %8s  %10d  %8d  %8s  %6d  %3d")
 
 	    printf "$$BLD$$fmt_hdr$$RST\n" \
             RULE STATE START END ELAPSED CHECKS XFER XFER_MiB DEL RC
