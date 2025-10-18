@@ -145,7 +145,7 @@ main:
 
 	    [ $$rc -ne 0 ] && warn=" (WARN)" || warn=""
 	    $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
-            (elapsed: $(call hms,$$rule_elapsed)))
+            (elapsed: $(call hms_ms,$$rule_elapsed)))
 
 	    $(stop_guard);
 	done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
@@ -154,11 +154,10 @@ end:
 	@t0=$(call kv_get,$(status),started_at_epoch)
 	t3=$(t)
 	$(call kv_set,$(status),ended_at,$(call at,$$t3))
-	$(call kv_set,$(status),total_elapsed,$(call hms, \
-        $(call t_delta,$$t0,$$t3)))
+	$(call kv_set,$(status),total_elapsed,$(call t_delta,$$t0,$$t3))
 	$(call kv_set,$(status),state,NOT RUNNING (completed))
 	$(call log,end '$(project)' \
-        (total elapsed: $(call t_delta_hms,$$t0,$$t3)))
+        (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
 # stop & kill
 
@@ -196,9 +195,10 @@ status status-v:
 	printf "$$BLD%s (v%s) @ %s (%s)$$RST\n\n" \
         $(project) $(version) $(hostname) $(now)
 
-	[ $@ = status-v ] && verbose=: || verbose=false
-	state="$(call kv_get,$(status),state)"
-	[ "$$state" = RUNNING ] && running=: || running=false
+	[ $@ = status-v ] && verbose=true || verbose=false
+	state=$(call kv_get,$(status),state)
+	[ "$$state" = RUNNING ] && running=true || running=false
+	running=true
 
 	started_at=$(call kv_get,$(status),started_at)
 	current_ruleid="$(call kv_get,$(status),current_ruleid)"
@@ -245,12 +245,12 @@ status status-v:
 	if $$verbose; then
 	    printf "\n"
 	    fmt_hdr=$$(printf "%%-%ds  %s" $$(($(rule_width)+1)) \
-            "%-7s  %-19s  %-8s  %6s  %8s  %6s  %6s  %6s  %3s")
+            "%-7s  %-8s  %-8s  %8s  %10s  %8s  %8s  %6s  %3s")
 	    fmt_row=$$(printf "%%-%ds  %s" $$(($(rule_width)+1)) \
-            "%-7s  %-19s  %-8s  %6.1f  %8d  %6d  %6s  %6d  %3d")
+            "%-7s  %-8s  %-8s  %8s  %10d  %8d  %8s  %6d  %3d")
 
 	    printf "$$BLD$$fmt_hdr$$RST\n" \
-            RULE STATE "       START" "  END" ELAPS CHECKS XFER XFERMB DEL RC
+            RULE STATE START END ELAPSED CHECKS XFER XFER_MiB DEL RC
 
 	    if $$running; then
 	        for rid in $(stats)/last/*; do
@@ -258,19 +258,41 @@ status status-v:
 	            rule=$(call truncate,$$rule,$(rule_width))
 	            state=done
 	            start=$(call kv_get,$$rid,rule_started_at)
+	            start=$${start#*-}
 	            end=$(call kv_get,$$rid,rule_ended_at)
 	            end=$${end#*-}
-	            elaps=$(call kv_get,$$rid,rule_elapsed)
+	            elapsed=$(call kv_get,$$rid,rule_elapsed)
 	            checks=$(call kv_get,$$rid,rclone_checks)
 	            checks=$${checks%/*}
 	            xfer=$(call kv_get,$$rid,rclone_transferred)
 	            xfer=$${xfer%/*}
-	            xfermb=$(call kv_get,$$rid,rclone_transferred_size)
-	            xfermb=$${xfermb%/*}
+	            xfer_mib=$(call kv_get,$$rid,rclone_transferred_size)
+	            xfer_mib=$(call mib,$${xfer_mib%/*}})
 	            del=$(call kv_get,$$rid,rclone_deleted)
 	            rc=$(call kv_get,$$rid,rc)
-	            printf "$$fmt_row\n" $$rule $$state $$start $$end $$elaps \
-                    $$checks $$xfer $$xfermb $$del $$rc
+	            printf "$$fmt_row\n" $$rule $$state $$start $$end $$elapsed \
+                    $$checks $$xfer $$xfer_mib $$del $$rc
+	        done
+	    else
+	        for rid in $(stats)/last/*; do
+	            rule=$(call kv_get,$$rid,ruleid)
+	            rule=$(call truncate,$$rule,$(rule_width))
+	            state=done
+	            start=$(call kv_get,$$rid,rule_started_at)
+	            start=$${start#*-}
+	            end=$(call kv_get,$$rid,rule_ended_at)
+	            end=$${end#*-}
+	            elapsed=$(call kv_get,$$rid,rule_elapsed)
+	            checks=$(call kv_get,$$rid,rclone_checks)
+	            checks=$${checks%/*}
+	            xfer=$(call kv_get,$$rid,rclone_transferred)
+	            xfer=$${xfer%/*}
+	            xfer_mib=$(call kv_get,$$rid,rclone_transferred_size)
+	            xfer_mib=$(call mib,$${xfer_mib%/*}})
+	            del=$(call kv_get,$$rid,rclone_deleted)
+	            rc=$(call kv_get,$$rid,rc)
+	            printf "$$fmt_row\n" $$rule $$state $$start $$end $$elapsed \
+                    $$checks $$xfer $$xfer_mib $$del $$rc
 	        done
 	    fi
 	fi
@@ -292,7 +314,7 @@ usage:
 	        sed 's/^/        /'
 	} >> $(usage)
 	$(call log,end bucket usage (excluding versions) \
-        (elapsed: $(call t_delta_hms,$$t0,$(t))))
+        (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 	t0=$(t)
 	$(call log,start bucket usage (including versions))
 	{
@@ -301,7 +323,7 @@ usage:
 	        sed 's/^/        /'
 	} >> $(usage)
 	$(call log,end bucket usage (including versions) \
-        (elapsed: $(call t_delta_hms,$$t0,$(t))))
+        (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # logs
 

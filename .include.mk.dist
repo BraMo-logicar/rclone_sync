@@ -94,7 +94,7 @@ mail_log := yes
 #---------------
 
 #
-# t() - current epoch (sec.msec)
+# t() - current epoch (sec.ms)
 # usage: $(t) or $(call t)
 #
 
@@ -108,18 +108,20 @@ t = $$(date +%s.%3N)
 now = $$(date +%Y.%m.%d-%H:%M:%S)
 
 #
-# at(epoch) - format an epoch (sec.msec -> yyyy.mm.dd-hh:mm:ss)
+# at(epoch) - format an epoch (sec.ms -> yyyy.mm.dd-hh:mm:ss)
 # usage: $(call at,epoch)
 #
 
 at = $$(date -d @$(1) +%Y.%m.%d-%H:%M:%S)
 
 #
-# hms() - format delta times (sec.msec)
+# hms_ms() - format delta times (hms.ms)
+# hms() - format delta times (hms)
+# usage: $(call hms_ms,t_delta)
 # usage: $(call hms,t_delta)
 #
 
-define hms
+define hms_ms
 $$(awk -v t=$(1) '
     BEGIN {
         s = int(t);
@@ -133,15 +135,35 @@ $$(awk -v t=$(1) '
 ')
 endef
 
+define hms
+$$(awk -v t=$(1) '
+    BEGIN {
+        s = int(t);
+        ms = 1000 * (t - s);
+        h = int(s / 3600); s %= 3600;
+        m = int(s / 60); s %= 60;
+        if (h > 0) printf("%dh%02dm%02ds", h, m, s);
+        else if (m > 0) printf("%dm%02ds", m, s);
+        else printf("%ds", s)
+    }
+')
+endef
+
 #
-# t_delta() - time difference (sec.msec)
+# t_delta() - time difference (sec.ms)
+# t_delta_s() - time difference (sec)
+# t_delta_hms_ms() - time difference (hms.sec)
 # t_delta_hms() - time difference (hms)
-# usage: $(call elapsed,t0,t1)
+# usage: $(call t_delta,t0,t1)
+# usage: $(call t_delta_s,t0,t1)
+# usage: $(call t_delta_hms_ms,t0,t1)
 # usage: $(call t_delta_hms,t0,t1)
 #
 
 t_delta = $$(awk -v t1=$(1) -v t2=$(2) 'BEGIN { printf("%.3f", t2 - t1) }')
-t_delta_hms = $(call hms,$(call t_delta,$(1),$(2)))
+t_delta_s = $$(awk -v t1=$(1) -v t2=$(2) 'BEGIN { printf("%d", t2 - t1) }')
+t_delta_hms_ms = $(call hms,$(call t_delta,$(1),$(2)))
+t_delta_hms = $(call hms,$(call t_delta_s,$(1),$(2)))
 
 #
 # log() - timestamped log
@@ -334,10 +356,10 @@ trap_on_signal() {
     rule_ended_at=$(call at,$$t2)
     if [ -n "$$t1" ]; then
         rule_elapsed=$(call t_delta,$$t1,$$t2)
-        rule_elapsed_hms=$(call hms,$$rule_elapsed)
+        rule_elapsed_hms_ms=$(call hms_ms,$$rule_elapsed)
     else
         rule_elapsed=
-        rule_elapsed_hms=unknown
+        rule_elapsed_hms_ms=unknown
     fi
 
     $(call append_rule_log,$$rule_log)
@@ -351,15 +373,15 @@ trap_on_signal() {
     $(call kv_set,$(status),rclone_pid,-)
     $(call kv_set,$(status),rc,$$rc)
     $(call log,[$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
-        (elapsed: $$rule_elapsed_hms))
+        (elapsed: $$rule_elapsed_hms_ms))
 
     t0=$(call kv_get,$(status),started_at_epoch)
     t3=$(t)
     $(call kv_set,$(status),ended_at,$(call at,$$t3))
-    $(call kv_set,$(status),total_elapsed,$(call t_delta_hms,$$t0,$$t3))
+    $(call kv_set,$(status),total_elapsed,$(call t_delta_hms_ms,$$t0,$$t3))
     $(call kv_set,$(status),state,NOT RUNNING (interrupted))
     $(call log,end '$(project)' \
-        (total elapsed: $(call t_delta_hms,$$t0,$$t3)))
+        (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
     exit $$rc
 }
@@ -403,11 +425,23 @@ $$(
 endef
 
 #
-# mib() - rounded MiB
-# usage: $(call mib,bytes)
+# mib() - convert rclone size (B, KiB, MiB, GiB, TiB) to MiB (1 decimal)
+# usage: $(call mib,size)
 #
 
-mib = $$((($$1 + 524288) / 1048576))
+define mib
+$$(awk -v s=$(1) '
+    function n(x) { sub(/[BKMGTi]*$$/,"",x); return x }
+    BEGIN {
+        if      (s ~ /[0-9]B/)   print sprintf("%.1f", n(s)/1048576)
+        else if (s ~ /[0-9]KiB/) print sprintf("%.1f", n(s)/1024)
+        else if (s ~ /[0-9]MiB/) print sprintf("%.1f", n(s))
+        else if (s ~ /[0-9]GiB/) print sprintf("%.1f", n(s)*1024)
+        else if (s ~ /[0-9]TiB/) print sprintf("%.1f", n(s)*1048576)
+        else print 0.0
+    }
+')
+endef
 
 
 # vim: ts=4
