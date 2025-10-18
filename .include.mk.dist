@@ -72,6 +72,10 @@ runid := $(shell date +%Y%m%d.%H%M%S)
 watch_tries := 100
 watch_delay := .05
 
+# report
+
+rule_width := [RULE_WIDTH]
+
 # email
 
 mail_From := $(project) system [MAIL_FROM]
@@ -160,7 +164,6 @@ relpath = $$(printf "%s" $(1) | sed 's|$(home)/||')
 #
 
 define parse_rule
-unset opts
 rule=$$(printf "%s\n" "$(1)")
 if printf "%s" "$$rule" | grep -q " -- "; then
     path="$${rule%% -- *}" opts="$${rule#* -- }"
@@ -182,14 +185,14 @@ define watch_rclone
     rclone_pid=$$($(call watch_child,$$program_pid,rclone, \
         $(strip $(watch_tries)),$(watch_delay)))
     if [ -n "$$rclone_pid" ]; then
-        $(call set_status,rclone_pid,$$rclone_pid)
+        $(call kv_set,$(status),rclone_pid,$$rclone_pid)
         rclone_cmd=$$($(call get_command_by_pid,$$rclone_pid))
         if [ -n "$$rclone_cmd" ]; then
-            $(call write_stat,$$rulef,rclone_cmd,$$rclone_cmd)
-            $(call set_status,rclone_cmd,$$rclone_cmd)
+            $(call kv_set,$$rulef,rclone_cmd,$$rclone_cmd)
+            $(call kv_set,$(status),rclone_cmd,$$rclone_cmd)
         fi
     else
-        $(call set_status,rclone_pid,unknown)
+        $(call kv_set,$(status),rclone_pid,unknown)
     fi
 ) & watcher_pid=$$!
 endef
@@ -234,29 +237,22 @@ fi
 endef
 
 #
-# write_stat() - write "key: value" to stat file
-# usage: $(call write_stat,statfile,key,value)
+# kv_get() - get key/value (empty if missing)
+# kv_set() - replace key/value (append if missing)
+# usage: $(call kv_get,file,key)
+# usage: $(call kv_set,file,key,value)
 #
 
-write_stat = $$(printf "%s: %s\n" "$(2)" "$(3)" >> $(1))
+kv_get = $$(sed -En 's/^$(2):[[:space:]]*//p' $(1))
 
-#
-# set_status() - write "key: value" to (global) status file
-# get_status() - read "key: value" from (global) status file
-# usage: $(call set_status,key,value)
-# usage: $(call get_status,key)
-#
-
-define set_status
-_k="$(1)" _v="$(2)"
-if grep -q "^$$_k:" $(status); then
-    sed -Ei "s|^($$_k):.*|\1: $$_v|" $(status)
+define kv_set
+_f=$(1) _k=$(2) _v="$(3)"
+if grep -q "^$$_k:" $$_f; then
+    sed -Ei "s|^$$_k:.*|$$_k: $$_v|" $$_f
 else
-    printf "%s: %s\n" "$$_k" "$$_v" >> $(status)
+    printf "%s: %s\n" $$_k "$$_v" >> $$_f
 fi
 endef
-
-get_status = $$(sed -En '/^$(1):/s/^[^:]*:[[:space:]]*//p' $(status))
 
 #
 # get_rclone_stats() - parse an rclone per-run log and get key/value metrics
@@ -296,9 +292,9 @@ endef
 
 define rclone_stats
 declare -A S
-while read _k _v; do
-    S[$$_k]="$$_v"
-    $(call write_stat,$(2),$$_k,$$_v)
+while read k v; do
+    S[$$k]="$$v"
+    $(call kv_set,$(2),$$k,$$v)
 done < <($(call get_rclone_stats,$(3)))
 printf -v stats_log "checks=%s, transferred=%s (%s) (new=%s, replaced=%s), \
     deleted=%s, elapsed=%s" \
@@ -346,22 +342,22 @@ trap_on_signal() {
 
     $(call append_rule_log,$$rule_log)
     $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
-    $(call write_stat,$$rulef,rule_ended_at,$$rule_ended_at)
+    $(call kv_set,$$rulef,rule_ended_at,$$rule_ended_at)
     [ -n "$$rule_elapsed" ] && \
-        $(call write_stat,$$rulef,rule_elapsed,$$rule_elapsed)
-    $(call write_stat,$$rulef,rc,$$rc)
+        $(call kv_set,$$rulef,rule_elapsed,$$rule_elapsed)
+    $(call kv_set,$$rulef,rc,$$rc)
 
-    $(call set_status,program_pid,-)
-    $(call set_status,rclone_pid,-)
-    $(call set_status,rc,$$rc)
+    $(call kv_set,$(status),program_pid,-)
+    $(call kv_set,$(status),rclone_pid,-)
+    $(call kv_set,$(status),rc,$$rc)
     $(call log,[$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
         (elapsed: $$rule_elapsed_hms))
 
-    t0=$(call get_status,started_at_epoch)
+    t0=$(call kv_get,$(status),started_at_epoch)
     t3=$(t)
-    $(call set_status,ended_at,$(call at,$$t3))
-    $(call set_status,total_elapsed,$(call t_delta_hms,$$t0,$$t3))
-    $(call set_status,state,NOT RUNNING (interrupted))
+    $(call kv_set,$(status),ended_at,$(call at,$$t3))
+    $(call kv_set,$(status),total_elapsed,$(call t_delta_hms,$$t0,$$t3))
+    $(call kv_set,$(status),state,NOT RUNNING (interrupted))
     $(call log,end '$(project)' \
         (total elapsed: $(call t_delta_hms,$$t0,$$t3)))
 
@@ -381,26 +377,30 @@ endef
 define colors
 ESC="\033"
 if [ -t 1 ]; then
-	BLD="$$ESC[1m" RST="$$ESC[0m"
+    BLD="$$ESC[1m" RST="$$ESC[0m"
 
-	RED="$$ESC[31m"
-	GRN="$$ESC[32m"
-	YEL="$$ESC[33m"
-	BLU="$$ESC[34m"
-	MAG="$$ESC[35m"
+    RED="$$ESC[31m"
+    GRN="$$ESC[32m"
+    YEL="$$ESC[33m"
+    BLU="$$ESC[34m"
+    MAG="$$ESC[35m"
 else
-	BLD= RST= RED= GRN= YEL= BLU= MAG=
+    BLD= RST= RED= GRN= YEL= BLU= MAG=
 fi
 endef
 
 #
-# get_kv() - get a value of a given key from the status file (default: global)
-# usage: $(call get_kv,key,[file])
+# truncate() - truncate string $(1) to $(2) chars, appending '+' if longer
+# usage: truncate
 #
 
-get_kv = $$(awk -F': ' -v k=$(1) ' \
-    $$1 == k { sub(/^ +/, "", $$2); print $$2 } \
-' $(if $(2),$(2),$(status)))
+define truncate
+$$(
+    s=$(1) w=$(2)
+    len=$$(expr length $$s)
+    [ $${#s} -gt $$w ] && printf "%.*s+" $$w $$s || printf $$s
+)
+endef
 
 #
 # mib() - rounded MiB
