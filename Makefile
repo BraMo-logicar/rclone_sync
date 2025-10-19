@@ -19,7 +19,7 @@ $(project): start main end
 # list
 
 list::
-	@: > $(rclone_list)
+	@> $(rclone_list)
 	if find $(src_root) -mindepth 1 -maxdepth 1 -type f | read; then
 	    printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n" \
             >> $(rclone_list)
@@ -33,7 +33,8 @@ list::
 
 start:
 	@t0=$(t)
-	mkdir -p $(stats); : > $(status)
+	mkdir -p $(stats); > $(status)
+
 	$(call kv_set,$(status),state,RUNNING)
 	$(call kv_set,$(status),project,$(project))
 	$(call kv_set,$(status),version,$(version))
@@ -67,6 +68,7 @@ start:
 	$(call kv_set,$(status),rc,0)
 
 	$(call log,start '$(project)' (v$(version)) @ $(hostname) ($(ip)))
+
 	[ -L $(stats)/last ] && ln -fns $$(readlink $(stats)/last) $(stats)/prev
 	rm -rf $(logrun); mkdir -p $(logrun)
 	mkdir -p $(stats)/$(runid)
@@ -75,10 +77,12 @@ start:
 main:
 	@n=$$(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF' | wc -l)
 	$(call log,loop over '$(call relpath,$(rclone_list))' ($$n rules))
+
 	$(trap_on_signal)
 	trap 'trap_on_signal SIGINT 2' INT
 	trap 'trap_on_signal SIGTERM 15' TERM
 	shell_pid=$$$$
+
 	$(call kv_set,$(status),shell_pid,$$shell_pid)
 
 	k=0
@@ -163,7 +167,7 @@ end:
 
 stop:
 	@printf "[$(project)] graceful stop requested: exit after current rule\n"
-	: > $(stop)
+	> $(stop)
 	$(call log,graceful stop requested: exit after current rule$(,) \
         flag '$(stop)' created)
 
@@ -300,28 +304,35 @@ status status-v:
 # usage
 
 usage:
-	@t0=$(t)
-	$(call log,start bucket usage (excluding versions))
+	@usagef=$(usage)/usage-$(runid); > $$usagef
+
+	[ -L $(usage)/last ] && ln -fns $$(readlink $(usage)/last) $(usage)/prev
+	ln -fns $${usagef##*/} $(usage)/last
+
 	{
 	    printf "Bucket usage (%s, %s)\n" \
             $(hostname) "$$(date '+%a %d %b %Y')"
 	    printf "    bucket: %s\n" $(bucket)
 	    printf "    prefix: %s\n" $(dst_root)
-	} > $(usage)
+	} >> $$usagef
+
+	t0=$(t)
+	$(call log,start bucket usage (excluding versions))
 	{
 	    printf "    excluding versions:\n"
 	    $(rclone) --config $(rclone_conf) size $(rpath) |
 	        sed 's/^/        /'
-	} >> $(usage)
+	} >> $$usagef
 	$(call log,end bucket usage (excluding versions) \
         (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
+
 	t0=$(t)
 	$(call log,start bucket usage (including versions))
 	{
 	    printf "    including versions:\n"
 	    $(rclone) --config $(rclone_conf) size --s3-versions $(rpath) |
 	        sed 's/^/        /'
-	} >> $(usage)
+	} >> $$usagef
 	$(call log,end bucket usage (including versions) \
         (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
