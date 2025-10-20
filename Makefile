@@ -56,6 +56,7 @@ start:
 	$(call kv_set,$(status),current_rule_src,-)
 	$(call kv_set,$(status),current_rule_dst,-)
 	$(call kv_set,$(status),current_rule_started_at,-)
+	$(call kv_set,$(status),current_rule_started_at_epoch,-)
 	$(call kv_set,$(status),current_rule_status,-)
 	$(call kv_set,$(status),current_rule_log,-)
 
@@ -94,7 +95,7 @@ main:
 
 	k=0
 	while read rule; do
-	    k=$$((k+1));
+	    ((k++))
 
 	    $(call parse_rule,$$rule)
 	    rulef=$(stats)/$(runid)/$$ruleid
@@ -133,6 +134,7 @@ main:
 	    rule_started_at=$(call at,$$t1)
 	    $(call kv_set,$$rulef,rule_started_at,$$rule_started_at)
 	    $(call kv_set,$(status),current_rule_started_at,$$rule_started_at)
+	    $(call kv_set,$(status),current_rule_started_at_epoch,$$t1)
 
 	    "$${program_cmd[@]}" &> $$rule_log & program_pid=$$!
 	    $(call kv_set,$(status),program_pid,$$program_pid)
@@ -229,11 +231,11 @@ status status-v:
 	    pids="make=$${make_pid:--}, shell=$${shell_pid:--}, "
 	    pids+="rclone_sync=$${program_pid:--}, rclone=$${rclone_pid:--}"
 
-	    printf "%-12s : $$RED%s$$RST\n" state "$$state"
+	    printf "%-12s : $$_RED_%s$$RST\n" state "$$state"
 	    printf "%-12s : %s\n" runid $(runid)
 	    printf "%-12s : %s  (elapsed: %s)\n" "started at" \
             $$started_at $$elapsed
-	    printf "%-12s : $$RED%s$$RST ($$RED%s$$RST)\n" "current rule" \
+	    printf "%-12s : $$_RED_%s$$RST ($$_RED_%s$$RST)\n" "current rule" \
             $$current_ruleid "$$progress"
 	    printf "%-12s : %s -> %s\n" flow \
             "$$current_rule_src" "$$current_rule_dst"
@@ -244,7 +246,7 @@ status status-v:
 	    total_elapsed=$(call kv_get,$(status),total_elapsed)
 	    elapsed=$(call hms,$$total_elapsed)
 
-	    printf "%-10s : $$RED%s$$RST\n" state "$$state"
+	    printf "%-10s : $$_RED_%s$$RST\n" state "$$state"
 	    printf "%-10s : %s\n" runid $(runid)
 	    printf "%-10s : %s\n" "started at" $$started_at
 	    printf "%-10s : %s\n" "ended at" $$ended_at
@@ -256,34 +258,60 @@ status status-v:
 	if $$verbose; then
 	    printf "\n"
 	    w1=$$(($(rule_width)+1))
-	    fmt="%-$${w1}s  %-5s  %-8s  %-8s  %8s  %8s  %8s  %8s  %6s  %3s"
-	    fmt_queue="%-$${w1}s  %-5s"
+	    fmt="%-$${w1}s  %-5s  %-8s  %-8s  %-8s  %8s  %8s  %8s  %6s  %3s"
+	    fmt_queue="$$MAG%-$${w1}s  %-5s$$RST"
 
 	    printf "$$BLD$$fmt$$RST\n" \
             RULE STATE START END ELAPSED CHECKS XFER XFER_MiB DEL RC
 
+	    run=false
+	    queue=0 queue_print=0
 	    while read ruleid; do
-	        rulef=$(stats)/prev/$$ruleid
+	        rulef=$(stats)/last/$$ruleid
 	        rule=$(call truncate,$$ruleid,$(rule_width))
-	        if [ -f $$rulef ]; then
-	            rc=$(call kv_get,$$rulef,rc)
-	            [ -n "$$rc" ] && state=done || state=run
-	        else
-	            printf "$$fmt_queue\n" $$rule queue
-	            continue;
+
+	        if $$run || [ ! -f $$rulef ]; then
+	            : $$((queue++))
+	            if [ $$queue -le $(rule_queue) ]; then
+	                printf "$$fmt_queue\n" $$rule queue
+	                : $$((queue_print++))
+	            fi
+	            continue
 	        fi
+
 	        start=$(call kv_get,$$rulef,rule_started_at); start=$${start#*-}
 	        end=$(call kv_get,$$rulef,rule_ended_at); end=$${end#*-}
-	        rule_elapsed=$(call kv_get,$$rulef,rule_elapsed)
-	        elapsed=$(call hms_colon,$$rule_elapsed)
+
+	        rc=$(call kv_get,$$rulef,rc)
+
+	        if [ -z $$rc ]; then
+	            state=run
+	            run=true
+	            end=
+	            start_epoch=$(call kv_get,$(status),current_rule_started_at_epoch)
+	            elapsed=$(call hms_colon,$(call t_delta,$$start_epoch,$(t)))
+	            col=$$_RED_ rst=$$RST
+	        else
+	            state=done
+	            elapsed=$(call kv_get,$$rulef,rule_elapsed)
+	            elapsed=$(call hms_colon,$$elapsed)
+	            col= rst=
+	        fi
+
 	        checks=$(call kv_get,$$rulef,rclone_checks); checks=$${checks%/*}
 	        xfer=$(call kv_get,$$rulef,rclone_transferred); xfer=$${xfer%/*}
 	        xfer_mib=$(call kv_get,$$rulef,rclone_transferred_size)
 	        xfer_mib=$(call mib,$${xfer_mib%/*})
 	        del=$(call kv_get,$$rulef,rclone_deleted)
-	        printf "$$fmt\n" $$rule $$state $$start $$end $$elapsed \
-                $$checks $$xfer $$xfer_mib $$del $$rc
+
+	        printf "$$col$$fmt$$rst\n" \
+                $$rule $$state $$start "$$end" $$elapsed "$$checks" \
+                "$$xfer" "$$xfer_mib" "$$del" "$$rc"
 	    done < $(ruleids_list)
+
+	    if [ $$queue -gt $(rule_queue) ]; then
+	        printf "(+%d more rules pending)\n" $$((queue - $(rule_queue)))
+	    fi
 	fi
 
 # usage

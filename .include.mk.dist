@@ -166,7 +166,6 @@ endef
 # t_delta_hms_ms() - time difference (hms.ms)
 # t_delta_hms() - time difference (hms)
 # usage: $(call t_delta,t0,t1)
-# usage: $(call t_delta,t0,t1)
 # usage: $(call t_delta_hms_ms,t0,t1)
 # usage: $(call t_delta_hms,t0,t1)
 #
@@ -411,13 +410,16 @@ ESC="\033"
 if [ -t 1 ]; then
     BLD="$$ESC[1m" RST="$$ESC[0m"
 
-    RED="$$ESC[31m"
-    GRN="$$ESC[32m"
-    YEL="$$ESC[33m"
-    BLU="$$ESC[34m"
-    MAG="$$ESC[35m"
+    RED="$$ESC[31m" _RED_="$$ESC[91m"
+    GRN="$$ESC[32m" _GRN_="$$ESC[92m"
+    YEL="$$ESC[33m" _YEL_="$$ESC[93m"
+    BLU="$$ESC[34m" _BLU_="$$ESC[94m"
+    MAG="$$ESC[35m" _MAG_="$$ESC[95m"
+    CYN="$$ESC[36m" _CYN_="$$ESC[96m"
 else
-    BLD= RST= RED= GRN= YEL= BLU= MAG=
+    BLD= RST=
+    RED= GRN= YEL= BLU= MAG= CYN=
+    _RED_= _GRN_= _YEL_= _BLU_= _MAG_= _CYN_=
 fi
 endef
 
@@ -448,7 +450,6 @@ $$(awk -v s=$(1) '
         else if (s ~ /[0-9]MiB/) print sprintf("%.1f", n(s))
         else if (s ~ /[0-9]GiB/) print sprintf("%.1f", n(s)*1024)
         else if (s ~ /[0-9]TiB/) print sprintf("%.1f", n(s)*1048576)
-        else print 0.0
     }
 ')
 endef
