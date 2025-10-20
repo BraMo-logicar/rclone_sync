@@ -1,7 +1,7 @@
 # Name: Makefile - Makefile for $(project)
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.10.16
+# Date: 2025.10.20
 
 include .include.mk
 
@@ -142,7 +142,7 @@ main:
 
 	    t2=$(t)
 	    rule_ended_at=$(call at,$$t2)
-	    rule_elapsed=$(call t_delta,$$t1,$$t2)
+	    rule_elapsed=$(call t_delta_ms,$$t1,$$t2)
 
 	    $(call append_rule_log,$$rule_log)
 	    $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
@@ -165,10 +165,10 @@ end:
 	@t0=$(call kv_get,$(status),started_at_epoch)
 	t3=$(t)
 	$(call kv_set,$(status),ended_at,$(call at,$$t3))
-	$(call kv_set,$(status),total_elapsed,$(call t_delta,$$t0,$$t3))
+	$(call kv_set,$(status),total_elapsed,$(call t_delta_ms,$$t0,$$t3))
 	$(call kv_set,$(status),state,NOT RUNNING (completed))
 	$(call log,end '$(project)' \
-        (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
+        (total elapsed: $(call t_delta_hms,$$t0,$$t3)))
 
 # stop & kill
 
@@ -242,12 +242,13 @@ status status-v:
 	else
 	    ended_at=$(call kv_get,$(status),ended_at)
 	    total_elapsed=$(call kv_get,$(status),total_elapsed)
+	    elapsed=$(call hms,$$total_elapsed)
 
 	    printf "%-10s : $$RED%s$$RST\n" state "$$state"
 	    printf "%-10s : %s\n" runid $(runid)
 	    printf "%-10s : %s\n" "started at" $$started_at
 	    printf "%-10s : %s\n" "ended at" $$ended_at
-	    printf "%-10s : %s\n" elapsed $$total_elapsed
+	    printf "%-10s : %s\n" elapsed $$elapsed
 	    printf "%-10s : %s -> %s\n" flow $(lpath) $(rpath)
 	    printf "%-10s : %s\n" rclone $(rclone_ver)
 	fi
@@ -262,7 +263,7 @@ status status-v:
             RULE STATE START END ELAPSED CHECKS XFER XFER_MiB DEL RC
 
 	    while read ruleid; do
-	        rulef=$(stats)/prev/$$ruleid
+	        rulef=$(stats)/last/$$ruleid
 	        rule=$(call truncate,$$ruleid,$(rule_width))
 	        if [ -f $$rulef ]; then
 	            rc=$(call kv_get,$$rulef,rc)
@@ -307,7 +308,7 @@ usage:
 	        sed 's/^/        /'
 	} >> $$usagef
 	$(call log,end bucket usage (excluding versions) \
-        (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
+        (elapsed: $(call t_delta_hms,$$t0,$(t))))
 
 	t0=$(t)
 	$(call log,start bucket usage (including versions))
@@ -317,7 +318,7 @@ usage:
 	        sed 's/^/        /'
 	} >> $$usagef
 	$(call log,end bucket usage (including versions) \
-        (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
+        (elapsed: $(call t_delta_hms,$$t0,$(t))))
 
 # logs
 
