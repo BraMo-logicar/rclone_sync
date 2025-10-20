@@ -209,13 +209,12 @@ status status-v:
 	[ $@ = status-v ] && verbose=true || verbose=false
 	state=$(call kv_get,$(status),state)
 	[ "$$state" = RUNNING ] && running=true || running=false
-	running=true
 
 	started_at=$(call kv_get,$(status),started_at)
-	current_ruleid="$(call kv_get,$(status),current_ruleid)"
-	rclone_ver="$(rclone_ver)"
 
 	if $$running; then
+	    current_ruleid="$(call kv_get,$(status),current_ruleid)"
+
 	    started_at_epoch=$(call kv_get,$(status),started_at_epoch)
 	    elapsed=$(call t_delta_hms,$$started_at_epoch,$(t))
 	    current_ruleid=$(call kv_get,$(status),current_ruleid)
@@ -255,57 +254,34 @@ status status-v:
 
 	if $$verbose; then
 	    printf "\n"
-	    fmt_hdr=$$(printf "%%-%ds  %s" $$(($(rule_width)+1)) \
-            "%-5s  %-8s  %-8s  %8s  %10s  %8s  %8s  %6s  %3s")
-	    fmt_row=$$(printf "%%-%ds  %s" $$(($(rule_width)+1)) \
-            "%-5s  %-8s  %-8s  %8s  %10d  %8d  %8s  %6d  %3d")
+	    w1=$$(($(rule_width)+1))
+	    fmt="%-$${w1}s  %-5s  %-8s  %-8s  %8s  %8s  %8s  %8s  %6s  %3s"
+	    fmt_queue="%-$${w1}s  %-5s"
 
-	    printf "$$BLD$$fmt_hdr$$RST\n" \
+	    printf "$$BLD$$fmt$$RST\n" \
             RULE STATE START END ELAPSED CHECKS XFER XFER_MiB DEL RC
 
-	    if $$running; then
-	        for rid in $(stats)/last/*; do
-	            rule=$(call kv_get,$$rid,ruleid)
-	            rule=$(call truncate,$$rule,$(rule_width))
-	            state=done
-	            start=$(call kv_get,$$rid,rule_started_at)
-	            start=$${start#*-}
-	            end=$(call kv_get,$$rid,rule_ended_at)
-	            end=$${end#*-}
-	            elapsed=$(call kv_get,$$rid,rule_elapsed)
-	            checks=$(call kv_get,$$rid,rclone_checks)
-	            checks=$${checks%/*}
-	            xfer=$(call kv_get,$$rid,rclone_transferred)
-	            xfer=$${xfer%/*}
-	            xfer_mib=$(call kv_get,$$rid,rclone_transferred_size)
-	            xfer_mib=$(call mib,$${xfer_mib%/*}})
-	            del=$(call kv_get,$$rid,rclone_deleted)
-	            rc=$(call kv_get,$$rid,rc)
-	            printf "$$fmt_row\n" $$rule $$state $$start $$end $$elapsed \
-                    $$checks $$xfer $$xfer_mib $$del $$rc
-	        done
-	    else
-	        for rid in $(stats)/last/*; do
-	            rule=$(call kv_get,$$rid,ruleid)
-	            rule=$(call truncate,$$rule,$(rule_width))
-	            state=done
-	            start=$(call kv_get,$$rid,rule_started_at)
-	            start=$${start#*-}
-	            end=$(call kv_get,$$rid,rule_ended_at)
-	            end=$${end#*-}
-	            elapsed=$(call kv_get,$$rid,rule_elapsed)
-	            checks=$(call kv_get,$$rid,rclone_checks)
-	            checks=$${checks%/*}
-	            xfer=$(call kv_get,$$rid,rclone_transferred)
-	            xfer=$${xfer%/*}
-	            xfer_mib=$(call kv_get,$$rid,rclone_transferred_size)
-	            xfer_mib=$(call mib,$${xfer_mib%/*}})
-	            del=$(call kv_get,$$rid,rclone_deleted)
-	            rc=$(call kv_get,$$rid,rc)
-	            printf "$$fmt_row\n" $$rule $$state $$start $$end $$elapsed \
-                    $$checks $$xfer $$xfer_mib $$del $$rc
-	        done
-	    fi
+	    while read ruleid; do
+	        rulef=$(stats)/prev/$$ruleid
+	        rule=$(call truncate,$$ruleid,$(rule_width))
+	        if [ -f $$rulef ]; then
+	            rc=$(call kv_get,$$rulef,rc)
+	            [ -n "$$rc" ] && state=done || state=run
+	        else
+	            printf "$$fmt_queue\n" $$rule queue
+	            continue;
+	        fi
+	        start=$(call kv_get,$$rulef,rule_started_at); start=$${start#*-}
+	        end=$(call kv_get,$$rulef,rule_ended_at); end=$${end#*-}
+	        elapsed=$(call kv_get,$$rulef,rule_elapsed)
+	        checks=$(call kv_get,$$rulef,rclone_checks); checks=$${checks%/*}
+	        xfer=$(call kv_get,$$rulef,rclone_transferred); xfer=$${xfer%/*}
+	        xfer_mib=$(call kv_get,$$rulef,rclone_transferred_size)
+	        xfer_mib=$(call mib,$${xfer_mib%/*})
+	        del=$(call kv_get,$$rulef,rclone_deleted)
+	        printf "$$fmt\n" $$rule $$state $$start $$end $$elapsed \
+                $$checks $$xfer $$xfer_mib $$del $$rc
+	    done < $(ruleids_list)
 	fi
 
 # usage
