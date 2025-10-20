@@ -61,9 +61,10 @@ rclone_conf := $(home)/etc/rclone.conf
 rclone_list := $(home)/etc/rclone.list
 rclone_ver  := $(shell rclone version | sed -n '1s/.* v//p')
 
-# os
+# rules
 
-fstype := xfs
+rules_list   := $(home)/etc/rules.list
+ruleids_list := $(home)/etc/ruleids.list
 
 # stats
 

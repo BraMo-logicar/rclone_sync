@@ -27,15 +27,14 @@ list::
 	find $(src_root) -mindepth 1 -maxdepth 1 -type d -printf "%f\n" |
 	    sort >> $(rules_list)
 	n=$$(wc -l < $(rules_list))
-	$(call log,list $$n entries from '$(src_root)' to '$(rules_list)')
+	$(call log,list $$n rules from '$(src_root)' to '$(rules_list)')
 
-#	@mkdir -p "$(ETC_DIR)"
-## 1) produce dir list like you already do (replace this line with your real code)
-#	@your-dir-list-command >"$(RULES_FILE)"
-## 2) produce ruleids using parse_rule for every line in rclone.list
-# 	@$(RM) -f "$(RULEIDS_FILE)"
-#	@$(foreach d,$(shell sed -n 's/[[:space:]]*#.*//; /^[[:space:]]*$$/d; p' "$(RULES_FILE)"), \
-#	printf '%s\n' '$(call parse_rule,$(d))' >>"$(RULEIDS_FILE)";)
+	while read rule; do
+	    $(call parse_rule,$$rule)
+	    printf "%s\n" $$ruleid
+	done < $(rules_list) > $(ruleids_list)
+	n=$$(wc -l < $(ruleids_list))
+	$(call log,list $$n ruleids from '$(src_root)' to '$(ruleids_list)')
 
 # main
 
