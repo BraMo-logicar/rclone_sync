@@ -19,15 +19,23 @@ $(project): start main end
 # list
 
 list::
-	@> $(rclone_list)
+	@> $(rules_list)
 	if find $(src_root) -mindepth 1 -maxdepth 1 -type f | read; then
 	    printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n" \
-            >> $(rclone_list)
+            >> $(rules_list)
 	fi
 	find $(src_root) -mindepth 1 -maxdepth 1 -type d -printf "%f\n" |
-	    sort >> $(rclone_list)
-	n=$$(wc -l < $(rclone_list))
-	$(call log,list $$n entries from '$(src_root)' to '$(rclone_list)')
+	    sort >> $(rules_list)
+	n=$$(wc -l < $(rules_list))
+	$(call log,list $$n entries from '$(src_root)' to '$(rules_list)')
+
+#	@mkdir -p "$(ETC_DIR)"
+## 1) produce dir list like you already do (replace this line with your real code)
+#	@your-dir-list-command >"$(RULES_FILE)"
+## 2) produce ruleids using parse_rule for every line in rclone.list
+# 	@$(RM) -f "$(RULEIDS_FILE)"
+#	@$(foreach d,$(shell sed -n 's/[[:space:]]*#.*//; /^[[:space:]]*$$/d; p' "$(RULES_FILE)"), \
+#	printf '%s\n' '$(call parse_rule,$(d))' >>"$(RULEIDS_FILE)";)
 
 # main
 
@@ -75,8 +83,8 @@ start:
 	ln -fns $(runid) $(stats)/last
 
 main:
-	@n=$$(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF' | wc -l)
-	$(call log,loop over '$(call relpath,$(rclone_list))' ($$n rules))
+	@n=$$(sed 's/[[:space:]]*#.*//' $(rules_list) | awk 'NF' | wc -l)
+	$(call log,loop over '$(call relpath,$(rules_list))' ($$n rules))
 
 	$(trap_on_signal)
 	trap 'trap_on_signal SIGINT 2' INT
@@ -152,7 +160,7 @@ main:
             (elapsed: $(call hms_ms,$$rule_elapsed)))
 
 	    $(stop_guard);
-	done < <(sed 's/[[:space:]]*#.*//' $(rclone_list) | awk 'NF')
+	done < <(sed 's/[[:space:]]*#.*//' $(rules_list) | awk 'NF')
 
 end:
 	@t0=$(call kv_get,$(status),started_at_epoch)
