@@ -142,7 +142,7 @@ main:
 
 	    t2=$(t)
 	    rule_ended_at=$(call at,$$t2)
-	    rule_elapsed=$(call t_delta_ms,$$t1,$$t2)
+	    rule_elapsed=$(call t_delta,$$t1,$$t2)
 
 	    $(call append_rule_log,$$rule_log)
 	    $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
@@ -165,10 +165,10 @@ end:
 	@t0=$(call kv_get,$(status),started_at_epoch)
 	t3=$(t)
 	$(call kv_set,$(status),ended_at,$(call at,$$t3))
-	$(call kv_set,$(status),total_elapsed,$(call t_delta_ms,$$t0,$$t3))
+	$(call kv_set,$(status),total_elapsed,$(call t_delta,$$t0,$$t3))
 	$(call kv_set,$(status),state,NOT RUNNING (completed))
 	$(call log,end '$(project)' \
-        (total elapsed: $(call t_delta_hms,$$t0,$$t3)))
+        (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
 # stop & kill
 
@@ -263,7 +263,7 @@ status status-v:
             RULE STATE START END ELAPSED CHECKS XFER XFER_MiB DEL RC
 
 	    while read ruleid; do
-	        rulef=$(stats)/last/$$ruleid
+	        rulef=$(stats)/prev/$$ruleid
 	        rule=$(call truncate,$$ruleid,$(rule_width))
 	        if [ -f $$rulef ]; then
 	            rc=$(call kv_get,$$rulef,rc)
@@ -274,7 +274,8 @@ status status-v:
 	        fi
 	        start=$(call kv_get,$$rulef,rule_started_at); start=$${start#*-}
 	        end=$(call kv_get,$$rulef,rule_ended_at); end=$${end#*-}
-	        elapsed=$(call kv_get,$$rulef,rule_elapsed)
+	        rule_elapsed=$(call kv_get,$$rulef,rule_elapsed)
+	        elapsed=$(call hms_colon,$$rule_elapsed)
 	        checks=$(call kv_get,$$rulef,rclone_checks); checks=$${checks%/*}
 	        xfer=$(call kv_get,$$rulef,rclone_transferred); xfer=$${xfer%/*}
 	        xfer_mib=$(call kv_get,$$rulef,rclone_transferred_size)
@@ -308,7 +309,7 @@ usage:
 	        sed 's/^/        /'
 	} >> $$usagef
 	$(call log,end bucket usage (excluding versions) \
-        (elapsed: $(call t_delta_hms,$$t0,$(t))))
+        (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 	t0=$(t)
 	$(call log,start bucket usage (including versions))
@@ -318,7 +319,7 @@ usage:
 	        sed 's/^/        /'
 	} >> $$usagef
 	$(call log,end bucket usage (including versions) \
-        (elapsed: $(call t_delta_hms,$$t0,$(t))))
+        (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # logs
 

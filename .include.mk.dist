@@ -117,8 +117,10 @@ at = $$(date -d @$(1) +%Y.%m.%d-%H:%M:%S)
 #
 # hms_ms() - format delta times (hms.ms)
 # hms() - format delta times (hms)
+# hms_colon() - format delta times (h:m:s)
 # usage: $(call hms_ms,t_delta)
 # usage: $(call hms,t_delta)
+# usage: $(call hms_colon,t_delta)
 #
 
 define hms_ms
@@ -139,7 +141,6 @@ define hms
 $$(awk -v t=$(1) '
     BEGIN {
         s = int(t);
-        ms = 1000 * (t - s);
         h = int(s / 3600); s %= 3600;
         m = int(s / 60); s %= 60;
         if (h > 0) printf("%dh%02dm%02ds", h, m, s);
@@ -149,20 +150,29 @@ $$(awk -v t=$(1) '
 ')
 endef
 
+define hms_colon
+$$(awk -v t=$(1) '
+    BEGIN {
+        s = int(t);
+        h = int(s / 3600); s %= 3600;
+        m = int(s / 60); s %= 60;
+        printf("%02d:%02d:%02d", h, m, s);
+    }
+')
+endef
+
 #
-# t_delta_ms() - time difference (sec.ms)
-# t_delta() - time difference (sec)
+# t_delta() - time difference (sec.ms)
 # t_delta_hms_ms() - time difference (hms.ms)
 # t_delta_hms() - time difference (hms)
-# usage: $(call t_delta_ms,t0,t1)
+# usage: $(call t_delta,t0,t1)
 # usage: $(call t_delta,t0,t1)
 # usage: $(call t_delta_hms_ms,t0,t1)
 # usage: $(call t_delta_hms,t0,t1)
 #
 
-t_delta_ms = $$(awk -v t1=$(1) -v t2=$(2) 'BEGIN { printf("%.3f", t2 - t1) }')
-t_delta = $$(awk -v t1=$(1) -v t2=$(2) 'BEGIN { printf("%d", t2 - t1) }')
-t_delta_hms_ms = $(call hms_ms,$(call t_delta_ms,$(1),$(2)))
+t_delta = $$(awk -v t1=$(1) -v t2=$(2) 'BEGIN { printf("%.3f", t2 - t1) }')
+t_delta_hms_ms = $(call hms_ms,$(call t_delta,$(1),$(2)))
 t_delta_hms = $(call hms,$(call t_delta,$(1),$(2)))
 
 #
@@ -355,7 +365,7 @@ trap_on_signal() {
     t2=$(t);
     rule_ended_at=$(call at,$$t2)
     if [ -n "$$t1" ]; then
-        rule_elapsed=$(call t_delta_ms,$$t1,$$t2)
+        rule_elapsed=$(call t_delta,$$t1,$$t2)
         rule_elapsed_hms_ms=$(call hms_ms,$$rule_elapsed)
     else
         rule_elapsed=
@@ -378,10 +388,10 @@ trap_on_signal() {
     t0=$(call kv_get,$(status),started_at_epoch)
     t3=$(t)
     $(call kv_set,$(status),ended_at,$(call at,$$t3))
-    $(call kv_set,$(status),total_elapsed,$(call t_delta_ms,$$t0,$$t3))
+    $(call kv_set,$(status),total_elapsed,$(call t_delta,$$t0,$$t3))
     $(call kv_set,$(status),state,NOT RUNNING (interrupted))
     $(call log,end '$(project)' \
-        (total elapsed: $(call t_delta_hms,$$t0,$$t3)))
+        (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
     exit $$rc
 }
