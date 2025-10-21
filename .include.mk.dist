@@ -75,6 +75,7 @@ watch_delay := .05
 # report
 
 rule_width := [RULE_WIDTH]
+rule_queue := [RULE_QUEUE]
 
 # email
 
