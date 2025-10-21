@@ -95,7 +95,6 @@ main:
 	k=0
 	while read rule; do
 	    : $$((k++))
-	    $(call log,$$k)
 
 	    $(call parse_rule,$$rule)
 	    rulef=$(stats)/$(runid)/$$ruleid; > $$rulef
@@ -117,7 +116,6 @@ main:
 	    $(call kv_set,$$rulef,program_cmd,$$program_cmd_q)
 
 	    $(call kv_set,$(status),progress,$$k/$$n ($$pct%))
-	    $(call log,$$rule)
 	    $(call kv_set,$(status),current_rule,$$rule)
 	    $(call kv_set,$(status),current_ruleid,$$ruleid)
 	    $(call kv_set,$(status),current_rule_src,$$src)
@@ -158,7 +156,7 @@ main:
 	    $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
             (elapsed: $(call hms_ms,$$rule_elapsed)))
 
-	    $(stop_guard);
+	    $(call stop_guard,$$ruleid);
 	done < <(sed 's/[[:space:]]*#.*//' $(rules_list) | awk 'NF')
 
 end:
@@ -215,7 +213,7 @@ status status-v:
 	    started_at_epoch=$(call kv_get,$(status),started_at_epoch)
 	    elapsed=$(call t_delta_hms,$$started_at_epoch,$(t))
 	    current_ruleid=$(call kv_get,$(status),current_ruleid)
-	    progress=$$(printf $(call kv_get,$(status),progress) |
+	    progress=$$(printf "%s" "$(call kv_get,$(status),progress)" |
 	        sed 's/ (/, /;s/)//')
 	    current_rule_src="$(call kv_get,$(status),current_rule_src)"
 	    current_rule_dst="$(call kv_get,$(status),current_rule_dst)"
@@ -328,7 +326,8 @@ usage:
 	} >> $$usagef
 
 	t0=$(t)
-	$(call log,start bucket usage (excluding versions))
+	$(call log,start bucket usage (excluding versions) \
+        (bucket='$$bucket', prefix='$(dst_root)'))
 	{
 	    printf "    excluding versions:\n"
 	    $(rclone) --config $(rclone_conf) size $(rpath) |
@@ -338,7 +337,8 @@ usage:
         (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 	t0=$(t)
-	$(call log,start bucket usage (including versions))
+	$(call log,start bucket usage (including versions) \
+        (bucket='$$bucket', prefix='$(dst_root)'))
 	{
 	    printf "    including versions:\n"
 	    $(rclone) --config $(rclone_conf) size --s3-versions $(rpath) |

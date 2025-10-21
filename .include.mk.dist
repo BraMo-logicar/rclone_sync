@@ -259,10 +259,12 @@ endef
 #
 
 define stop_guard
+_ruleid=$(1)
 if [ -f $(stop) ]; then
-    printf "[$(project)] stop flag found: exit after current rule\n"
+    printf "[%s] stop flag found: exit after current rule (ruleid='%s')\n" \
+        $(project) $$_ruleid
     rm -f $(stop)
-    $(call log,stop flag found: exit after current rule)
+    $(call log,stop flag found: exit after current rule (ruleid='$$_ruleid'))
     exit 0
 fi
 endef
@@ -324,9 +326,9 @@ endef
 
 define rclone_stats
 declare -A S
-while read k v; do
-    S[$$k]="$$v"
-    $(call kv_set,$(2),$$k,$$v)
+while read _k _v; do
+    S[$$_k]="$$_v"
+    $(call kv_set,$(2),$$_k,$$_v)
 done < <($(call get_rclone_stats,$(3)))
 printf -v stats_log "checks=%s, transferred=%s (%s) (new=%s, replaced=%s), \
     deleted=%s, elapsed=%s" \
