@@ -112,7 +112,7 @@ now = $$(date +%Y.%m.%d-%H:%M:%S)
 # usage: $(call at,epoch)
 #
 
-at = $$(date -d @$(1) +%Y.%m.%d-%H:%M:%S)
+at = $$(date -d @$$(printf "%.0f" $(1)) +%Y.%m.%d-%H:%M:%S)
 
 #
 # hms_ms() - format delta times (hms.ms)
@@ -140,7 +140,7 @@ endef
 define hms
 $$(awk -v t=$(1) '
     BEGIN {
-        s = int(t);
+        s = int(t + .5);
         h = int(s / 3600); s %= 3600;
         m = int(s / 60); s %= 60;
         if (h > 0) printf("%dh%02dm%02ds", h, m, s);
@@ -153,7 +153,7 @@ endef
 define hms_colon
 $$(awk -v t=$(1) '
     BEGIN {
-        s = int(t);
+        s = int(t + .5);
         h = int(s / 3600); s %= 3600;
         m = int(s / 60); s %= 60;
         printf("%02d:%02d:%02d", h, m, s);
@@ -389,6 +389,7 @@ trap_on_signal() {
 
     t0=$(call kv_get,$(status),started_at_epoch)
     t3=$(t)
+    $(call kv_set,$(status),ended_at_epoch,$$t3)
     $(call kv_set,$(status),ended_at,$(call at,$$t3))
     $(call kv_set,$(status),total_elapsed,$(call t_delta,$$t0,$$t3))
     $(call kv_set,$(status),state,NOT RUNNING (interrupted))

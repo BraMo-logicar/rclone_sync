@@ -302,7 +302,7 @@ status status-v:
 	    done < $(ruleids_list)
 
 	    if [ $$queue -gt $(rule_queue) ]; then
-	        printf "(+%d more rules pending)\n" $$((queue - $(rule_queue)))
+	        printf "(+%d more rules remaining)\n" $$((queue - $(rule_queue)))
 	    fi
 	fi
 
