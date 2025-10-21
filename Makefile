@@ -47,16 +47,14 @@ start:
 	$(call kv_set,$(status),version,$(version))
 	$(call kv_set,$(status),runid,$(runid))
 
-	$(call kv_set,$(status),started_at,$(call at,$$t0))
 	$(call kv_set,$(status),started_at_epoch,$$t0)
+	$(call kv_set,$(status),started_at,$(call at,$$t0))
 	$(call kv_set,$(status),progress,0/0 (0%))
 
 	$(call kv_set,$(status),current_rule,-)
 	$(call kv_set,$(status),current_ruleid,-)
 	$(call kv_set,$(status),current_rule_src,-)
 	$(call kv_set,$(status),current_rule_dst,-)
-	$(call kv_set,$(status),current_rule_started_at,-)
-	$(call kv_set,$(status),current_rule_started_at_epoch,-)
 	$(call kv_set,$(status),current_rule_status,-)
 	$(call kv_set,$(status),current_rule_log,-)
 
@@ -71,6 +69,7 @@ start:
 	$(call kv_set,$(status),program_pid,-)
 	$(call kv_set,$(status),rclone_pid,-)
 
+	$(call kv_set,$(status),ended_at_epoch,-)
 	$(call kv_set,$(status),ended_at,-)
 	$(call kv_set,$(status),total_elapsed,-)
 	$(call kv_set,$(status),rc,0)
@@ -95,10 +94,11 @@ main:
 
 	k=0
 	while read rule; do
-	    ((k++))
+	    : $$((k++))
+	    $(call log,$$k)
 
 	    $(call parse_rule,$$rule)
-	    rulef=$(stats)/$(runid)/$$ruleid
+	    rulef=$(stats)/$(runid)/$$ruleid; > $$rulef
 	    rule_log=$(logrun)/$$ruleid.log
 	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
 
@@ -117,6 +117,7 @@ main:
 	    $(call kv_set,$$rulef,program_cmd,$$program_cmd_q)
 
 	    $(call kv_set,$(status),progress,$$k/$$n ($$pct%))
+	    $(call log,$$rule)
 	    $(call kv_set,$(status),current_rule,$$rule)
 	    $(call kv_set,$(status),current_ruleid,$$ruleid)
 	    $(call kv_set,$(status),current_rule_src,$$src)
@@ -131,10 +132,8 @@ main:
 	    $(call log,[$$ruleid] command line: $$program_cmd_q)
 
 	    t1=$(t)
-	    rule_started_at=$(call at,$$t1)
-	    $(call kv_set,$$rulef,rule_started_at,$$rule_started_at)
-	    $(call kv_set,$(status),current_rule_started_at,$$rule_started_at)
-	    $(call kv_set,$(status),current_rule_started_at_epoch,$$t1)
+	    $(call kv_set,$$rulef,rule_started_at_epoch,$$t1)
+	    $(call kv_set,$$rulef,rule_started_at,$(call at,$$t1))
 
 	    "$${program_cmd[@]}" &> $$rule_log & program_pid=$$!
 	    $(call kv_set,$(status),program_pid,$$program_pid)
@@ -143,12 +142,11 @@ main:
 	    wait $$watcher_pid || true
 
 	    t2=$(t)
-	    rule_ended_at=$(call at,$$t2)
 	    rule_elapsed=$(call t_delta,$$t1,$$t2)
 
 	    $(call append_rule_log,$$rule_log)
 	    $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
-	    $(call kv_set,$$rulef,rule_ended_at,$$rule_ended_at)
+	    $(call kv_set,$$rulef,rule_ended_at,$(call at,$$t2))
 	    $(call kv_set,$$rulef,rule_elapsed,$$rule_elapsed)
 	    $(call kv_set,$$rulef,rc,$$rc)
 
@@ -166,6 +164,7 @@ main:
 end:
 	@t0=$(call kv_get,$(status),started_at_epoch)
 	t3=$(t)
+	$(call kv_set,$(status),ended_at_epoch,$$t3)
 	$(call kv_set,$(status),ended_at,$(call at,$$t3))
 	$(call kv_set,$(status),total_elapsed,$(call t_delta,$$t0,$$t3))
 	$(call kv_set,$(status),state,NOT RUNNING (completed))
@@ -208,19 +207,15 @@ status status-v:
 	printf "$$BLD%s (v%s) @ %s (%s)$$RST\n\n" \
         $(project) $(version) $(hostname) $(now)
 
-	[ $@ = status-v ] && verbose=true || verbose=false
 	state=$(call kv_get,$(status),state)
 	[ "$$state" = RUNNING ] && running=true || running=false
 
 	started_at=$(call kv_get,$(status),started_at)
-
 	if $$running; then
-	    current_ruleid="$(call kv_get,$(status),current_ruleid)"
-
 	    started_at_epoch=$(call kv_get,$(status),started_at_epoch)
 	    elapsed=$(call t_delta_hms,$$started_at_epoch,$(t))
 	    current_ruleid=$(call kv_get,$(status),current_ruleid)
-	    progress=$$(echo $(call kv_get,$(status),progress) |
+	    progress=$$(printf $(call kv_get,$(status),progress) |
 	        sed 's/ (/, /;s/)//')
 	    current_rule_src="$(call kv_get,$(status),current_rule_src)"
 	    current_rule_dst="$(call kv_get,$(status),current_rule_dst)"
@@ -255,7 +250,7 @@ status status-v:
 	    printf "%-10s : %s\n" rclone $(rclone_ver)
 	fi
 
-	if $$verbose; then
+	if [ $@ = status-v ]; then
 	    printf "\n"
 	    w1=$$(($(rule_width)+1))
 	    fmt="%-$${w1}s  %-5s  %-8s  %-8s  %-8s  %8s  %8s  %8s  %6s  %3s"
@@ -265,7 +260,7 @@ status status-v:
             RULE STATE START END ELAPSED CHECKS XFER XFER_MiB DEL RC
 
 	    run=false
-	    queue=0 queue_print=0
+	    queue=0
 	    while read ruleid; do
 	        rulef=$(stats)/last/$$ruleid
 	        rule=$(call truncate,$$ruleid,$(rule_width))
@@ -274,7 +269,6 @@ status status-v:
 	            : $$((queue++))
 	            if [ $$queue -le $(rule_queue) ]; then
 	                printf "$$fmt_queue\n" $$rule queue
-	                : $$((queue_print++))
 	            fi
 	            continue
 	        fi
@@ -283,13 +277,13 @@ status status-v:
 	        end=$(call kv_get,$$rulef,rule_ended_at); end=$${end#*-}
 
 	        rc=$(call kv_get,$$rulef,rc)
-
-	        if [ -z $$rc ]; then
+	        if [ -z "$$rc" ]; then
 	            state=run
 	            run=true
-	            end=
-	            start_epoch=$(call kv_get,$(status),current_rule_started_at_epoch)
-	            elapsed=$(call hms_colon,$(call t_delta,$$start_epoch,$(t)))
+	            rule_started_at_epoch=$(call \
+                    kv_get,$$rulef,rule_started_at_epoch)
+	            elapsed=$(call hms_colon,$(call \
+                    t_delta,$$rule_started_at_epoch,$(t)))
 	            col=$$_RED_ rst=$$RST
 	        else
 	            state=done
@@ -313,6 +307,10 @@ status status-v:
 	        printf "(+%d more rules pending)\n" $$((queue - $(rule_queue)))
 	    fi
 	fi
+
+	progress=$(call kv_get,$(status),progress)
+	progress=$${progress% *}
+	$(call log,got status: state=$$state$(,) progress=$$progress)
 
 # usage
 

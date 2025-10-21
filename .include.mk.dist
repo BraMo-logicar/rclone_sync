@@ -195,7 +195,7 @@ relpath = $$(printf "%s" $(1) | sed 's|$(home)/||')
 #
 
 define parse_rule
-rule=$$(printf "%s\n" "$(1)")
+printf -v rule "%s\n" "$(1)"
 if printf "%s" "$$rule" | grep -q " -- "; then
     path="$${rule%% -- *}" opts="$${rule#* -- }"
 else
@@ -277,7 +277,8 @@ endef
 kv_get = $$(sed -En 's/^$(2):[[:space:]]*//p' $(1))
 
 define kv_set
-_f=$(1) _k=$(2) _v="$(3)"
+_f=$(1) _k=$(2)
+printf -v _v "%q" "$(3)"
 if grep -q "^$$_k:" $$_f; then
     sed -Ei "s|^$$_k:.*|$$_k: $$_v|" $$_f
 else
