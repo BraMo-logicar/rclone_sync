@@ -1,7 +1,7 @@
 # Name: .include.mk - include for Makefiles
 # Usage: include .include.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.10.20
+# Date: 2025.10.24
 
 #-----
 # vars
@@ -36,8 +36,8 @@ usage  := $(data)/usage
 logf   := $(home)/log/$(project).log
 logrun := $(home)/log/run
 
-tmp    := $(home)/tmp
-stop   := $(tmp)/stop
+tmp  := $(home)/tmp
+stop := $(tmp)/stop
 
 # cmds
 
@@ -51,9 +51,9 @@ dst_root := [DST_ROOT]
 
 lpath := $(src_root)
 
-remote  := $(project)
-bucket  := [BUCKET]
-rpath   := $(remote):$(bucket)$(dst_root)
+remote := $(project)
+bucket := [BUCKET]
+rpath  := $(remote):$(bucket)$(dst_root)
 
 # rclone
 
@@ -327,7 +327,7 @@ define rclone_stats
 declare -A S
 while read _k _v; do
     S[$$_k]=$$_v
-    kv_set $(2) $$_k $$_v
+    kv_set "$(2)" $$_k $$_v
 done < <($(call get_rclone_stats,$(3)))
 printf -v stats_log "checks=%s, transferred=%s (%s) (new=%s, replaced=%s), \
     deleted=%s, elapsed=%s" \
@@ -452,7 +452,7 @@ endef
 
 define truncate
 $$(
-    s="$(1)" w=$(2)
+    s=$(1) w=$(2)
     len=$$(expr length "$$s")
     [ $${#s} -gt $$w ] && printf "%.*s+" $$w "$$s" || printf "$$s"
 )
