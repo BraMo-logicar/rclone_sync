@@ -209,12 +209,10 @@ kill:
 status status-v:
 	@$(define_kv)
 	$(colors)
-	set -x
 	printf "$$BLD%s (v%s) @ %s (%s)$$RST\n\n" \
         $(project) $(version) $(hostname) $(now)
 
 	state=$$(kv_get $(status) state)
-	echo "state: $$state"
 	[ "$$state" = RUNNING ] && running=true || running=false
 
 	started_at=$$(kv_get $(status) started_at)
@@ -294,7 +292,7 @@ status status-v:
 	        else
 	            state=done
 	            elapsed=$$(kv_get $$rulef rule_elapsed)
-	            elapsed=$(call hms_colon $$elapsed))
+	            elapsed=$(call hms_colon,$$elapsed)
 	            col= rst=
 	        fi
 
