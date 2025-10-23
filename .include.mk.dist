@@ -181,7 +181,7 @@ t_delta_hms = $(call hms,$(call t_delta,$(1),$(2)))
 #
 
 make := $(notdir $(MAKE))
-log = printf "%s [%s(%s):%s] %s\n" $(now) $(make) $@ $$$$ "$(1)" >> $(logf)
+log = printf "%s [%s(%s):%s] %s\n" $(now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 #
 # relpath() - path relative to home
@@ -246,14 +246,14 @@ define watch_rclone
     rclone_pid=$(call
         watch_child,$$program_pid,rclone,$(watch_tries),$(watch_delay))
     if [ -n "$$rclone_pid" ]; then
-        kv_set $(status) rclone_pid $$rclone_pid
+        kv_set "$(status)" rclone_pid $$rclone_pid
         rclone_cmd=$(call get_command_by_pid,$$rclone_pid)
         if [ -n "$$rclone_cmd" ]; then
-            kv_set $$rulef rclone_cmd "$$rclone_cmd"
-            kv_set $(status) rclone_cmd "$$rclone_cmd"
+            kv_set "$$rulef" rclone_cmd "$$rclone_cmd"
+            kv_set "$(status)" rclone_cmd "$$rclone_cmd"
         fi
     else
-        kv_set $(status) rclone_pid unknown
+        kv_set "$(status)" rclone_pid unknown
     fi
 ) & watcher_pid=$$!
 endef
@@ -315,7 +315,7 @@ awk '
         printf "rclone_deleted %s\n",          deleted
         printf "rclone_elapsed %s\n",          elapsed
     }
-' $(1)
+' "$(1)"
 endef
 
 #
@@ -348,7 +348,7 @@ define append_rule_log
     printf -- "-- begin rclone log --\n"
     sed '$${/^$$/d}' "$(1)"
     printf -- "-- end rclone log --\n"
-} >> $(logf)
+} >> "$(logf)"
 endef
 
 #
@@ -358,10 +358,10 @@ endef
 
 define stop_guard
 _ruleid=$(1)
-if [ -f $(stop) ]; then
+if [ -f "$(stop)" ]; then
     printf "[%s] stop flag found: exit after current rule (ruleid='%s')\n" \
         $(project) $$_ruleid
-    rm -f $(stop)
+    rm -f "$(stop)"
     $(call log,stop flag found: exit after current rule (ruleid='$$_ruleid'))
     exit 0
 fi
@@ -393,23 +393,24 @@ trap_on_signal() {
 
     $(call append_rule_log,$$rule_log)
     $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
-    kv_set $$rulef rule_ended_at $$rule_ended_at
-    [ -n "$$rule_elapsed" ] && \
-        kv_set $$rulef rule_elapsed $$rule_elapsed
-    kv_set $$rulef rc $$rc
+    kv_set "$$rulef" rule_ended_at $$rule_ended_at
+    if [ -n "$$rule_elapsed" ]; then
+	    kv_set "$$rulef" rule_elapsed $$rule_elapsed
+	fi
+    kv_set "$$rulef" rc $$rc
 
-    kv_set $(status) program_pid -
-    kv_set $(status) rclone_pid -
-    kv_set $(status) rc $$rc
+    kv_set "$(status)" program_pid -
+    kv_set "$(status)" rclone_pid -
+    kv_set "$(status)" rc $$rc
     $(call log,[$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
         (elapsed: $$rule_elapsed_hms_ms))
 
-    t0=$$(kv_get $(status) started_at_epoch)
+    t0=$$(kv_get "$(status)" started_at_epoch)
     t3=$(t)
-    kv_set $(status) ended_at_epoch $$t3
-    kv_set $(status) ended_at $(call at,$$t3)
-    kv_set $(status) total_elapsed $(call t_delta,$$t0,$$t3)
-    kv_set $(status) state "NOT RUNNING (interrupted)"
+    kv_set "$(status)" ended_at_epoch $$t3
+    kv_set "$(status)" ended_at $(call at,$$t3)
+    kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
+    kv_set "$(status)" state "NOT RUNNING (interrupted)"
     $(call log,end '$(project)' \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
