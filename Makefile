@@ -29,8 +29,8 @@ list::
 	n=$$(wc -l < $(rules_list))
 	$(call log,list $$n rules from '$(src_root)' to '$(rules_list)')
 
-	$(call define_parse_rule)
-	while read rule; do
+	$(define_parse_rule)
+	while IFS= read -r rule; do
 	    parse_rule "$$rule"
 	    printf "%s\n" $$ruleid
 	done < $(rules_list) > $(ruleids_list)
@@ -42,6 +42,7 @@ list::
 start:
 	@t0=$(t)
 	mkdir -p $(stats); > $(status)
+	$(define_kv)
 
 	$(call kv_set,$(status),state,RUNNING)
 	$(call kv_set,$(status),project,$(project))
@@ -86,16 +87,16 @@ main:
 	@n=$$(sed 's/[[:space:]]*#.*//' $(rules_list) | awk 'NF' | wc -l)
 	$(call log,loop over '$(call relpath,$(rules_list))' ($$n rules))
 
-	$(trap_on_signal)
+	$(define_trap_on_signal)
 	trap 'trap_on_signal SIGINT 2' INT
 	trap 'trap_on_signal SIGTERM 15' TERM
 	shell_pid=$$$$
 
 	$(call kv_set,$(status),shell_pid,$$shell_pid)
 
-	$(call define_parse_rule)
+	$(define_parse_rule)
 	k=0
-	while read rule; do
+	while IFS= read -r rule; do
 	    : $$((k++))
 
 	    parse_rule "$$rule"
@@ -261,7 +262,7 @@ status status-v:
 
 	    run=false
 	    queue=0
-	    while read ruleid; do
+	    while IFS= read -r ruleid; do
 	        rulef=$(stats)/last/$$ruleid
 	        rule=$(call truncate,$$ruleid,$(rule_width))
 
