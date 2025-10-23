@@ -191,19 +191,46 @@ log = printf "%s [%s(%s):%s] %s\n" $(now) $(make) $@ $$$$ "$(1)" >> $(logf)
 relpath = $$(printf "%s" "$(1)" | sed 's|$(home)/||')
 
 #
-# define_parse_rule() - parse a rule and set key=value
+# define_kv() - define kv_get() and kv_set() shell functions
+# kv_get()    - get key/value (empty if missing)
+# kv_set()    - replace key/value (append if missing)
+# usage: $(define_kv)
+#        kv_get file key
+#        kv_set file key value
+#
+
+define define_kv
+kv_get() {
+    local f=$$1 k=$$2
+    sed -En 's/^'$$k':[[:space:]]*//p' "$$f"
+}
+
+kv_set() {
+    local f=$$1 k=$$2 v=$$3
+    printf -v v "%q" "$$v"
+    if grep -q "^$$k:" "$$f"; then
+        sed -Ei "s|^$$k:.*|$$k: $$v|" "$$f"
+    else
+        printf "%s: %s\n" $$k "$$v" >> "$$f"
+    fi
+}
+endef
+
+#
+# define_parse_rule() - define parse_rule() shell function
+# parse_rule()        - parse a rule and set key=value
 # usage: $(define_parse_rule)
 #        parse_rule rule
 #
 
 define define_parse_rule
 parse_rule() {
-    local rule="$$1"
+    local rule=$$1
     case "$$rule" in
-        *" -- "*) path="$${rule%% -- *}"; opts="$${rule#* -- }" ;;
-        *)        path="$$rule"; opts= ;;
+        *" -- "*) path=$${rule%% -- *} opts=$${rule#* -- } ;;
+        *)        path=$$rule opts= ;;
     esac
-    [ "$$path" = "." ] && path=
+    [ "$$path" = . ] && path=
     ruleid=$$(printf "%s" "$${path##*/}" | tr '[:space:]' '_')
     set -f; eval "$$opts"; set +f
 }
@@ -219,14 +246,14 @@ define watch_rclone
     rclone_pid=$(call
         watch_child,$$program_pid,rclone,$(watch_tries),$(watch_delay))
     if [ -n "$$rclone_pid" ]; then
-        $(call kv_set,$(status),rclone_pid,$$rclone_pid)
+        kv_set $(status) rclone_pid $$rclone_pid
         rclone_cmd=$(call get_command_by_pid,$$rclone_pid)
         if [ -n "$$rclone_cmd" ]; then
-            $(call kv_set,$$rulef,rclone_cmd,$$rclone_cmd)
-            $(call kv_set,$(status),rclone_cmd,$$rclone_cmd)
+            kv_set $$rulef rclone_cmd "$$rclone_cmd"
+            kv_set $(status) rclone_cmd "$$rclone_cmd"
         fi
     else
-        $(call kv_set,$(status),rclone_pid,unknown)
+        kv_set $(status) rclone_pid unknown
     fi
 ) & watcher_pid=$$!
 endef
@@ -258,41 +285,6 @@ $$(
     printf -v cmd "%q " "$${argv[@]}"
     printf "%s\n" "$${cmd% }"
 )
-endef
-
-#
-# stop_guard() - exit current rule if a stop flag file exists
-# usage: $(stop_guard)
-#
-
-define stop_guard
-_ruleid=$(1)
-if [ -f $(stop) ]; then
-    printf "[%s] stop flag found: exit after current rule (ruleid='%s')\n" \
-        $(project) $$_ruleid
-    rm -f $(stop)
-    $(call log,stop flag found: exit after current rule (ruleid='$$_ruleid'))
-    exit 0
-fi
-endef
-
-#
-# kv_get() - get key/value (empty if missing)
-# kv_set() - replace key/value (append if missing)
-# usage: $(call kv_get,file,key)
-# usage: $(call kv_set,file,key,value)
-#
-
-kv_get = $$(sed -En 's/^$(2):[[:space:]]*//p' $(1))
-
-define kv_set
-_f=$(1) _k=$(2)
-printf -v _v "%q" "$(3)"
-if grep -q "^$$_k:" $$_f; then
-    sed -Ei "s|^$$_k:.*|$$_k: $$_v|" $$_f
-else
-    printf "%s: %s\n" $$_k "$$_v" >> $$_f
-fi
 endef
 
 #
@@ -334,8 +326,8 @@ endef
 define rclone_stats
 declare -A S
 while read _k _v; do
-    S[$$_k]="$$_v"
-    $(call kv_set,$(2),$$_k,$$_v)
+    S[$$_k]=$$_v
+    kv_set $(2) $$_k $$_v
 done < <($(call get_rclone_stats,$(3)))
 printf -v stats_log "checks=%s, transferred=%s (%s) (new=%s, replaced=%s), \
     deleted=%s, elapsed=%s" \
@@ -360,7 +352,24 @@ define append_rule_log
 endef
 
 #
-# define_trap_on_signal() - signal handler
+# stop_guard() - exit current rule if a stop flag file exists
+# usage: $(stop_guard)
+#
+
+define stop_guard
+_ruleid=$(1)
+if [ -f $(stop) ]; then
+    printf "[%s] stop flag found: exit after current rule (ruleid='%s')\n" \
+        $(project) $$_ruleid
+    rm -f $(stop)
+    $(call log,stop flag found: exit after current rule (ruleid='$$_ruleid'))
+    exit 0
+fi
+endef
+
+#
+# define_trap_on_signal() - define trap_on_signal() shell function
+# trap_on_signal()        - signal handler
 # usage: $(define_trap_on_signal)
 #        trap_on_signal signal rc
 #
@@ -384,23 +393,23 @@ trap_on_signal() {
 
     $(call append_rule_log,$$rule_log)
     $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
-    $(call kv_set,$$rulef,rule_ended_at,$$rule_ended_at)
+    kv_set $$rulef rule_ended_at $$rule_ended_at
     [ -n "$$rule_elapsed" ] && \
-        $(call kv_set,$$rulef,rule_elapsed,$$rule_elapsed)
-    $(call kv_set,$$rulef,rc,$$rc)
+        kv_set $$rulef rule_elapsed $$rule_elapsed
+    kv_set $$rulef rc $$rc
 
-    $(call kv_set,$(status),program_pid,-)
-    $(call kv_set,$(status),rclone_pid,-)
-    $(call kv_set,$(status),rc,$$rc)
+    kv_set $(status) program_pid -
+    kv_set $(status) rclone_pid -
+    kv_set $(status) rc $$rc
     $(call log,[$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
         (elapsed: $$rule_elapsed_hms_ms))
 
-    t0=$(call kv_get,$(status),started_at_epoch)
+    t0=$$(kv_get $(status) started_at_epoch)
     t3=$(t)
-    $(call kv_set,$(status),ended_at_epoch,$$t3)
-    $(call kv_set,$(status),ended_at,$(call at,$$t3))
-    $(call kv_set,$(status),total_elapsed,$(call t_delta,$$t0,$$t3))
-    $(call kv_set,$(status),state,NOT RUNNING (interrupted))
+    kv_set $(status) ended_at_epoch $$t3
+    kv_set $(status) ended_at $(call at,$$t3)
+    kv_set $(status) total_elapsed $(call t_delta,$$t0,$$t3)
+    kv_set $(status) state "NOT RUNNING (interrupted)"
     $(call log,end '$(project)' \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
