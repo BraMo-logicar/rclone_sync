@@ -191,20 +191,22 @@ log = printf "%s [%s(%s):%s] %s\n" $(now) $(make) $@ $$$$ "$(1)" >> $(logf)
 relpath = $$(printf "%s" $(1) | sed 's|$(home)/||')
 
 #
-# parse_rule() - parse a rule and set key=value
-# usage: $(call parse_rule,rule)
+# define_parse_rule() - parse a rule and set key=value
+# usage: $(call define_parse_rule) 
+#        parse_rule rule 
 #
 
-define parse_rule
-printf -v rule "%s\n" "$(1)"
-if printf "%s" "$$rule" | grep -q " -- "; then
-    path="$${rule%% -- *}" opts="$${rule#* -- }"
-else
-    path="$$rule" opts=
-fi
-[ "$$path" = "." ] && path=
-ruleid=$$(printf "%s" "$${path##*/}" | tr '[:space:]' '_')
-set -f; eval "$$opts"; set +f
+define define_parse_rule
+parse_rule() {
+    local rule="$$1"
+    case "$$rule" in
+        *" -- "*) path="$${rule%% -- *}"; opts="$${rule#* -- }" ;;
+        *)        path="$$rule"; opts= ;;
+    esac
+    [ "$$path" = "." ] && path=
+    ruleid=$$(printf "%s" "$${path##*/}" | tr '[:space:]' '_')
+    set -f; eval "$$opts"; set +f
+}
 endef
 
 #

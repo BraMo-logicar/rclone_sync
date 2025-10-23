@@ -29,8 +29,9 @@ list::
 	n=$$(wc -l < $(rules_list))
 	$(call log,list $$n rules from '$(src_root)' to '$(rules_list)')
 
+	$(call define_parse_rule)
 	while read rule; do
-	    $(call parse_rule,$$rule)
+	    parse_rule "$$rule"
 	    printf "%s\n" $$ruleid
 	done < $(rules_list) > $(ruleids_list)
 	n=$$(wc -l < $(ruleids_list))
@@ -92,11 +93,12 @@ main:
 
 	$(call kv_set,$(status),shell_pid,$$shell_pid)
 
+	$(call define_parse_rule)
 	k=0
 	while read rule; do
 	    : $$((k++))
 
-	    $(call parse_rule,$$rule)
+	    parse_rule "$$rule"
 	    rulef=$(stats)/$(runid)/$$ruleid; > $$rulef
 	    rule_log=$(logrun)/$$ruleid.log
 	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
