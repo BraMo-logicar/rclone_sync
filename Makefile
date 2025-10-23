@@ -78,11 +78,11 @@ start:
 
 	$(call log,start '$(project)' (v$(version)) @ $(hostname) ($(ip)))
 
-	[ -L "$(stats)"/last ] &&
-	    ln -fns $$(readlink "$(stats)"/last) "$(stats)"/prev
+	[ -L "$(stats)/last" ] &&
+	    ln -fns $$(readlink "$(stats)/last") "$(stats)/prev"
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
-	mkdir -p "$(stats)"/$(runid)
-	ln -fns $(runid) "$(stats)"/last
+	mkdir -p "$(stats)/$(runid)"
+	ln -fns $(runid) "$(stats)/last"
 
 main:
 	@n=$$(sed 's/[[:space:]]*#.*//' "$(rules_list)" | awk 'NF' | wc -l)
@@ -102,8 +102,8 @@ main:
 	    : $$((k++))
 
 	    parse_rule "$$rule"
-	    rulef="$(stats)"/$(runid)/$$ruleid; > "$$rulef"
-	    rule_log="$(logrun)"/$$ruleid.log
+	    rulef="$(stats)/$(runid)/$$ruleid"; > "$$rulef"
+	    rule_log="$(logrun)/$$ruleid.log"
 	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
 
 	    kv_set "$$rulef" rule "$$rule"
@@ -267,7 +267,7 @@ status status-v:
 	    run=false
 	    queue=0
 	    while IFS= read -r ruleid; do
-	        rulef="$(stats)"/last/$$ruleid
+	        rulef="$(stats)/last/$$ruleid"
 	        rule=$(call truncate,$$ruleid,$(rule_width))
 
 	        if $$run || [ ! -f "$$rulef" ]; then
@@ -320,11 +320,11 @@ status status-v:
 # usage
 
 usage:
-	@usagef="$(usage)"/usage-$(runid); > "$$usagef"
+	@usagef="$(usage)/usage-$(runid)"; > "$$usagef"
 
-	[ -L "$(usage)"/last ] &&
-	    ln -fns $$(readlink "$(usage)"/last) "$(usage)"/prev
-	ln -fns $${usagef##*/} "$(usage)"/last
+	[ -L "$(usage)/last" ] &&
+	    ln -fns $$(readlink "$(usage)/last") "$(usage)/prev"
+	ln -fns $${usagef##*/} "$(usage)/last"
 
 	{
 	    printf "Bucket usage (%s, %s)\n" \

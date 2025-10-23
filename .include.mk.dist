@@ -17,7 +17,7 @@ SHELL := /usr/bin/bash
 
 home := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-project      := $(notdir $(home))
+project      := $(shell basename "$(home)")
 version      := 2.0
 program_name := rclone_sync
 program_path := $(home)/bin/$(program_name)
@@ -180,7 +180,7 @@ t_delta_hms = $(call hms,$(call t_delta,$(1),$(2)))
 # usage: $(call log,message)
 #
 
-make := $(notdir $(MAKE))
+make := $(shell basename "$(MAKE)")
 log = printf "%s [%s(%s):%s] %s\n" $(now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 #
