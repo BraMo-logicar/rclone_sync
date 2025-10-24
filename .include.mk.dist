@@ -207,7 +207,7 @@ kv_get() {
 
 kv_set() {
     local f=$$1 k=$$2 v=$$3
-    printf -v v "%q" "$$v"
+    printf -v v "%s" "$$v"
     if grep -q "^$$k:" "$$f"; then
         sed -Ei "s|^$$k:.*|$$k: $$v|" "$$f"
     else
@@ -282,7 +282,7 @@ endef
 define get_command_by_pid
 $$(
     mapfile -d '' -t argv < /proc/$(1)/cmdline
-    printf -v cmd "%q " "$${argv[@]}"
+    printf -v cmd "%s " "$${argv[@]}"
     printf "%s\n" "$${cmd% }"
 )
 endef
