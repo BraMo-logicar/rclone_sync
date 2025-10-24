@@ -113,12 +113,12 @@ main:
 	    src="$(lpath)/$$path"
 	    dst="$(rpath)/$$path"
 	    program_cmd=("$(program_path)" $${opts:+-o "$$opts"} "$$src" "$$dst")
-	    printf -v program_cmd "%s " "$${program_cmd[@]}"
-	    program_cmd=$${program_cmd% }
+	    printf -v program_line "%s " "$${program_cmd[@]}"
+	    program_line=$${program_line% }
 
 	    kv_set "$$rulef" rule_src "$$src"
 	    kv_set "$$rulef" rule_dst "$$dst"
-	    kv_set "$$rulef" program_cmd "$$program_cmd"
+	    kv_set "$$rulef" program_cmd "$$program_line"
 
 	    kv_set "$(status)" progress "$$k/$$n ($$pct%)"
 	    kv_set "$(status)" current_rule "$$rule"
@@ -127,12 +127,12 @@ main:
 	    kv_set "$(status)" current_rule_dst "$$dst"
 	    kv_set "$(status)" current_rule_status "$$rulef"
 	    kv_set "$(status)" current_rule_log "$$rule_log"
-	    kv_set "$(status)" program_cmd "$$program_cmd"
+	    kv_set "$(status)" program_cmd "$$program_line"
 
 	    $(call log,rule '$$rule')
 	    $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%))
 	    $(call log,[$$ruleid] start '$(program_name)')
-	    $(call log,[$$ruleid] command line: $$program_cmd)
+	    $(call log,[$$ruleid] command line: $$program_line)
 
 	    t1=$(t)
 	    kv_set "$$rulef" rule_started_at_epoch $$t1
