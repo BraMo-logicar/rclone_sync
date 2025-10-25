@@ -250,7 +250,6 @@ define watch_rclone
         rclone_cmd=$(call get_command_by_pid,$$rclone_pid)
         if [ -n "$$rclone_cmd" ]; then
             kv_set "$$rulef" rclone_cmd "$$rclone_cmd"
-            kv_set "$(status)" rclone_cmd "$$rclone_cmd"
         fi
     else
         kv_set "$(status)" rclone_pid unknown
@@ -401,14 +400,12 @@ trap_on_signal() {
 
     kv_set "$(status)" program_pid -
     kv_set "$(status)" rclone_pid -
-    kv_set "$(status)" rc $$rc
     $(call log,[$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
         (elapsed: $$rule_elapsed_hms_ms))
 
     t0=$$(kv_get "$(status)" started_at_epoch)
     t3=$(t)
     kv_set "$(status)" ended_at_epoch $$t3
-    kv_set "$(status)" ended_at $(call at,$$t3)
     kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
     kv_set "$(status)" state "NOT RUNNING (interrupted)"
     $(call log,end '$(project)' \

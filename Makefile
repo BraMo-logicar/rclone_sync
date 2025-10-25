@@ -45,26 +45,13 @@ start:
 	$(define_kv)
 
 	kv_set "$(status)" state RUNNING
-	kv_set "$(status)" project $(project)
-	kv_set "$(status)" version $(version)
-	kv_set "$(status)" runid $(runid)
 
 	kv_set "$(status)" started_at_epoch $$t0
-	kv_set "$(status)" started_at $(call at,$$t0)
 	kv_set "$(status)" progress "0/0 (0%)"
 
-	kv_set "$(status)" current_rule -
 	kv_set "$(status)" current_ruleid -
 	kv_set "$(status)" current_rule_src -
 	kv_set "$(status)" current_rule_dst -
-	kv_set "$(status)" current_rule_status -
-	kv_set "$(status)" current_rule_log -
-
-	kv_set "$(status)" program_name $(program_name)
-	kv_set "$(status)" program_path "$(program_path)"
-	kv_set "$(status)" program_cmd -
-	kv_set "$(status)" rclone_cmd -
-	kv_set "$(status)" rclone_ver $(rclone_ver)
 
 	kv_set "$(status)" make_pid $$PPID
 	kv_set "$(status)" shell_pid -
@@ -72,9 +59,7 @@ start:
 	kv_set "$(status)" rclone_pid -
 
 	kv_set "$(status)" ended_at_epoch -
-	kv_set "$(status)" ended_at -
 	kv_set "$(status)" total_elapsed -
-	kv_set "$(status)" rc 0
 
 	$(call log,start '$(project)' (v$(version)) @ $(hostname) ($(ip)))
 
@@ -121,13 +106,10 @@ main:
 	    kv_set "$$rulef" program_cmd "$$program_line"
 
 	    kv_set "$(status)" progress "$$k/$$n ($$pct%)"
-	    kv_set "$(status)" current_rule "$$rule"
 	    kv_set "$(status)" current_ruleid $$ruleid
 	    kv_set "$(status)" current_rule_src "$$src"
 	    kv_set "$(status)" current_rule_dst "$$dst"
-	    kv_set "$(status)" current_rule_status "$$rulef"
 	    kv_set "$(status)" current_rule_log "$$rule_log"
-	    kv_set "$(status)" program_cmd "$$program_line"
 
 	    $(call log,rule '$$rule')
 	    $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%))
@@ -149,13 +131,13 @@ main:
 
 	    $(call append_rule_log,$$rule_log)
 	    $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
+	    kv_set "$$rulef" rule_ended_at_epoch $$t2
 	    kv_set "$$rulef" rule_ended_at $(call at,$$t2)
 	    kv_set "$$rulef" rule_elapsed $$rule_elapsed
 	    kv_set "$$rulef" rc $$rc
 
 	    kv_set "$(status)" program_pid -
 	    kv_set "$(status)" rclone_pid -
-	    if [ $$rc -ne 0 ]; then kv_set "$(status)" rc $$rc; fi
 
 	    [ $$rc -ne 0 ] && warn=" (WARN)" || warn=
 	    $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
@@ -169,7 +151,6 @@ end:
 	t0=$$(kv_get "$(status)" started_at_epoch)
 	t3=$(t)
 	kv_set "$(status)" ended_at_epoch $$t3
-	kv_set "$(status)" ended_at $(call at,$$t3)
 	kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
 	kv_set "$(status)" state "NOT RUNNING (completed)"
 	$(call log,end '$(project)' \
@@ -216,7 +197,6 @@ status status-v:
 	state=$$(kv_get "$(status)" state)
 	[ "$$state" = RUNNING ] && running=true || running=false
 
-	started_at=$$(kv_get "$(status)" started_at)
 	if $$running; then
 	    started_at_epoch=$$(kv_get "$(status)" started_at_epoch)
 	    elapsed=$(call t_delta_hms,$$started_at_epoch,$(t))
@@ -234,7 +214,7 @@ status status-v:
 	    printf "%-12s : $$_RED_%s$$RST\n" state "$$state"
 	    printf "%-12s : %s\n" runid $(runid)
 	    printf "%-12s : %s  (elapsed: %s)\n" "started at" \
-            $$started_at $$elapsed
+            $$(call at,started_at_epoch) $$elapsed
 	    printf "%-12s : $$_RED_%s$$RST ($$_RED_%s$$RST)\n" "current rule" \
             $$current_ruleid "$$progress"
 	    printf "%-12s : %s -> %s\n" flow \
@@ -242,14 +222,15 @@ status status-v:
 	    printf "%-12s : %s\n" pids "$$pids"
 	    printf "%-12s : %s\n" rclone $(rclone_ver)
 	else
-	    ended_at=$$(kv_get "$(status)" ended_at)
+	    started_at_epoch=$$(kv_get "$(status)" started_at_epoch)
+	    ended_at_epoch=$$(kv_get "$(status)" ended_at_epoch)
 	    total_elapsed=$$(kv_get "$(status)" total_elapsed)
 	    elapsed=$(call hms,$$total_elapsed)
 
 	    printf "%-10s : $$_RED_%s$$RST\n" state "$$state"
 	    printf "%-10s : %s\n" runid $(runid)
-	    printf "%-10s : %s\n" "started at" $$started_at
-	    printf "%-10s : %s\n" "ended at" $$ended_at
+	    printf "%-10s : %s\n" "started at" $(call at,$$started_at_epoch)
+	    printf "%-10s : %s\n" "ended at" $(call at,$$ended_at_epoch)
 	    printf "%-10s : %s\n" elapsed $$elapsed
 	    printf "%-10s : %s -> %s\n" flow "$(lpath)" "$(rpath)"
 	    printf "%-10s : %s\n" rclone $(rclone_ver)
@@ -283,7 +264,7 @@ status status-v:
 
 	        rc=$$(kv_get "$$rulef" rc)
 	        if [ -z "$$rc" ]; then
-	            state=run
+	            rstate=run
 	            run=true
 	            rule_started_at_epoch=$$(kv_get "$$rulef" \
                     rule_started_at_epoch)
@@ -291,7 +272,7 @@ status status-v:
                     t_delta,$$rule_started_at_epoch,$(t)))
 	            col=$$_RED_ rst=$$RST
 	        else
-	            state=done
+	            rstate=done
 	            elapsed=$$(kv_get "$$rulef" rule_elapsed)
 	            elapsed=$(call hms_colon,$$elapsed)
 	            col= rst=
@@ -304,7 +285,7 @@ status status-v:
 	        del=$$(kv_get "$$rulef" rclone_deleted)
 
 	        printf "$$col$$fmt$$rst\n" \
-                $$rule $$state $$start "$$end" $$elapsed "$$checks" \
+                $$rule $$rstate $$start "$$end" $$elapsed "$$checks" \
                 "$$xfer" "$$xfer_mib" "$$del" "$$rc"
 	    done < "$(ruleids_list)"
 
