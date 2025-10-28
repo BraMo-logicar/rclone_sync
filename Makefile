@@ -72,7 +72,7 @@ start:
 
 main:
 	@$(define_kv)
-	n=$$(grep -Ev '^[[:space:]]*(#|$$)' "$(rules_list)" | wc -l)
+	n=$(count_rules)
 	kv_set "$(status)" rules_total $$n
 	$(call log,loop over '$(call relpath,$(rules_list))' ($$n rules))
 
@@ -223,30 +223,30 @@ status status-v:
 	    pids="make=$${make_pid:--}, shell=$${shell_pid:--}, "
 	    pids+="rclone_sync=$${program_pid:--}, rclone=$${rclone_pid:--}"
 
-	    printf "%-12s : $$_RED_%s$$RST\n" state "$$gstate"
-	    printf "%-12s : %s\n" runid $(runid)
-	    printf "%-12s : %s  (elapsed: %s)\n" "started at" \
-            $$(call at,started_at_epoch) $$elapsed
-	    printf "%-12s : $$_RED_%s$$RST  (elapsed: %s)\n" \
-            "current rule" $$current_ruleid $$rule_elapsed
-	    printf "%-12s : $$_RED_%s$$RST (%s)\n" progress $$k $$n $$pct
-	    printf "%-12s : %s -> %s\n" flow \
-            "$$current_rule_src" "$$current_rule_dst"
-	    printf "%-12s : %s\n" pids "$$pids"
-	    printf "%-12s : %s\n" rclone $(rclone_ver)
+	    printf "state        : $$_RED_%s$$RST\n" "$$gstate"
+	    printf "runid        : %s\n" runid $(runid)
+	    printf "started at   : %s  (elapsed: %s)\n" \
+                               $$(call at,started_at_epoch) $$elapsed
+	    printf "current rule : $$_RED_%s$$RST  (elapsed: %s)\n" \
+                               $$current_ruleid $$rule_elapsed
+	    printf "progress     : $$_RED_%s$$RST (%s)\n" $$k $$n $$pct
+	    printf "flow         : %s -> %s\n" \
+                               "$$current_rule_src" "$$current_rule_dst"
+	    printf "pids         : %s\n" "$$pids"
+	    printf "rclone       : %s\n" $(rclone_ver)
 	else
 	    started_at_epoch=$$(kv_get "$(status)" started_at_epoch)
 	    ended_at_epoch=$$(kv_get "$(status)" ended_at_epoch)
 	    total_elapsed=$$(kv_get "$(status)" total_elapsed)
 	    elapsed=$(call hms,$$total_elapsed)
 
-	    printf "%-10s : $$_RED_%s$$RST\n" state "$$gstate"
-	    printf "%-10s : %s\n" runid $(runid)
-	    printf "%-10s : %s\n" "started at" $(call at,$$started_at_epoch)
-	    printf "%-10s : %s\n" "ended at" $(call at,$$ended_at_epoch)
-	    printf "%-10s : %s\n" elapsed $$elapsed
-	    printf "%-10s : %s -> %s\n" flow "$(lpath)" "$(rpath)"
-	    printf "%-10s : %s\n" rclone $(rclone_ver)
+	    printf "state      : $$_RED_%s$$RST\n" "$$gstate"
+	    printf "runid      : %s\n" $(runid)
+	    printf "started at : %s\n" $(call at,$$started_at_epoch)
+	    printf "ended at   : %s\n" $(call at,$$ended_at_epoch)
+	    printf "elapsed    : %s\n" $$elapsed
+	    printf "flow       : %s -> %s\n" "$(lpath)" "$(rpath)"
+	    printf "rclone     : %s\n" $(rclone_ver)
 	fi
 
 	if [ $@ = status-v ]; then
@@ -331,10 +331,10 @@ status status-v:
 	    else
 	        printf "    rules      : %s\n" $$n
 	    fi
-	    printf "    checks     : %d\n" $$sum_checks
-	    printf "    xfer       : %d\n" $$sum_xfer
-	    printf "    xfer_size  : %s\n" todo
-	    printf "    deleted    : %d\n" $$sum_del
+	    printf "    checks     : %d\n" $(call num3,$$sum_checks)
+	    printf "    xfer       : %d\n" $(call num3,$$sum_xfer)
+	    printf "    xfer_size  : %s\n" $(call mib2iec,$$sum_xfer_mib)
+	    printf "    deleted    : %d\n" $(call num3,$$sum_del)
 	    printf "    elapsed    : %s\n" $(call hms,$$sum_elapsed)
 	    printf "    rc         : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
