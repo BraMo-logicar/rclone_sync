@@ -311,30 +311,30 @@ status status-v:
 	            col= rst=
 	        fi
 
-	        #printf "$$col$$fmt$$rst\n" \
-            #    $$rule $$rstate $$start "$$end" $$elapsed "$$checks" \
-            #    "$$xfer" "$$xfer_mib" "$$del" "$$rc"
+	        printf "$$col$$fmt$$rst\n" \
+                $$rule $$rstate $$start "$$end" $$elapsed "$$checks" \
+                "$$xfer" "$$xfer_mib" "$$del" "$$rc"
 	    done < "$(ruleids_list)"
 
 	    if [ $$queue -gt $(rule_queue) ]; then
 	        printf "(+%d more rules remaining)\n" $$((queue - $(rule_queue)))
 	    fi
 
-	    printf "\nSUMMARY\n"
+	    printf "\n$$BLD%s$$RST\n" SUMMARY
 
 	    k=$$(kv_get "$(status)" rules_done)
 	    n=$$(kv_get "$(status)" rules_total)
 	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
 
 	    if $$running; then
-	        printf "    rules      : %d/%d (%.2f%)\n" $$k $$n $$pct
+	        printf "    rules      : $$_RED_%d/%d$$RST (%.2f%)\n" $$k $$n $$pct
 	    else
-	        printf "    rules      : %d\n" $$n
+	        printf "    rules      : $$_RED_%d$$RST\n" $$n
 	    fi
-	    printf "    checks     : %d\n" $(call num3,$$sum_checks)
-	    printf "    xfer       : %d\n" $(call num3,$$sum_xfer)
+	    printf "    checks     : %s\n" $(call num3,$$sum_checks)
+	    printf "    xfer       : %s\n" $(call num3,$$sum_xfer)
 	    printf "    xfer_size  : %s\n" $(call mib2iec,$$sum_xfer_mib)
-	    printf "    deleted    : %d\n" $(call num3,$$sum_del)
+	    printf "    deleted    : %s\n" $(call num3,$$sum_del)
 	    printf "    elapsed    : %s\n" $(call hms,$$sum_elapsed)
 	    printf "    rc         : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
