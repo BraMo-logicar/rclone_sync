@@ -175,7 +175,7 @@ kill:
 	printf "[%s] global kill requested (%s=%d, %s=%d, %s=%d)\n" \
         $(project) recipe_shell $$shell_pid \
         program $$program_pid rclone $$rclone_pid
-	$(call log,global kill requested (recipe_shell=$$shell_pid$(,) \
+	$(call log,kill requested (recipe_shell=$$shell_pid$(,) \
         program=$$program_pid$(,) rclone=$$rclone_pid))
 	for sig in INT TERM KILL; do
 	    for pid in $$rclone_pid $$program_pid $$shell_pid; do
@@ -186,7 +186,7 @@ kill:
 	    done
 	    sleep 1
 	done
-	$(call log,global kill: sent signals to rclone=$$rclone_pid$(,) \
+	$(call log,kill: sent signals to rclone=$$rclone_pid$(,) \
         program=$$program_pid$(,) recipe_shell=$$shell_pid)
 
 # status
