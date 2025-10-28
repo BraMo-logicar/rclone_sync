@@ -1,7 +1,7 @@
 # Name: .include.mk - include for Makefiles
 # Usage: include .include.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.10.24
+# Date: 2025.10.28
 
 #-----
 # vars
@@ -384,7 +384,7 @@ endef
 #
 
 define num3
-$$(printf "%s" "$(1)" | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
+$$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
 endef
 
 #------
@@ -475,9 +475,9 @@ awk '
         printf "rclone_checks %s\n",           checks
         printf "rclone_transferred %s\n",      xfer
         printf "rclone_transferred_size %s\n", xfer_size
-        printf "rclone_copied_new %s\n",       xfer_new
-        printf "rclone_copied_replaced %s\n",  xfer_replaced
-        printf "rclone_deleted %s\n",          deleted
+        printf "rclone_copied_new %d\n",       xfer_new
+        printf "rclone_copied_replaced %d\n",  xfer_replaced
+        printf "rclone_deleted %d\n",          deleted
         printf "rclone_elapsed %s\n",          elapsed
     }
 ' "$(1)"
@@ -494,8 +494,8 @@ while read _k _v; do
     S[$$_k]=$$_v
     kv_set "$(2)" $$_k $$_v
 done < <($(call get_rclone_stats,$(3)))
-printf -v stats_log "checks=%s, transferred=%s (%s) (new=%s, replaced=%s), \
-    deleted=%s, elapsed=%s" \
+printf -v stats_log "checks=%s, transferred=%s (%s) (new=%d, replaced=%d), \
+    deleted=%d, elapsed=%s" \
     "$${S[rclone_checks]}" \
     "$${S[rclone_transferred]}" "$${S[rclone_transferred_size]}" \
     "$${S[rclone_copied_new]}" "$${S[rclone_copied_replaced]}" \

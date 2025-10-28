@@ -180,7 +180,7 @@ kill:
 	for sig in INT TERM KILL; do
 	    for pid in $$rclone_pid $$program_pid $$shell_pid; do
 	         if kill -0 $$pid 2>/dev/null; then
-	             printf "  send SIG%s to %s\n" $$sig $$pid
+	             printf "  send SIG%s to %d\n" $$sig $$pid
 	             kill -s $$sig $$pid 2>/dev/null || true
 	         fi
 	    done
@@ -229,7 +229,7 @@ status status-v:
                                $$(call at,started_at_epoch) $$elapsed
 	    printf "current rule : $$_RED_%s$$RST  (elapsed: %s)\n" \
                                $$current_ruleid $$rule_elapsed
-	    printf "progress     : $$_RED_%s$$RST (%s)\n" $$k $$n $$pct
+	    printf "progress     : $$_RED_%d/%d$$RST (%.2f)\n" $$k $$n $$pct
 	    printf "flow         : %s -> %s\n" \
                                "$$current_rule_src" "$$current_rule_dst"
 	    printf "pids         : %s\n" "$$pids"
@@ -327,9 +327,9 @@ status status-v:
 	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
 
 	    if $$running; then
-	        printf "    rules      : %s/%s (%s%)\n" $$k $$n $$pct
+	        printf "    rules      : %d/%d (%.2f%)\n" $$k $$n $$pct
 	    else
-	        printf "    rules      : %s\n" $$n
+	        printf "    rules      : %d\n" $$n
 	    fi
 	    printf "    checks     : %d\n" $(call num3,$$sum_checks)
 	    printf "    xfer       : %d\n" $(call num3,$$sum_xfer)
