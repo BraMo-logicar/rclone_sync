@@ -23,7 +23,6 @@ program_name := rclone_sync
 program_path := $(home)/bin/$(program_name)
 
 hostname := $(shell hostname)
-host     := $(shell hostname -s)
 ip       := $(shell hostname -I | awk '{ print $$1 }')
 
 # dirs and files
@@ -335,7 +334,6 @@ trap_on_signal() {
 }
 endef
 
-
 #--------
 # logging
 #--------
@@ -398,13 +396,13 @@ endef
 
 define mib
 $$(awk -v s=$(1) '
-    function n(x) { sub(/[BKMGTi]*$$/,"",x); return x }
+    function n(x) { sub(/[BKMGTi]*$$/, "", x); return x }
     BEGIN {
-        if      (s ~ /[0-9]B/)   print sprintf("%.1f", n(s)/1048576)
-        else if (s ~ /[0-9]KiB/) print sprintf("%.1f", n(s)/1024)
+        if      (s ~ /[0-9]B/)   print sprintf("%.1f", n(s) / 1048576)
+        else if (s ~ /[0-9]KiB/) print sprintf("%.1f", n(s) / 1024)
         else if (s ~ /[0-9]MiB/) print sprintf("%.1f", n(s))
-        else if (s ~ /[0-9]GiB/) print sprintf("%.1f", n(s)*1024)
-        else if (s ~ /[0-9]TiB/) print sprintf("%.1f", n(s)*1048576)
+        else if (s ~ /[0-9]GiB/) print sprintf("%.1f", n(s) * 1024)
+        else if (s ~ /[0-9]TiB/) print sprintf("%.1f", n(s) * 1048576)
     }
 ')
 endef
@@ -415,11 +413,14 @@ endef
 #
 
 define mib2iec
-$$(awk -v m=$(1) 'BEGIN {
-    split("B KiB MiB GiB TiB",u," "); i=1; n=m;
-    while (n >= 1024 && i < 3) { n/=1024; i++ }
-    printf("%.1f%s", n, u[i])
-}')
+$$(awk -v mib=$(1) '
+    BEGIN {
+        u = split("B KiB MiB GiB TiB", U)
+        n = 1048576 * mib
+        for (i = 1; n >= 1024 && i < u; i++) n /= 1024
+        printf("%.1f %s", n, U[i])
+    }
+')
 endef
 
 #-------
@@ -452,6 +453,7 @@ endef
 #------
 # stats
 #------
+
 #
 # get_rclone_stats() - parse an rclone per-run log and get key/value metrics
 # usage: $(call get_rclone_stats,rule_log)
@@ -459,7 +461,7 @@ endef
 
 define get_rclone_stats
 awk '
-    function xc(s) { sub(/,$$/,"",s); return s }
+    function xc(s) { sub(/,$$/, "", s); return s }
 
     BEGIN { xfer = 0; xfer_new = 0; xfer_replaced = 0; deleted = 0; }
 
