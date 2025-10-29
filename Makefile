@@ -19,13 +19,13 @@ $(project): start main end
 # list
 
 list::
-	@> "$(rules_list)"
-	if find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read; then
-	    printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n" \
-            >> "$(rules_list)"
-	fi
-	find "$(src_root)" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" |
-	    sort >> "$(rules_list)"
+	@{
+	    if find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read -r; then
+	        printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n" \
+	    fi
+	    find "$(src_root)" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" |
+	        sort
+	} > "$(rules_list)"
 	n=$$(wc -l < "$(rules_list)")
 	$(call log,list $$n rules from '$(src_root)' to '$(rules_list)')
 
@@ -89,7 +89,7 @@ main:
 	    : $$((k++))
 
 	    parse_rule "$$rule"
-	    rulef="$(stats)/$(runid/$$ruleid"; > "$$rulef"
+	    rulef="$(stats)/$(runid)/$$ruleid"; > "$$rulef"
 	    rule_log="$(logrun)/$$ruleid.log"
 	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
 
@@ -111,7 +111,6 @@ main:
 	    kv_set "$(status)" current_ruleid $$ruleid
 	    kv_set "$(status)" current_rule_src "$$src"
 	    kv_set "$(status)" current_rule_dst "$$dst"
-	    kv_set "$(status)" current_rule_log "$$rule_log"
 
 	    $(call log,rule '$$rule')
 	    $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%))
@@ -216,6 +215,7 @@ status status-v:
 
 	    current_rule_src=$$(kv_get "$(status)" current_rule_src)
 	    current_rule_dst=$$(kv_get "$(status)" current_rule_dst)
+
 	    make_pid=$$(kv_get "$(status)" make_pid)
 	    shell_pid=$$(kv_get "$(status)" shell_pid)
 	    program_pid=$$(kv_get "$(status)" program_pid)
@@ -224,12 +224,12 @@ status status-v:
 	    pids+="rclone_sync=$${program_pid:--}, rclone=$${rclone_pid:--}"
 
 	    printf "state        : $$_RED_%s$$RST\n" "$$gstate"
-	    printf "runid        : %s\n" runid $(runid)
+	    printf "runid        : %s\n" $(runid)
 	    printf "started at   : %s  (elapsed: %s)\n" \
-                               $$(call at,started_at_epoch) $$elapsed
+                               $(call at,$$started_at_epoch) $$elapsed
 	    printf "current rule : $$_RED_%s$$RST  (elapsed: %s)\n" \
                                $$current_ruleid $$rule_elapsed
-	    printf "progress     : $$_RED_%d/%d$$RST (%.2f)\n" $$k $$n $$pct
+	    printf "progress     : $$_RED_%d/%d$$RST (%.2f%%)\n" $$k $$n $$pct
 	    printf "flow         : %s -> %s\n" \
                                "$$current_rule_src" "$$current_rule_dst"
 	    printf "pids         : %s\n" "$$pids"
@@ -254,6 +254,7 @@ status status-v:
 	    w1=$$(($(rule_width)+1))
 	    fmt="%-$${w1}s  %-5s  %-8s  %-8s  %-8s  %8s  %8s  %8s  %6s  %3s"
 	    fmt_queue="$$MAG%-$${w1}s  %-5s$$RST"
+	    fmt_run="$$_RED_%-$${w1}s  %-5s  %-8s  %-8s  %-8s$$RST"
 
 	    printf "$$BLD$$fmt$$RST\n" \
             RULE STATE START END ELAPSED CHECKS XFER XFER_MiB DEL RC
@@ -289,7 +290,7 @@ status status-v:
                     rule_started_at_epoch)
 	            elapsed=$(call hms_colon,$(call \
                     t_delta,$$rule_started_at_epoch,$(t)))
-	            col=$$_RED_ rst=$$RST
+	            printf "$$fmt_run\n" $$rule $$rstate $$start "$$end" $$elapsed
 	        else
 	            rule_elapsed=$$(kv_get "$$rulef" rule_elapsed)
 	            elapsed=$(call hms_colon,$$rule_elapsed)
@@ -308,12 +309,9 @@ status status-v:
 	            sum_elapsed=$$(echo "$$sum_elapsed+$$rule_elapsed" | bc)
 	            [ "$$rc" = 0 ] && : $$((rc_ok++)) || : $$((rc_fail++))
 
-	            col= rst=
+	            printf "$$fmt\n" $$rule $$rstate $$start "$$end" \
+                    $$elapsed "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc"
 	        fi
-
-	        printf "$$col$$fmt$$rst\n" \
-                $$rule $$rstate $$start "$$end" $$elapsed "$$checks" \
-                "$$xfer" "$$xfer_mib" "$$del" "$$rc"
 	    done < "$(ruleids_list)"
 
 	    if [ $$queue -gt $(rule_queue) ]; then
@@ -322,18 +320,15 @@ status status-v:
 
 	    printf "\n$$BLD%s$$RST\n" SUMMARY
 
-	    k=$$(kv_get "$(status)" rules_done)
-	    n=$$(kv_get "$(status)" rules_total)
-	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
-
 	    if $$running; then
-	        printf "    rules      : $$_RED_%d/%d$$RST (%.2f%)\n" $$k $$n $$pct
+	        printf "    rules      : $$_RED_%d/%d$$RST (%.2f%%)\n" \
+                $$k $$n $$pct
 	    else
 	        printf "    rules      : $$_RED_%d$$RST\n" $$n
 	    fi
 	    printf "    checks     : %s\n" $(call num3,$$sum_checks)
 	    printf "    xfer       : %s\n" $(call num3,$$sum_xfer)
-	    printf "    xfer_size  : %s\n" $(call mib2iec,$$sum_xfer_mib)
+	    printf "    xfer_size  : %s\n" "$(call mib2iec,$$sum_xfer_mib)"
 	    printf "    deleted    : %s\n" $(call num3,$$sum_del)
 	    printf "    elapsed    : %s\n" $(call hms,$$sum_elapsed)
 	    printf "    rc         : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
