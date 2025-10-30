@@ -9,12 +9,20 @@ include .include.mk
 # targets
 #
 
-.PHONY: help list start main end stop kill status status-v usage
+.PHONY: help dirs \
+        list start main end stop kill \
+        status status-v report report-mail \
+        usage
 
 help:
 	@echo Makefile: Please specify a target: list, start, main, end, ...
 
 $(project): start main end
+
+%/:
+	@mkdir -p "$@"
+
+dirs: $(data)/ $(stats)/ $(reports)/
 
 # list
 
@@ -39,9 +47,9 @@ list::
 
 # main
 
-start:
+start: | $(stats)/ $(stats)/$(runid)/
 	@t0=$(t)
-	mkdir -p "$(stats)"; > "$(status)"
+	> "$(status)"
 	$(define_kv)
 
 	kv_set "$(status)" state RUNNING
@@ -64,11 +72,10 @@ start:
 
 	$(call log,start '$(project)' (v$(version)) @ $(hostname) ($(ip)))
 
-	[ -L "$(stats)/last" ] &&
-	    ln -fns $$(readlink "$(stats)/last") "$(stats)/prev"
+	[ -L "$(last)" ] && ln -fns $$(readlink "$(last)") "$(prev)"
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
 	mkdir -p "$(stats)/$(runid)"
-	ln -fns $(runid) "$(stats)/last"
+	ln -fns $(runid) "$(last)"
 
 main:
 	@$(define_kv)
@@ -209,7 +216,7 @@ status status-v:
 	    elapsed=$(call t_delta_hms,$$started_at_epoch,$$t0)
 
 	    current_ruleid=$$(kv_get "$(status)" current_ruleid)
-	    rulef="$(stats)/last/$$current_ruleid"
+	    rulef="$(last)/$$current_ruleid"
 	    rule_started_at_epoch=$$(kv_get "$$rulef" rule_started_at_epoch)
 	    rule_elapsed=$(call t_delta_hms,$$rule_started_at_epoch,$$t0)
 
@@ -265,7 +272,7 @@ status status-v:
 
 	    queue=0
 	    while IFS= read -r ruleid; do
-	        rulef="$(stats)/last/$$ruleid"
+	        rulef="$(last)/$$ruleid"
 	        rule=$(call truncate,$$ruleid,$(rule_width))
 
 	        if [ ! -f "$$rulef" ]; then
