@@ -147,6 +147,7 @@ main:
 
 	    $(call stop_guard,$$ruleid);
 	done < <(sed 's/[[:space:]]*#.*//' "$(rules_list)" | awk 'NF')
+	kv_set "$(status)" rc 0
 
 end:
 	@$(define_kv)
@@ -308,7 +309,7 @@ status status-v:
 	            sum_xfer_mib=$$(echo "$$sum_xfer_mib+$$xfer_mib" | bc)
 	            : $$((sum_del+=del))
 	            sum_elapsed=$$(echo "$$sum_elapsed+$$rule_elapsed" | bc)
-	            [ "$$rc" = 0 ] && : $$((rc_ok++)) || : $$((rc_fail++))
+	            [ "$$rc" -eq 0 ] && : $$((rc_ok++)) || : $$((rc_fail++))
 
 	            printf "$$fmt\n" $$rule $$rstate $$start "$$end" \
                     $$elapsed "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc"
@@ -336,6 +337,30 @@ status status-v:
 	fi
 
 	$(call log,got status: state=$$gstate$(,) progress=$$k/$$n)
+
+# report
+
+report:
+	@mkdir -p "$(dir $(__status__))"
+	@{ \
+	  printf "project: %s\n"        "$(project)"; \
+	  printf "version: %s\n"        "$(version)"; \
+	  printf "program_name: %s\n"   "$(program_name)"; \
+	  printf "program_path: %s\n"   "$(program_path)"; \
+	  printf "rclone_ver: %s\n"     "$(rclone_ver)"; \
+	  printf "runid: %s\n"          "$(runid)"; \
+	  printf "state: %s\n"          "$$(kv_get $(status) state)"; \
+	  printf "rules_total: %s\n"    "$$(kv_get $(status) rules_total)"; \
+	  printf "rules_done: %s\n"     "$$(kv_get $(status) rules_done)"; \
+	  printf "started_at: %s\n"     "$$(kv_get $(status) started_at)"; \
+	  printf "ended_at: %s\n"       "$$(kv_get $(status) ended_at)"; \
+	  printf "total_elapsed: %s\n"  "$$(kv_get $(status) total_elapsed)"; \
+	  printf "host: %s\n"           "$(hostname)"; \
+	  printf "ip: %s\n"             "$(ip)"; \
+	  printf "lpath: %s\n"          "$(lpath)"; \
+	  printf "rpath: %s\n"          "$(rpath)"; \
+	} > "$(__status__)"
+	@printf "saved: %s\n" "$(__status__)"
 
 # usage
 
