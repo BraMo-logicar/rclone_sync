@@ -1,7 +1,7 @@
 # Name: .include.mk - include for Makefiles
 # Usage: include .include.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.10.28
+# Date: 2025.10.30
 
 #-----
 # vars
@@ -27,16 +27,17 @@ ip       := $(shell hostname -I | awk '{ print $$1 }')
 
 # dirs and files
 
-data   := $(home)/data
-stats  := $(data)/stats
+data    := $(home)/data
+stats   := $(data)/stats
+reports := $(data)/reports
+tmp     := $(home)/tmp
+
 status := $(data)/status
 usage  := $(data)/usage
+stop   := $(tmp)/stop
 
 logf   := $(home)/log/$(project).log
 logrun := $(home)/log/run
-
-tmp  := $(home)/tmp
-stop := $(tmp)/stop
 
 # cmds
 
@@ -66,12 +67,14 @@ ruleids_list := $(home)/etc/ruleids.list
 
 # stats
 
-runid := $(shell date +%Y%m%d.%H%M%S)
+runid      := $(shell date +%Y%m%d.%H%M%S)
+__status__ := $(stats)/$(runid)/__status__
 
 watch_tries := 100
 watch_delay := .05
 
-# report
+last := $(stats)/last
+prev := $(stats)/prev
 
 rule_width := [RULE_WIDTH]
 rule_queue := [RULE_QUEUE]

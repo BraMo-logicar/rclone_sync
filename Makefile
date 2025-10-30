@@ -19,11 +19,6 @@ help:
 
 $(project): start main end
 
-%/:
-	@mkdir -p "$@"
-
-dirs: $(data)/ $(stats)/ $(reports)/
-
 # list
 
 list::
@@ -47,9 +42,9 @@ list::
 
 # main
 
-start: | $(stats)/ $(stats)/$(runid)/
+start:
 	@t0=$(t)
-	> "$(status)"
+	mkdir -p "$(stats)"; > "$(status)"
 	$(define_kv)
 
 	kv_set "$(status)" state RUNNING
@@ -74,7 +69,6 @@ start: | $(stats)/ $(stats)/$(runid)/
 
 	[ -L "$(last)" ] && ln -fns $$(readlink "$(last)") "$(prev)"
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
-	mkdir -p "$(stats)/$(runid)"
 	ln -fns $(runid) "$(last)"
 
 main:
