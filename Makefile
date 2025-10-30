@@ -108,7 +108,6 @@ main:
 	    kv_set "$$rulef" rule_dst "$$dst"
 	    kv_set "$$rulef" program_cmd "$$program_line"
 
-	    kv_set "$(status)" progress "$$k/$$n ($$pct%)"
 	    kv_set "$(status)" current_ruleid $$ruleid
 	    kv_set "$(status)" current_rule_src "$$src"
 	    kv_set "$(status)" current_rule_dst "$$dst"
@@ -336,9 +335,7 @@ status status-v:
 	    printf "    rc         : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
-	progress=$$(kv_get "$(status)" progress)
-	progress=$${progress% *}
-	$(call log,got status: state=$$gstate$(,) progress=$$progress)
+	$(call log,got status: state=$$gstate$(,) progress=$$k/$$n)
 
 # usage
 
