@@ -25,12 +25,17 @@ program_path := $(home)/bin/$(program_name)
 hostname := $(shell hostname)
 ip       := $(shell hostname -I | awk '{ print $$1 }')
 
+# cmds
+
+rclone   := /bin/rclone
+sendmail := /sbin/sendmail
+
 # dirs and files
 
 data    := $(home)/data
+tmp     := $(home)/tmp
 stats   := $(data)/stats
 reports := $(data)/reports
-tmp     := $(home)/tmp
 
 status := $(data)/status
 usage  := $(data)/usage
@@ -38,11 +43,6 @@ stop   := $(tmp)/stop
 
 logf   := $(home)/log/$(project).log
 logrun := $(home)/log/run
-
-# cmds
-
-rclone   := /bin/rclone
-sendmail := /sbin/sendmail
 
 # source root and destination prefix
 
@@ -65,13 +65,15 @@ rclone_ver  := $(shell rclone version | sed -n '1s/.* v//p')
 rules_list   := $(home)/etc/rules.list
 ruleids_list := $(home)/etc/ruleids.list
 
+# run
+
+watch_tries := 100
+watch_delay := .05
+
 # stats
 
 runid      := $(shell date +%Y%m%d.%H%M%S)
 __status__ := $(stats)/$(runid)/__status__
-
-watch_tries := 100
-watch_delay := .05
 
 last := $(stats)/last
 prev := $(stats)/prev
