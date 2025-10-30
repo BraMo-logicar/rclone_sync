@@ -72,7 +72,7 @@ watch_delay := .05
 
 # stats
 
-runid      := $(shell date +%Y%m%d.%H%M%S)
+runid := $(shell date +%Y%m%d.%H%M%S)
 
 last := $(stats)/last
 prev := $(stats)/prev
@@ -287,7 +287,7 @@ if [ -f "$(stop)" ]; then
     $(call log,stop flag found: exit after current rule (ruleid='$$_ruleid'))
     kv_set "$(status)" state "NOT RUNNING (stopped)"
     kv_set "$(status)" rc 200
-    exit 200
+    exit 0
 fi
 endef
 
@@ -333,10 +333,10 @@ trap_on_signal() {
     kv_set "$(status)" ended_at_epoch $$t3
     kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
     kv_set "$(status)" state "NOT RUNNING (interrupted)"
+    kv_set "$(status)" rc $$rc
     $(call log,end '$(project)' \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
-    kv_set "$(status)" rc $$rc
     exit $$rc
 }
 endef

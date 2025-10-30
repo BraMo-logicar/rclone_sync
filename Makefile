@@ -65,10 +65,13 @@ start:
 	kv_set "$(status)" ended_at_epoch -
 	kv_set "$(status)" total_elapsed -
 
+	kv_set "$(status)" rc 0
+
 	$(call log,start '$(project)' (v$(version)) @ $(hostname) ($(ip)))
 
 	[ -L "$(last)" ] && ln -fns $$(readlink "$(last)") "$(prev)"
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
+	mkdir -p "$(stats)/$(runid)"
 	ln -fns $(runid) "$(last)"
 
 main:
@@ -192,7 +195,8 @@ kill:
 # status
 
 status status-v:
-	@$(define_kv)
+	@t0=$(t)
+	$(define_kv)
 	$(colors)
 	printf "$$BLD%s (v%s) @ %s (%s)$$RST\n\n" \
         $(project) $(version) $(hostname) $(now)
@@ -336,31 +340,34 @@ status status-v:
 	    printf "    rc         : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
-	$(call log,got status: state=$$gstate$(,) progress=$$k/$$n)
+	$(call log,run status: state=$$gstate$(,) progress=$$k/$$n \
+        (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # report
 
 report:
-	@mkdir -p "$(dir $(__status__))"
-	@{ \
-	  printf "project: %s\n"        "$(project)"; \
-	  printf "version: %s\n"        "$(version)"; \
-	  printf "program_name: %s\n"   "$(program_name)"; \
-	  printf "program_path: %s\n"   "$(program_path)"; \
-	  printf "rclone_ver: %s\n"     "$(rclone_ver)"; \
-	  printf "runid: %s\n"          "$(runid)"; \
-	  printf "state: %s\n"          "$$(kv_get $(status) state)"; \
-	  printf "rules_total: %s\n"    "$$(kv_get $(status) rules_total)"; \
-	  printf "rules_done: %s\n"     "$$(kv_get $(status) rules_done)"; \
-	  printf "started_at: %s\n"     "$$(kv_get $(status) started_at)"; \
-	  printf "ended_at: %s\n"       "$$(kv_get $(status) ended_at)"; \
-	  printf "total_elapsed: %s\n"  "$$(kv_get $(status) total_elapsed)"; \
-	  printf "host: %s\n"           "$(hostname)"; \
-	  printf "ip: %s\n"             "$(ip)"; \
-	  printf "lpath: %s\n"          "$(lpath)"; \
-	  printf "rpath: %s\n"          "$(rpath)"; \
-	} > "$(__status__)"
-	@printf "saved: %s\n" "$(__status__)"
+	@mkdir -p "$(reports)"
+	$(define_kv)
+	{
+	  printf "project: %s\n"        "$(project)"
+	  printf "version: %s\n"        "$(version)"
+	  printf "program_name: %s\n"   "$(program_name)"
+	  printf "program_path: %s\n"   "$(program_path)"
+	  printf "rclone_ver: %s\n"     "$(rclone_ver)"
+	  printf "runid: %s\n"          "$(runid)"
+	  printf "state: %s\n"          "$$(kv_get $(status) state)"
+	  printf "rules_total: %s\n"    "$$(kv_get $(status) rules_total)"
+	  printf "rules_done: %s\n"     "$$(kv_get $(status) rules_done)"
+	  printf "started_at: %s\n"     "$$(kv_get $(status) started_at)"
+	  printf "ended_at: %s\n"       "$$(kv_get $(status) ended_at)"
+	  printf "total_elapsed: %s\n"  "$$(kv_get $(status) total_elapsed)"
+	  printf "host: %s\n"           "$(hostname)"
+	  printf "ip: %s\n"             "$(ip)"
+	  printf "lpath: %s\n"          "$(lpath)"
+	  printf "rpath: %s\n"          "$(rpath)"
+	  printf "rc: %s\n"             "$$(kv_get $(status) rc)"
+	} > "$(reports)/..."
+	$(call log,saved ...)
 
 # usage
 
