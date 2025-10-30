@@ -21,7 +21,7 @@ $(project): start main end
 list::
 	@{
 	    if find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read -r; then
-	        printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n" \
+	        printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n"
 	    fi
 	    find "$(src_root)" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" |
 	        sort
@@ -199,6 +199,10 @@ status status-v:
 	gstate=$$(kv_get "$(status)" state)
 	[ "$$gstate" = RUNNING ] && running=true || running=false
 
+	k=$$(kv_get "$(status)" rules_done)
+	n=$$(kv_get "$(status)" rules_total)
+	pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
+
 	if $$running; then
 	    t0=$(t)
 	    started_at_epoch=$$(kv_get "$(status)" started_at_epoch)
@@ -208,10 +212,6 @@ status status-v:
 	    rulef="$(stats)/last/$$current_ruleid"
 	    rule_started_at_epoch=$$(kv_get "$$rulef" rule_started_at_epoch)
 	    rule_elapsed=$(call t_delta_hms,$$rule_started_at_epoch,$$t0)
-
-	    k=$$(kv_get "$(status)" rules_done)
-	    n=$$(kv_get "$(status)" rules_total)
-	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
 
 	    current_rule_src=$$(kv_get "$(status)" current_rule_src)
 	    current_rule_dst=$$(kv_get "$(status)" current_rule_dst)
@@ -242,6 +242,7 @@ status status-v:
 
 	    printf "state      : $$_RED_%s$$RST\n" "$$gstate"
 	    printf "runid      : %s\n" $(runid)
+	    printf "rules      : $$_RED_%d$$RST\n" $$n
 	    printf "started at : %s\n" $(call at,$$started_at_epoch)
 	    printf "ended at   : %s\n" $(call at,$$ended_at_epoch)
 	    printf "elapsed    : %s\n" $$elapsed
