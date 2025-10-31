@@ -46,8 +46,11 @@ start:
 	@t0=$(t)
 	mkdir -p "$(stats)"; > "$(status)"
 	$(define_kv)
+	runid=$(new_runid)
 
 	kv_set "$(status)" state RUNNING
+
+	kv_set "$(status)" runid $$runid
 
 	kv_set "$(status)" started_at_epoch $$t0
 	kv_set "$(status)" rules_done 0
@@ -67,15 +70,31 @@ start:
 
 	kv_set "$(status)" rc 0
 
-	$(call log,start '$(project)' (v$(version)) @ $(hostname) ($(ip)))
-
+	mkdir -p "$(stats)/$$runid"
 	[ -L "$(last)" ] && ln -fns $$(readlink "$(last)") "$(prev)"
+	ln -fns $$runid "$(last)"
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
-	mkdir -p "$(stats)/$(runid)"
-	ln -fns $(runid) "$(last)"
+
+	$(call log,start '$(project)' (v$(version)) @ $(hostname) ($(ip)) \
+        (runid=$$runid))
+
+define count1
+$$(grep -Ev '^[[:space:]]*(#|$$)' "$(rules_list)" | wc -l)
+endef
+count2 = $$(grep -Ev '^[[:space:]]*(\#|$$)' "$(rules_list)" | wc -l)
+count3 = $$(grep -Ev '^[[:space:]]*(#|$$)' "$(rules_list)" | wc -l)
+t:
+	@echo "rules_list: $(rules_list)"
+	n1=$(count1)
+	echo "n1: $$n1"
+	n2=$(count2)
+	echo "n2: $$n2"
+	n3=$(count3)
+	echo "n3: $$n3"
 
 main:
 	@$(define_kv)
+	runid=$(get_runid)
 	n=$(count_rules)
 	kv_set "$(status)" rules_total $$n
 	$(call log,loop over '$(call relpath,$(rules_list))' ($$n rules))
@@ -93,7 +112,7 @@ main:
 	    : $$((k++))
 
 	    parse_rule "$$rule"
-	    rulef="$(stats)/$(runid)/$$ruleid"; > "$$rulef"
+	    rulef="$(stats)/$$runid/$$ruleid"; > "$$rulef"
 	    rule_log="$(logrun)/$$ruleid.log"
 	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
 
@@ -148,18 +167,19 @@ main:
 	    $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
             (elapsed: $(call hms_ms,$$rule_elapsed)))
 
-	    $(call stop_guard,$$ruleid);
+	    $(call stop_guard,$$runid,$$ruleid);
 	done < <(sed 's/[[:space:]]*#.*//' "$(rules_list)" | awk 'NF')
 	kv_set "$(status)" rc 0
 
 end:
 	@$(define_kv)
+	runid=$(get_runid)
 	t0=$$(kv_get "$(status)" started_at_epoch)
 	t3=$(t)
 	kv_set "$(status)" ended_at_epoch $$t3
 	kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
 	kv_set "$(status)" state "NOT RUNNING (completed)"
-	$(call log,end '$(project)' \
+	$(call log,end '$(project)' (runid=$$runid) \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
 # stop & kill
@@ -198,6 +218,7 @@ status status-v:
 	@t0=$(t)
 	$(define_kv)
 	$(colors)
+	runid=$(get_runid)
 	printf "$$BLD%s (v%s) @ %s (%s)$$RST\n\n" \
         $(project) $(version) $(hostname) $(now)
 
@@ -229,7 +250,7 @@ status status-v:
 	    pids+="rclone_sync=$${program_pid:--}, rclone=$${rclone_pid:--}"
 
 	    printf "state        : $$_RED_%s$$RST\n" "$$gstate"
-	    printf "runid        : %s\n" $(runid)
+	    printf "runid        : %s\n" $$runid
 	    printf "started at   : %s  (elapsed: %s)\n" \
                                $(call at,$$started_at_epoch) $$elapsed
 	    printf "current rule : $$_RED_%s$$RST  (elapsed: %s)\n" \
@@ -246,7 +267,7 @@ status status-v:
 	    elapsed=$(call hms,$$total_elapsed)
 
 	    printf "state      : $$_RED_%s$$RST\n" "$$gstate"
-	    printf "runid      : %s\n" $(runid)
+	    printf "runid      : %s\n" $$runid
 	    printf "rules      : $$_RED_%d$$RST\n" $$n
 	    printf "started at : %s\n" $(call at,$$started_at_epoch)
 	    printf "ended at   : %s\n" $(call at,$$ended_at_epoch)
@@ -340,7 +361,7 @@ status status-v:
 	    printf "    rc         : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
-	$(call log,run status: state=$$gstate$(,) progress=$$k/$$n \
+	$(call log,status: state=$$gstate$(,) progress=$$k/$$n \
         (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # report
@@ -348,13 +369,14 @@ status status-v:
 report:
 	@mkdir -p "$(reports)"
 	$(define_kv)
+	runid=$(get_runid)
 	{
 	  printf "project: %s\n"        "$(project)"
 	  printf "version: %s\n"        "$(version)"
 	  printf "program_name: %s\n"   "$(program_name)"
 	  printf "program_path: %s\n"   "$(program_path)"
 	  printf "rclone_ver: %s\n"     "$(rclone_ver)"
-	  printf "runid: %s\n"          "$(runid)"
+	  printf "runid: %s\n"          $$runid
 	  printf "state: %s\n"          "$$(kv_get $(status) state)"
 	  printf "rules_total: %s\n"    "$$(kv_get $(status) rules_total)"
 	  printf "rules_done: %s\n"     "$$(kv_get $(status) rules_done)"
@@ -372,7 +394,9 @@ report:
 # usage
 
 usage:
-	@usagef="$(usage)/usage-$(runid)"; > "$$usagef"
+	@$(define_kv)
+	runid=$(get_runid)
+	usagef="$(usage)/usage-$$runid"; > "$$usagef"
 
 	[ -L "$(usage)/last" ] &&
 	    ln -fns $$(readlink "$(usage)/last") "$(usage)/prev"

@@ -72,8 +72,6 @@ watch_delay := .05
 
 # stats
 
-runid := $(shell date +%Y%m%d.%H%M%S)
-
 last := $(stats)/last
 prev := $(stats)/prev
 
@@ -106,10 +104,13 @@ t = $$(date +%s.%3N)
 
 #
 # now() - current timestamp (yyyy.mm.dd-hh:mm:ss)
+# nowz() - compact current timestamp (yyyymmdd-hhmmss)
 # usage: $(now)
+# usage: $(nowz)
 #
 
-now = $$(date +%Y.%m.%d-%H:%M:%S)
+now  = $$(date +%Y.%m.%d-%H:%M:%S)
+nowz = $$(date +%Y%m%d-%H%M%S)
 
 #
 # at(epoch) - format an epoch (sec.ms -> yyyy.mm.dd-hh:mm:ss)
@@ -128,41 +129,44 @@ at = $$(date -d @$$(printf "%.0f" $(1)) +%Y.%m.%d-%H:%M:%S)
 #
 
 define hms_ms
-$$(awk -v t=$(1) '
-    BEGIN {
-        s = int(t);
-        ms = 1000 * (t - s);
-        h = int(s / 3600); s %= 3600;
-        m = int(s / 60); s %= 60;
-        if (h > 0) printf("%dh%02dm%02d.%03ds", h, m, s, ms);
-        else if (m > 0) printf("%dm%02d.%03ds", m, s, ms);
-        else printf("%d.%03ds", s, ms)
-    }
-')
+$$(
+    awk -v t=$(1) '
+        BEGIN {
+            s = int(t);
+            ms = 1000 * (t - s);
+            h = int(s / 3600); s %= 3600;
+            m = int(s / 60); s %= 60;
+            if (h > 0) printf("%dh%02dm%02d.%03ds", h, m, s, ms);
+            else if (m > 0) printf("%dm%02d.%03ds", m, s, ms);
+            else printf("%d.%03ds", s, ms)
+        }'
+)
 endef
 
 define hms
-$$(awk -v t=$(1) '
-    BEGIN {
-        s = int(t + .5);
-        h = int(s / 3600); s %= 3600;
-        m = int(s / 60); s %= 60;
-        if (h > 0) printf("%dh%02dm%02ds", h, m, s);
-        else if (m > 0) printf("%dm%02ds", m, s);
-        else printf("%ds", s)
-    }
-')
+$$(
+    awk -v t=$(1) '
+        BEGIN {
+            s = int(t + .5);
+            h = int(s / 3600); s %= 3600;
+            m = int(s / 60); s %= 60;
+            if (h > 0) printf("%dh%02dm%02ds", h, m, s);
+            else if (m > 0) printf("%dm%02ds", m, s);
+            else printf("%ds", s)
+        }'
+)
 endef
 
 define hms_colon
-$$(awk -v t=$(1) '
-    BEGIN {
-        s = int(t + .5);
-        h = int(s / 3600); s %= 3600;
-        m = int(s / 60); s %= 60;
-        printf("%02d:%02d:%02d", h, m, s);
-    }
-')
+$$(
+    awk -v t=$(1) '
+        BEGIN {
+            s = int(t + .5);
+            h = int(s / 3600); s %= 3600;
+            m = int(s / 60); s %= 60;
+            printf("%02d:%02d:%02d", h, m, s);
+        }'
+)
 endef
 
 #
@@ -177,6 +181,38 @@ endef
 t_delta = $$(awk -v t1=$(1) -v t2=$(2) 'BEGIN { printf("%.3f", t2 - t1) }')
 t_delta_hms_ms = $(call hms_ms,$(call t_delta,$(1),$(2)))
 t_delta_hms = $(call hms,$(call t_delta,$(1),$(2)))
+
+#------
+# runid
+#------
+
+#
+# new_runid() - create or resolve runid
+# get_runid() - get runid from env -> var -> status file
+# usage: $(new_runid)
+# usage: $(get_runid)
+#
+
+define new_runid
+$$(
+    case $${runid-} in
+        "")   printf "%s" $(nowz) ;;
+        prev) [ -L "$(prev)" ] && basename "$$(readlink "$(prev)")" ;;
+        last) [ -L "$(last)" ] && basename "$$(readlink "$(last)")" ;;
+        *)    printf "%s" $$runid ;;
+    esac
+)
+endef
+
+define get_runid
+$$(
+    case $${runid-} in
+        prev) [ -L "$(prev)" ] && basename "$$(readlink "$(prev)")" ;;
+        last) [ -L "$(last)" ] && basename "$$(readlink "$(last)")" ;;
+        *)    printf "%s" $${runid-$$(kv_get $(status) runid)}
+    esac
+)
+endef
 
 #------
 # paths
@@ -248,7 +284,7 @@ define get_command_by_pid
 $$(
     mapfile -d '' -t argv < /proc/$(1)/cmdline
     printf -v cmd "%s " "$${argv[@]}"
-    printf "%s\n" "$${cmd% }"
+    printf "%s" "$${cmd% }"
 )
 endef
 
@@ -275,20 +311,23 @@ endef
 
 #
 # stop_guard() - exit current rule if a stop flag file exists
-# usage: $(stop_guard)
+# usage: $(call stop_guard,runid,ruleid)
 #
 
 define stop_guard
-_ruleid=$(1)
-if [ -f "$(stop)" ]; then
-    printf "[%s] stop flag found: exit after current rule (ruleid='%s')\n" \
-        $(project) $$_ruleid
-    rm -f "$(stop)"
-    $(call log,stop flag found: exit after current rule (ruleid='$$_ruleid'))
-    kv_set "$(status)" state "NOT RUNNING (stopped)"
-    kv_set "$(status)" rc 200
-    exit 0
-fi
+(
+    runid=$(1) ruleid=$(2)
+    if [ -f "$(stop)" ]; then
+        printf "[%s] stop flag found: exit after current rule \
+            (runid=%s, ruleid='%s')\n" $(project) $$runid $$ruleid
+        rm -f "$(stop)"
+        $(call log,stop flag found: exit after current rule \
+            (runid=$$runid, ruleid='$$ruleid'))
+        kv_set "$(status)" state "NOT RUNNING (stopped)"
+        kv_set "$(status)" rc 200
+        exit 0
+    fi
+)
 endef
 
 #
@@ -307,7 +346,7 @@ trap_on_signal() {
 
     t2=$(t);
     rule_ended_at=$(call at,$$t2)
-    if [ -n "$$t1" ]; then
+    if [ -n "$${t1-}" ]; then
         rule_elapsed=$(call t_delta,$$t1,$$t2)
         rule_elapsed_hms_ms=$(call hms_ms,$$rule_elapsed)
     else
@@ -334,9 +373,9 @@ trap_on_signal() {
     kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
     kv_set "$(status)" state "NOT RUNNING (interrupted)"
     kv_set "$(status)" rc $$rc
-    $(call log,end '$(project)' \
-        (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
+    $(call log,end '$(project)' (runid=$$runid) \
+        (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
     exit $$rc
 }
 endef
@@ -360,7 +399,7 @@ log = printf "%s [%s(%s):%s] %s\n" $(now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 define append_rule_log
 {
-    printf -- "-- begin rclone log --\n"
+    printf -- "-- begin rclone log (runid=$$runid, ruleid=$$ruleid) --\n"
     sed '$${/^$$/d}' "$(1)"
     printf -- "-- end rclone log --\n"
 } >> "$(logf)"
@@ -388,9 +427,7 @@ endef
 # usage: $(call num3,num)
 #
 
-define num3
-$$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
-endef
+num3 = $$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
 
 #------
 # units
@@ -402,16 +439,17 @@ endef
 #
 
 define mib
-$$(awk -v s=$(1) '
-    function n(x) { sub(/[BKMGTi]*$$/, "", x); return x }
-    BEGIN {
-        if      (s ~ /[0-9]B/)   print sprintf("%.1f", n(s) / 1048576)
-        else if (s ~ /[0-9]KiB/) print sprintf("%.1f", n(s) / 1024)
-        else if (s ~ /[0-9]MiB/) print sprintf("%.1f", n(s))
-        else if (s ~ /[0-9]GiB/) print sprintf("%.1f", n(s) * 1024)
-        else if (s ~ /[0-9]TiB/) print sprintf("%.1f", n(s) * 1048576)
-    }
-')
+$$(
+    awk -v s=$(1) '
+        function n(x) { sub(/[BKMGTi]*$$/, "", x); return x }
+        BEGIN {
+            if      (s ~ /[0-9]B/)   print sprintf("%.1f", n(s) / 1048576)
+            else if (s ~ /[0-9]KiB/) print sprintf("%.1f", n(s) / 1024)
+            else if (s ~ /[0-9]MiB/) print sprintf("%.1f", n(s))
+            else if (s ~ /[0-9]GiB/) print sprintf("%.1f", n(s) * 1024)
+            else if (s ~ /[0-9]TiB/) print sprintf("%.1f", n(s) * 1048576)
+        }'
+)
 endef
 
 #
@@ -420,14 +458,15 @@ endef
 #
 
 define mib2iec
-$$(awk -v mib=$(1) '
-    BEGIN {
-        u = split("B KiB MiB GiB TiB", U)
-        n = 1048576 * mib
-        for (i = 1; n >= 1024 && i < u; i++) n /= 1024
-        printf("%.1f %s", n, U[i])
-    }
-')
+$$(
+    awk -v mib=$(1) '
+        BEGIN {
+            u = split("B KiB MiB GiB TiB", U)
+            n = 1048576 * mib
+            for (i = 1; n >= 1024 && i < u; i++) n /= 1024
+            printf("%.1f %s", n, U[i])
+        }'
+)
 endef
 
 #-------
@@ -541,9 +580,7 @@ endef
 # usage: $(count_rules)
 #
 
-define count_rules
-$$(grep -Ev '^[[:space:]]*(#|$$)' "$(rules_list)" | wc -l)
-endef
+count_rules = $$(grep -Ev '^[[:space:]]*(\#|$$)' "$(rules_list)" | wc -l)
 
 
 # vim: ts=4
