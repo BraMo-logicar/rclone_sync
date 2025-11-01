@@ -46,6 +46,8 @@ status := $(data)/status
 usage  := $(data)/usage
 stop   := $(tmp)/stop
 
+.status := .status
+
 logf   := $(home)/log/$(project).log
 logrun := $(home)/log/run
 
@@ -96,21 +98,17 @@ mail_log := yes
 #-----
 
 #
-# t() - current epoch (sec.ms)
+# t()      - current epoch (sec.ms)
+# t_now()  - current timestamp (yyyy.mm.dd-hh:mm:ss)
+# t_znow() - current compressed timestamp (yyyymmdd.hhmmss)
 # usage: $(t)
+# usage: $(t_now)
+# usage: $(t_znow)
 #
 
-t = $$(date +%s.%3N)
-
-#
-# now() - current timestamp (yyyy.mm.dd-hh:mm:ss)
-# nowz() - compact current timestamp (yyyymmdd-hhmmss)
-# usage: $(now)
-# usage: $(nowz)
-#
-
-now  = $$(date +%Y.%m.%d-%H:%M:%S)
-nowz = $$(date +%Y%m%d-%H%M%S)
+t      = $$(date +%s.%3N)
+t_now  = $$(date +%Y.%m.%d-%H:%M:%S)
+t_znow = $$(date +%Y%m%d.%H%M%S)
 
 #
 # at(epoch) - format an epoch (sec.ms -> yyyy.mm.dd-hh:mm:ss)
@@ -120,15 +118,15 @@ nowz = $$(date +%Y%m%d-%H%M%S)
 at = $$(date -d @$$(printf "%.0f" $(1)) +%Y.%m.%d-%H:%M:%S)
 
 #
-# hms_ms() - format delta times (hms.ms)
-# hms() - format delta times (hms)
-# hms_colon() - format delta times (h:m:s)
-# usage: $(call hms_ms,t_delta)
-# usage: $(call hms,t_delta)
-# usage: $(call hms_colon,t_delta)
+# t_hms_ms()    - format delta times (hms.ms)
+# t_hms()       - format delta times (hms)
+# t_hms_colon() - format delta times (h:m:s)
+# usage: $(call t_hms_ms,t_delta)
+# usage: $(call t_hms,t_delta)
+# usage: $(call t_hms_colon,t_delta)
 #
 
-define hms_ms
+define t_hms_ms
 $$(
     awk -v t=$(1) '
         BEGIN {
@@ -143,7 +141,7 @@ $$(
 )
 endef
 
-define hms
+define t_hms
 $$(
     awk -v t=$(1) '
         BEGIN {
@@ -157,7 +155,7 @@ $$(
 )
 endef
 
-define hms_colon
+define t_hms_colon
 $$(
     awk -v t=$(1) '
         BEGIN {
@@ -170,48 +168,40 @@ $$(
 endef
 
 #
-# t_delta() - time difference (sec.ms)
+# t_delta()        - time difference (sec.ms)
 # t_delta_hms_ms() - time difference (hms.ms)
-# t_delta_hms() - time difference (hms)
+# t_delta_hms()    - time difference (hms)
 # usage: $(call t_delta,t0,t1)
 # usage: $(call t_delta_hms_ms,t0,t1)
 # usage: $(call t_delta_hms,t0,t1)
 #
 
 t_delta = $$(awk -v t1=$(1) -v t2=$(2) 'BEGIN { printf("%.3f", t2 - t1) }')
-t_delta_hms_ms = $(call hms_ms,$(call t_delta,$(1),$(2)))
-t_delta_hms = $(call hms,$(call t_delta,$(1),$(2)))
+t_delta_hms_ms = $(call t_hms_ms,$(call t_delta,$(1),$(2)))
+t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 
 #------
 # runid
 #------
 
 #
-# new_runid() - create or resolve runid
-# get_runid() - get runid from env -> var -> status file
-# usage: $(new_runid)
+# get_runid() - get and validate runid (from env -> var -> status file)
 # usage: $(get_runid)
 #
 
-define new_runid
-$$(
-    case $${runid-} in
-        "")   printf "%s" $(nowz) ;;
-        prev) [ -L "$(prev)" ] && basename "$$(readlink "$(prev)")" ;;
-        last) [ -L "$(last)" ] && basename "$$(readlink "$(last)")" ;;
-        *)    printf "%s" $$runid ;;
-    esac
-)
-endef
-
 define get_runid
-$$(
-    case $${runid-} in
-        prev) [ -L "$(prev)" ] && basename "$$(readlink "$(prev)")" ;;
-        last) [ -L "$(last)" ] && basename "$$(readlink "$(last)")" ;;
-        *)    printf "%s" $${runid-$$(kv_get $(status) runid)}
-    esac
-)
+case "$${runid-}" in
+    "")   runid=$$(kv_get $(status) runid) ;;
+    prev) [ -L "$(prev)" ] && runid=$$(readlink "$(prev)") ;;
+    last) [ -L "$(last)" ] && runid=$$(readlink "$(last)") ;;
+esac
+if [ -d "$(stats)/$$runid" ]; then
+    printf "%s" $$runid
+else
+    printf "[%s] invalid runid '%s'\n" $(project) $$runid >&2
+    $(call log,invalid runid '$$runid')
+    exit 1
+fi
 endef
 
 #------
@@ -311,18 +301,18 @@ endef
 
 #
 # stop_guard() - exit current rule if a stop flag file exists
-# usage: $(call stop_guard,runid,ruleid)
+# usage: $(call stop_guard,ruleid)
 #
 
 define stop_guard
 (
-    runid=$(1) ruleid=$(2)
+    ruleid=$(1)
     if [ -f "$(stop)" ]; then
         printf "[%s] stop flag found: exit after current rule \
-            (runid=%s, ruleid='%s')\n" $(project) $$runid $$ruleid
+            (ruleid='%s')\n" $(project) $$ruleid
         rm -f "$(stop)"
         $(call log,stop flag found: exit after current rule \
-            (runid=$$runid, ruleid='$$ruleid'))
+            (ruleid='$$ruleid'))
         kv_set "$(status)" state "NOT RUNNING (stopped)"
         kv_set "$(status)" rc 200
         exit 0
@@ -348,7 +338,7 @@ trap_on_signal() {
     rule_ended_at=$(call at,$$t2)
     if [ -n "$${t1-}" ]; then
         rule_elapsed=$(call t_delta,$$t1,$$t2)
-        rule_elapsed_hms_ms=$(call hms_ms,$$rule_elapsed)
+        rule_elapsed_hms_ms=$(call t_hms_ms,$$rule_elapsed)
     else
         rule_elapsed=
         rule_elapsed_hms_ms=unknown
@@ -390,7 +380,7 @@ endef
 #
 
 make := $(shell basename "$(MAKE)")
-log = printf "%s [%s(%s):%s] %s\n" $(now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
+log = printf "%s [%s(%s):%s] %s\n" $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 #
 # append_rule_log() - append rclone rule log to the main log
@@ -399,7 +389,7 @@ log = printf "%s [%s(%s):%s] %s\n" $(now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 define append_rule_log
 {
-    printf -- "-- begin rclone log (runid=$$runid, ruleid=$$ruleid) --\n"
+    printf -- "-- begin rclone log (ruleid=%s) --\n" $$ruleid
     sed '$${/^$$/d}' "$(1)"
     printf -- "-- end rclone log --\n"
 } >> "$(logf)"
