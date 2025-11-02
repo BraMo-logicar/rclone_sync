@@ -46,8 +46,6 @@ status := $(data)/status
 usage  := $(data)/usage
 stop   := $(tmp)/stop
 
-.status := .status
-
 logf   := $(home)/log/$(project).log
 logrun := $(home)/log/run
 
@@ -72,10 +70,12 @@ ruleids_list := $(home)/etc/ruleids.list
 watch_tries := 100
 watch_delay := .05
 
-# stats
+# status
 
 last := $(stats)/last
 prev := $(stats)/prev
+
+status := $(last)/.status
 
 rule_width := [RULE_WIDTH]
 rule_queue := [RULE_QUEUE]
@@ -364,7 +364,8 @@ trap_on_signal() {
     kv_set "$(status)" state "NOT RUNNING (interrupted)"
     kv_set "$(status)" rc $$rc
 
-    $(call log,end '$(project)' (runid=$$runid) \
+    k=$$(kv_get "$(status)" rules_done)
+    $(call log,end '$(project)' (runid=$$runid$(,) rules=$$k/$$n) \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
     exit $$rc
 }

@@ -50,11 +50,11 @@ start:
 	mkdir -p "$(stats)" "$(stats)/$$runid"
 	[ -L "$(last)" ] && ln -fns $$(readlink "$(last)") "$(prev)"
 	ln -fns $$runid "$(last)"
-	ln -fns "stats/last/$(.status)" "$(status)"
-	> "$(status)"
+	ln -fns stats/last/.status data/status
 
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
 
+	> "$(status)"
 	kv_set "$(status)" state RUNNING
 	kv_set "$(status)" runid $$runid
 	kv_set "$(status)" started_at_epoch $$t0
@@ -161,7 +161,9 @@ end:
 	kv_set "$(status)" ended_at_epoch $$t3
 	kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
 	kv_set "$(status)" state "NOT RUNNING (completed)"
-	$(call log,end '$(project)' (runid=$$runid) \
+	k=$$(kv_get "$(status)" rules_done)
+	n=$$(kv_get "$(status)" rules_total)
+	$(call log,end '$(project)' (runid=$$runid, rules=$$k/$$n) \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
 # stop & kill
@@ -204,7 +206,7 @@ status status-v:
 	runid=$$($(get_runid)) || exit 0
 	$(colors)
 
-	status="$(stats)/$$runid/$(.status)"
+	status="$(stats)/$$runid/.status"
 	printf "$$BLD%s (v%s) @ %s (%s)$$RST\n\n" \
         $(project) $(version) $(hostname) $(t_now)
 
@@ -347,7 +349,7 @@ status status-v:
 	    printf "    rc         : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
-	$(call log,status: runid=$$runid$(,) state=$$gstate$(,) progress=$$k/$$n \
+	$(call log,status: runid=$$runid$(,) state=$$gstate$(,) rules=$$k/$$n \
         (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # report
@@ -381,7 +383,7 @@ report:
 
 usage:
 	@$(define_kv)
-	usagef="$(usage)/usage-"; > "$$usagef"
+	usagef="$(usage)/usage-$(t_znow)"; > "$$usagef"
 
 	[ -L "$(usage)/last" ] &&
 	    ln -fns $$(readlink "$(usage)/last") "$(usage)/prev"
@@ -396,7 +398,7 @@ usage:
 
 	t0=$(t)
 	$(call log,start bucket usage (excluding versions) \
-        (bucket='$$bucket', prefix='$(dst_root)'))
+        (bucket='$(bucket)', prefix='$(dst_root)'))
 	{
 	    printf "    excluding versions:\n"
 	    $(rclone) --config "$(rclone_conf)" size "$(rpath)" |
@@ -407,7 +409,7 @@ usage:
 
 	t0=$(t)
 	$(call log,start bucket usage (including versions) \
-        (bucket='$$bucket', prefix='$(dst_root)'))
+        (bucket='$(bucket)', prefix='$(dst_root)'))
 	{
 	    printf "    including versions:\n"
 	    $(rclone) --config "$(rclone_conf)" size --s3-versions "$(rpath)" |
