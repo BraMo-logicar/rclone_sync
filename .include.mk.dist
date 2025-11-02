@@ -360,6 +360,7 @@ trap_on_signal() {
     t0=$$(kv_get "$(status)" started_at_epoch)
     t3=$(t)
     kv_set "$(status)" ended_at_epoch $$t3
+    kv_set "$(status)" ended_at $(call at,$$t3)
     kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
     kv_set "$(status)" state "NOT RUNNING (interrupted)"
     kv_set "$(status)" rc $$rc

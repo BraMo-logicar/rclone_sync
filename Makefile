@@ -58,6 +58,7 @@ start:
 	kv_set "$(status)" state RUNNING
 	kv_set "$(status)" runid $$runid
 	kv_set "$(status)" started_at_epoch $$t0
+	kv_set "$(status)" started_at $(call at,$$t0)
 	kv_set "$(status)" rules_done 0
 	kv_set "$(status)" rules_total 0
 	kv_set "$(status)" current_ruleid -
@@ -68,6 +69,7 @@ start:
 	kv_set "$(status)" program_pid -
 	kv_set "$(status)" rclone_pid -
 	kv_set "$(status)" ended_at_epoch -
+	kv_set "$(status)" ended_at -
 	kv_set "$(status)" total_elapsed -
 	kv_set "$(status)" rc 0
 
@@ -159,6 +161,7 @@ end:
 	t0=$$(kv_get "$(status)" started_at_epoch)
 	t3=$(t)
 	kv_set "$(status)" ended_at_epoch $$t3
+	kv_set "$(status)" ended_at $(call at,$$t3)
 	kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
 	kv_set "$(status)" state "NOT RUNNING (completed)"
 	k=$$(kv_get "$(status)" rules_done)
@@ -220,6 +223,7 @@ status status-v:
 	if $$running; then
 	    t0=$(t)
 	    started_at_epoch=$$(kv_get "$$status" started_at_epoch)
+	    started_at=$$(kv_get "$$status" started_at)
 	    elapsed=$(call t_delta_hms,$$started_at_epoch,$$t0)
 
 	    current_ruleid=$$(kv_get "$$status" current_ruleid)
@@ -239,8 +243,7 @@ status status-v:
 
 	    printf "state        : $$_RED_%s$$RST\n" "$$gstate"
 	    printf "runid        : %s\n" $$runid
-	    printf "started at   : %s  (elapsed: %s)\n" \
-                               $(call at,$$started_at_epoch) $$elapsed
+	    printf "started at   : %s  (elapsed: %s)\n" $$started_at $$elapsed
 	    printf "current rule : $$_RED_%s$$RST  (elapsed: %s)\n" \
                                $$current_ruleid $$rule_elapsed
 	    printf "progress     : $$_RED_%d/%d$$RST (%.2f%%)\n" $$k $$n $$pct
@@ -249,16 +252,16 @@ status status-v:
 	    printf "pids         : %s\n" "$$pids"
 	    printf "rclone       : %s\n" $(rclone_ver)
 	else
-	    started_at_epoch=$$(kv_get "$$status" started_at_epoch)
-	    ended_at_epoch=$$(kv_get "$$status" ended_at_epoch)
+	    started_at=$$(kv_get "$$status" started_at)
+	    ended_at=$$(kv_get "$$status" ended_at)
 	    total_elapsed=$$(kv_get "$$status" total_elapsed)
 	    elapsed=$(call t_hms,$$total_elapsed)
 
 	    printf "state      : $$_RED_%s$$RST\n" "$$gstate"
 	    printf "runid      : %s\n" $$runid
 	    printf "rules      : $$_RED_%d$$RST\n" $$n
-	    printf "started at : %s\n" $(call at,$$started_at_epoch)
-	    printf "ended at   : %s\n" $(call at,$$ended_at_epoch)
+	    printf "started at : %s\n" $$started_at
+	    printf "ended at   : %s\n" $$ended_at
 	    printf "elapsed    : %s\n" $$elapsed
 	    printf "flow       : %s -> %s\n" "$(lpath)" "$(rpath)"
 	    printf "rclone     : %s\n" $(rclone_ver)
