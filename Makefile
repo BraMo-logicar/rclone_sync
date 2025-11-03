@@ -151,9 +151,8 @@ main:
 	    $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
             (elapsed: $(call t_hms_ms,$$rule_elapsed)))
 
-	    $(call stop_guard,$$ruleid);
+	    $(call stop_guard,$$ruleid)
 	done < <(sed 's/[[:space:]]*#.*//' "$(rules_list)" | awk 'NF')
-	kv_set "$(status)" rc 0
 
 end:
 	@$(define_kv)
@@ -163,9 +162,12 @@ end:
 	kv_set "$(status)" ended_at_epoch $$t3
 	kv_set "$(status)" ended_at $(call at,$$t3)
 	kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
-	kv_set "$(status)" state "NOT RUNNING (completed)"
 	k=$$(kv_get "$(status)" rules_done)
 	n=$$(kv_get "$(status)" rules_total)
+	if [ $$k -eq $$n ]; then
+	    kv_set "$(status)" state "NOT RUNNING (completed)"
+	    kv_set "$(status)" rc 0
+	fi
 	$(call log,end '$(project)' (runid=$$runid, rules=$$k/$$n) \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
@@ -262,7 +264,7 @@ status status-v:
 	    if [ $$gstate = completed ]; then
 	        printf "rules      : $$_RED_%d$$RST\n" $$n
 	    else
-	        printf "rules      : $$_RED_%d$$RST (%d completed)\n" $$n $$k
+	        printf "rules      : $$_RED_%d (%d completed)$$RST\n" $$n $$k
 	    fi
 	    printf "started at : %s\n" $$started_at
 	    printf "ended at   : %s\n" $$ended_at
@@ -292,11 +294,9 @@ status status-v:
 
 	    queue=0
 	    for ruleid in "$${ruleids[@]}"; do
-	        rulef="$(stats)/$$runid/$$ruleid"
 	        rule=$(call truncate,$$ruleid,$(rule_width))
-
-	        rc=$$(kv_get "$$rulef" rc)
-	        rstate=$(call get_rstate,$$rulef,$$rc,$$gstate)
+	        rulef="$(stats)/$$runid/$$ruleid"
+	        rstate=$(call get_rstate,$$rulef,$$gstate)
 
 	        if [ "$$rstate" = queue ]; then
 	            : $$((queue++))
@@ -329,6 +329,7 @@ status status-v:
 	            xfer_mib=$$(kv_get "$$rulef" rclone_transferred_size)
 	            xfer_mib=$(call mib,$${xfer_mib%/*})
 	            del=$$(kv_get "$$rulef" rclone_deleted)
+	            rc=$$(kv_get "$$rulef" rc)
 
 	            : $$((sum_checks+=checks))
 	            : $$((sum_xfer+=xfer))
@@ -354,7 +355,7 @@ status status-v:
 	    elif [ $$gstate = completed ]; then
 	        printf "    rules      : $$_RED_%d$$RST\n" $$n
 	    else
-	        printf "    rules      : $$_RED_%d$$RST (%d completed)\n" $$n $$k
+	        printf "    rules      : $$_RED_%d (%d completed)$$RST\n" $$n $$k
 	    fi
 	    printf "    checks     : %s\n" $(call num3,$$sum_checks)
 	    printf "    xfer       : %s\n" $(call num3,$$sum_xfer)

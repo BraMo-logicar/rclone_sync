@@ -305,19 +305,15 @@ endef
 #
 
 define stop_guard
-(
-    ruleid=$(1)
-    if [ -f "$(stop)" ]; then
-        printf "[%s] stop flag found: exit after current rule \
-            (ruleid='%s')\n" $(project) $$ruleid
-        rm -f "$(stop)"
-        $(call log,stop flag found: exit after current rule \
-            (ruleid='$$ruleid'))
-        kv_set "$(status)" state "NOT RUNNING (stopped)"
-        kv_set "$(status)" rc 200
-        exit 0
-    fi
-)
+if [ -f "$(stop)" ]; then
+    printf "[%s] stop flag found: exit after current rule (ruleid='%s')\n" \
+        $(project) $(1)
+    rm -f "$(stop)"
+    $(call log,stop flag found: exit after current rule (ruleid='$(1)'))
+    kv_set "$(status)" state "NOT RUNNING (stopped)"
+    kv_set "$(status)" rc 200
+    exit 0
+fi
 endef
 
 #
@@ -579,7 +575,7 @@ count_rules = $$(grep -Ev '^[[:space:]]*(\#|$$)' "$(rules_list)" | wc -l)
 # get_gstate() - compute global state ({running,completed,stopped,killed})
 # get_rstate() - compute rule state ({done,fail,run,queue})
 # usage: $(call get_gstate,status)
-# usage: $(call get_rstate,rulef,rc,running)
+# usage: $(call get_rstate,rulef,gstate)
 #
 
 define get_gstate
@@ -595,10 +591,10 @@ endef
 
 define get_rstate
 $$(
-    rulef="$(1)" rc=$(2) gstate=$(3)
+    rulef="$(1)" gstate=$(2)
     if [ ! -f "$$rulef" ]; then
         printf queue
-    elif [ -n "$$rc" ]; then
+    elif rc=$$(kv_get "$$rulef" rc); [ -n "$$rc" ]; then
         printf done
     elif [ $$gstate = running ]; then
         printf run
