@@ -42,14 +42,13 @@ tmp     := $(home)/tmp
 stats   := $(data)/stats
 reports := $(data)/reports
 
-status := $(data)/status
 usage  := $(data)/usage
 stop   := $(tmp)/stop
 
 logf   := $(home)/log/$(project).log
 logrun := $(home)/log/run
 
-# source root and destination prefix
+# source/destination, local/remote
 
 src_root := [SRC_ROOT]
 dst_root := [DST_ROOT]
@@ -111,7 +110,7 @@ t_now  = $$(date +%Y.%m.%d-%H:%M:%S)
 t_znow = $$(date +%Y%m%d.%H%M%S)
 
 #
-# at(epoch) - format an epoch (sec.ms -> yyyy.mm.dd-hh:mm:ss)
+# at() - format an epoch (sec.ms -> yyyy.mm.dd-hh:mm:ss)
 # usage: $(call at,epoch)
 #
 
@@ -185,7 +184,7 @@ t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 #------
 
 #
-# get_runid() - get and validate runid (from env -> var -> status file)
+# get_runid() - get and validate runid
 # usage: $(get_runid)
 #
 
@@ -203,17 +202,6 @@ else
     exit 1
 fi
 endef
-
-#------
-# paths
-#------
-
-#
-# relpath() - path relative to home
-# usage: $(call relpath,path)
-#
-
-relpath = $$(printf "%s" "$(1)" | sed 's|$(home)/||')
 
 #---------
 # kv store
@@ -266,7 +254,7 @@ $$(
 endef
 
 #
-# get_command_by_pid() - get command line by pid from /proc
+# get_command_by_pid() - get command line by pid
 # usage: $(call get_command_by_pid,pid)
 #
 
@@ -367,12 +355,135 @@ trap_on_signal() {
 }
 endef
 
+#------
+# rules
+#------
+
+#
+# define_parse_rule() - define parse_rule() shell function
+# parse_rule()        - parse a rule and set key=value
+# usage: $(define_parse_rule)
+#        parse_rule rule
+#
+
+define define_parse_rule
+parse_rule() {
+    local rule=$$1
+    case "$$rule" in
+        *" -- "*) path=$${rule%% -- *} opts=$${rule#* -- } ;;
+        *)        path=$$rule opts= ;;
+    esac
+    [ "$$path" = . ] && path=
+    ruleid=$$(printf "%s" "$${path##*/}" | tr '[:space:]' '_')
+    set -f; eval "$$opts"; set +f
+}
+endef
+
+#
+# count_rules() - count entries in rules_list
+# usage: $(count_rules)
+#
+
+count_rules = $$(grep -Ev '^[[:space:]]*(\#|$$)' "$(rules_list)" | wc -l)
+
+#------
+# stats
+#------
+
+#
+# get_rclone_stats() - parse an rclone log and get key/value metrics
+# usage: $(call get_rclone_stats,rule_log)
+#
+
+define get_rclone_stats
+awk '
+    function xc(s) { sub(/,$$/, "", s); return s }
+
+    BEGIN { xfer = 0; xfer_new = 0; xfer_replaced = 0; deleted = 0; }
+
+    /^Checks:/                       { checks = $$2 "/" xc($$4) }
+    /^Transferred:/ && !/ETA/        { xfer = $$2 "/" xc($$4) }
+    /^Transferred:/ && /ETA/         { xfer_size = $$2 $$3 "/" $$5 xc($$6) }
+    /Copied \(new\)$$/               { xfer_new++ }
+    /Copied \(replaced existing\)$$/ { xfer_replaced++ }
+    /^Deleted:/                      { deleted = $$2 }
+    /^Elapsed time:/                 { elapsed = $$3 }
+
+    END {
+        printf "rclone_checks %s\n",           checks
+        printf "rclone_transferred %s\n",      xfer
+        printf "rclone_transferred_size %s\n", xfer_size
+        printf "rclone_copied_new %d\n",       xfer_new
+        printf "rclone_copied_replaced %d\n",  xfer_replaced
+        printf "rclone_deleted %d\n",          deleted
+        printf "rclone_elapsed %s\n",          elapsed
+    }
+' "$(1)"
+endef
+
+#
+# rclone_stats() - write rclone metrics into the rule stats file
+# usage: $(call rclone_stats,ruleid,rulef,rule_log)
+#
+
+define rclone_stats
+declare -A S
+while read _k _v; do
+    S[$$_k]=$$_v
+    kv_set "$(2)" $$_k $$_v
+done < <($(call get_rclone_stats,$(3)))
+printf -v stats_log "checks=%s, transferred=%s (%s) (new=%d, replaced=%d), \
+    deleted=%d, elapsed=%s" \
+    "$${S[rclone_checks]}" \
+    "$${S[rclone_transferred]}" "$${S[rclone_transferred_size]}" \
+    "$${S[rclone_copied_new]}" "$${S[rclone_copied_replaced]}" \
+    "$${S[rclone_deleted]}" "$${S[rclone_elapsed]}"
+$(call log,[$(1)] rclone stats: $$stats_log)
+endef
+
+#-------
+# status
+#-------
+
+#
+# get_gstate() - compute global state ({running,completed,stopped,killed})
+# get_rstate() - compute rule state ({done,fail,run,queue})
+# usage: $(call get_gstate,status)
+# usage: $(call get_rstate,rulef,gstate)
+#
+
+define get_gstate
+$$(
+    state="$(1)"
+    if [ "$$state" = RUNNING ]; then
+        printf running
+    else
+        printf "%s" $$(echo "$$state" | sed 's/.*(\(.*\)).*/\1/')
+    fi
+)
+endef
+
+define get_rstate
+$$(
+    rulef="$(1)" gstate=$(2)
+    if [ ! -f "$$rulef" ]; then
+        printf queue
+    elif rc=$$(kv_get "$$rulef" rc); [ -n "$$rc" ]; then
+        printf done
+    elif [ $$gstate = running ]; then
+        printf run
+    else
+        printf fail
+    fi
+)
+endef
+
 #--------
 # logging
 #--------
 
 #
-# log() - timestamped log
+# log() - write timestamped log
 # usage: $(call log,message)
 #
 
@@ -380,7 +491,7 @@ make := $(shell basename "$(MAKE)")
 log = printf "%s [%s(%s):%s] %s\n" $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 #
-# append_rule_log() - append rclone rule log to the main log
+# append_rule_log() - append rclone log to the main log
 # usage: $(call append_rule_log,rule_log)
 #
 
@@ -397,7 +508,7 @@ endef
 #-----------
 
 #
-# truncate() - truncate string $(1) to $(2) chars, appending '+' if longer
+# truncate() - truncate a string to a given length, appending '+' if longer
 # usage: $(call truncate,string,width)
 #
 
@@ -408,17 +519,6 @@ $$(
     [ $${#s} -gt $$w ] && printf "%.*s+" $$w "$$s" || printf "$$s"
 )
 endef
-
-#
-# num3() - 3 digits grouping
-# usage: $(call num3,num)
-#
-
-num3 = $$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
-
-#------
-# units
-#------
 
 #
 # mib() - convert rclone size (B, KiB, MiB, GiB, TiB) to MiB (1 decimal)
@@ -456,9 +556,16 @@ $$(
 )
 endef
 
-#-------
-# report
-#-------
+#
+# num3() - 3 digits grouping
+# usage: $(call num3,num)
+#
+
+num3 = $$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
+
+#------
+# utils
+#------
 
 #
 # colors() - initialize ansi colors
@@ -483,125 +590,12 @@ else
 fi
 endef
 
-#------
-# stats
-#------
-
 #
-# get_rclone_stats() - parse an rclone per-run log and get key/value metrics
-# usage: $(call get_rclone_stats,rule_log)
+# relpath() - path relative to home
+# usage: $(call relpath,path)
 #
 
-define get_rclone_stats
-awk '
-    function xc(s) { sub(/,$$/, "", s); return s }
-
-    BEGIN { xfer = 0; xfer_new = 0; xfer_replaced = 0; deleted = 0; }
-
-    /^Checks:/                       { checks = $$2 "/" xc($$4) }
-    /^Transferred:/ && !/ETA/        { xfer = $$2 "/" xc($$4) }
-    /^Transferred:/ && /ETA/         { xfer_size = $$2 $$3 "/" $$5 xc($$6) }
-    /Copied \(new\)$$/               { xfer_new++ }
-    /Copied \(replaced existing\)$$/ { xfer_replaced++ }
-    /^Deleted:/                      { deleted = $$2 }
-    /^Elapsed time:/                 { elapsed = $$3 }
-
-    END {
-        printf "rclone_checks %s\n",           checks
-        printf "rclone_transferred %s\n",      xfer
-        printf "rclone_transferred_size %s\n", xfer_size
-        printf "rclone_copied_new %d\n",       xfer_new
-        printf "rclone_copied_replaced %d\n",  xfer_replaced
-        printf "rclone_deleted %d\n",          deleted
-        printf "rclone_elapsed %s\n",          elapsed
-    }
-' "$(1)"
-endef
-
-#
-# rclone_stats() - write rclone metrics into the rule stats file and log
-# usage: $(call rclone_stats,ruleid,rulef,rule_log)
-#
-
-define rclone_stats
-declare -A S
-while read _k _v; do
-    S[$$_k]=$$_v
-    kv_set "$(2)" $$_k $$_v
-done < <($(call get_rclone_stats,$(3)))
-printf -v stats_log "checks=%s, transferred=%s (%s) (new=%d, replaced=%d), \
-    deleted=%d, elapsed=%s" \
-    "$${S[rclone_checks]}" \
-    "$${S[rclone_transferred]}" "$${S[rclone_transferred_size]}" \
-    "$${S[rclone_copied_new]}" "$${S[rclone_copied_replaced]}" \
-    "$${S[rclone_deleted]}" "$${S[rclone_elapsed]}"
-$(call log,[$(1)] rclone stats: $$stats_log)
-endef
-
-#------
-# rules
-#------
-
-#
-# define_parse_rule() - define parse_rule() shell function
-# parse_rule()        - parse a rule and set key=value
-# usage: $(define_parse_rule)
-#        parse_rule rule
-#
-
-define define_parse_rule
-parse_rule() {
-    local rule=$$1
-    case "$$rule" in
-        *" -- "*) path=$${rule%% -- *} opts=$${rule#* -- } ;;
-        *)        path=$$rule opts= ;;
-    esac
-    [ "$$path" = . ] && path=
-    ruleid=$$(printf "%s" "$${path##*/}" | tr '[:space:]' '_')
-    set -f; eval "$$opts"; set +f
-}
-endef
-
-#
-# count_rules() - count entries in rules_list
-# usage: $(count_rules)
-#
-
-count_rules = $$(grep -Ev '^[[:space:]]*(\#|$$)' "$(rules_list)" | wc -l)
-
-
-#
-# get_gstate() - compute global state ({running,completed,stopped,killed})
-# get_rstate() - compute rule state ({done,fail,run,queue})
-# usage: $(call get_gstate,status)
-# usage: $(call get_rstate,rulef,gstate)
-#
-
-define get_gstate
-$$(
-    state="$(1)"
-    if [ "$$state" = RUNNING ]; then
-        printf running
-    else
-        printf "%s" $$(echo "$$state" | sed 's/.*(\(.*\)).*/\1/')
-    fi
-)
-endef
-
-define get_rstate
-$$(
-    rulef="$(1)" gstate=$(2)
-    if [ ! -f "$$rulef" ]; then
-        printf queue
-    elif rc=$$(kv_get "$$rulef" rc); [ -n "$$rc" ]; then
-        printf done
-    elif [ $$gstate = running ]; then
-        printf run
-    else
-        printf fail
-    fi
-)
-endef
+relpath = $$(printf "%s" "$(1)" | sed 's|$(home)/||')
 
 
 # vim: ts=4
