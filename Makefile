@@ -1,7 +1,7 @@
 # Name: Makefile - Makefile for $(project)
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.10.24
+# Date: 2025.11.03
 
 include .include.mk
 
@@ -79,7 +79,7 @@ start:
 main:
 	@$(define_kv)
 	runid=$$(kv_get $(status) runid)
-	n=$(count_rules)
+	n=$(call count_rules,$(rules_list))
 	kv_set "$(status)" rules_total $$n
 	$(call log,loop over '$(call relpath,$(rules_list))' ($$n rules))
 
@@ -327,7 +327,7 @@ status status-v:
 	            xfer=$$(kv_get "$$rulef" rclone_transferred)
 	            xfer=$${xfer%/*}
 	            xfer_mib=$$(kv_get "$$rulef" rclone_transferred_size)
-	            xfer_mib=$(call mib,$${xfer_mib%/*})
+	            xfer_mib=$(call iec2mib,$${xfer_mib%/*})
 	            del=$$(kv_get "$$rulef" rclone_deleted)
 	            rc=$$(kv_get "$$rulef" rc)
 

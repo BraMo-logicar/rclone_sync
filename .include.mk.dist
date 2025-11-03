@@ -1,7 +1,7 @@
 # Name: .include.mk - include for Makefiles
 # Usage: include .include.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.10.30
+# Date: 2025.11.03
 
 #-----
 # vars
@@ -97,9 +97,9 @@ mail_log := yes
 #-----
 
 #
-# t()      - current epoch (sec.ms)
-# t_now()  - current timestamp (yyyy.mm.dd-hh:mm:ss)
-# t_znow() - current compressed timestamp (yyyymmdd.hhmmss)
+# t()      - return current epoch (sec.ms)
+# t_now()  - return current timestamp (yyyy.mm.dd-hh:mm:ss)
+# t_znow() - return current compressed timestamp (yyyymmdd.hhmmss)
 # usage: $(t)
 # usage: $(t_now)
 # usage: $(t_znow)
@@ -110,16 +110,16 @@ t_now  = $$(date +%Y.%m.%d-%H:%M:%S)
 t_znow = $$(date +%Y%m%d.%H%M%S)
 
 #
-# at() - format an epoch (sec.ms -> yyyy.mm.dd-hh:mm:ss)
+# at() - format epoch (sec.ms -> yyyy.mm.dd-hh:mm:ss)
 # usage: $(call at,epoch)
 #
 
 at = $$(date -d @$$(printf "%.0f" $(1)) +%Y.%m.%d-%H:%M:%S)
 
 #
-# t_hms_ms()    - format delta times (hms.ms)
-# t_hms()       - format delta times (hms)
-# t_hms_colon() - format delta times (h:m:s)
+# t_hms_ms()    - format duration as hms.ms
+# t_hms()       - format duration as hms
+# t_hms_colon() - format duration as h:m:s
 # usage: $(call t_hms_ms,t_delta)
 # usage: $(call t_hms,t_delta)
 # usage: $(call t_hms_colon,t_delta)
@@ -167,9 +167,9 @@ $$(
 endef
 
 #
-# t_delta()        - time difference (sec.ms)
-# t_delta_hms_ms() - time difference (hms.ms)
-# t_delta_hms()    - time difference (hms)
+# t_delta()        - compute time difference (sec.ms)
+# t_delta_hms_ms() - compute time difference (hms.ms)
+# t_delta_hms()    - compute time difference (hms)
 # usage: $(call t_delta,t0,t1)
 # usage: $(call t_delta_hms_ms,t0,t1)
 # usage: $(call t_delta_hms,t0,t1)
@@ -196,6 +196,7 @@ case "$${runid-}" in
 esac
 if [ -d "$(stats)/$$runid" ]; then
     printf "%s" $$runid
+    $(call log,runid: '$$runid')
 else
     printf "[%s] invalid runid '%s'\n" $(project) $$runid >&2
     $(call log,invalid runid '$$runid')
@@ -254,7 +255,7 @@ $$(
 endef
 
 #
-# get_command_by_pid() - get command line by pid
+# get_command_by_pid() - return command line by pid
 # usage: $(call get_command_by_pid,pid)
 #
 
@@ -288,7 +289,7 @@ define watch_rclone
 endef
 
 #
-# stop_guard() - exit current rule if a stop flag file exists
+# stop_guard() - exit current rule if a stop flag exists
 # usage: $(call stop_guard,ruleid)
 #
 
@@ -306,7 +307,7 @@ endef
 
 #
 # define_trap_on_signal() - define trap_on_signal() shell function
-# trap_on_signal()        - signal handler
+# trap_on_signal()        - handle signals
 # usage: $(define_trap_on_signal)
 #        trap_on_signal signal rc
 #
@@ -380,18 +381,18 @@ parse_rule() {
 endef
 
 #
-# count_rules() - count entries in rules_list
-# usage: $(count_rules)
+# count_rules() - count rules in list
+# usage: $(count_rules,rules_list)
 #
 
-count_rules = $$(grep -Ev '^[[:space:]]*(\#|$$)' "$(rules_list)" | wc -l)
+count_rules = $$(grep -Ev '^[[:space:]]*(\#|$$)' "$(1)" | wc -l)
 
 #------
 # stats
 #------
 
 #
-# get_rclone_stats() - parse an rclone log and get key/value metrics
+# get_rclone_stats() - parse rclone log and extract key/value metrics
 # usage: $(call get_rclone_stats,rule_log)
 #
 
@@ -422,7 +423,7 @@ awk '
 endef
 
 #
-# rclone_stats() - write rclone metrics into the rule stats file
+# rclone_stats() - write rclone metrics to the rule stats file
 # usage: $(call rclone_stats,ruleid,rulef,rule_log)
 #
 
@@ -446,8 +447,8 @@ endef
 #-------
 
 #
-# get_gstate() - compute global state ({running,completed,stopped,killed})
-# get_rstate() - compute rule state ({done,fail,run,queue})
+# get_gstate() - compute global state (running|completed|stopped|killed)
+# get_rstate() - compute rule state (done|fail|run|queue)
 # usage: $(call get_gstate,status)
 # usage: $(call get_rstate,rulef,gstate)
 #
@@ -508,20 +509,19 @@ endef
 #-----------
 
 #
-# truncate() - truncate a string to a given length, appending '+' if longer
+# truncate() - truncate string to a max length (chars), append '+' if longer
 # usage: $(call truncate,string,width)
 #
 
 define truncate
 $$(
     s=$(1) w=$(2)
-    len=$$(expr length "$$s")
-    [ $${#s} -gt $$w ] && printf "%.*s+" $$w "$$s" || printf "$$s"
+    [ $${#s} -le $$w ] && printf "%s" "$$s" || printf "%s+" "$${s:0:$$((n-1))}"
 )
 endef
 
 #
-# mib() - convert rclone size (B, KiB, MiB, GiB, TiB) to MiB (1 decimal)
+# iec2mib() - convert IEC size (B, KiB, MiB, GiB, TiB) to MiB (1 decimal)
 # usage: $(call mib,size)
 #
 
@@ -540,7 +540,7 @@ $$(
 endef
 
 #
-# mib2iec() - MiB -> best IEC unit (B, KiB, MiB, GiB, TiB) (1 decimal)
+# mib2iec() - convert MiB to best IEC unit (B, KiB, MiB, GiB, TiB) (1 decimal)
 # usage: $(call mib2iec,mib)
 #
 
@@ -557,7 +557,7 @@ $$(
 endef
 
 #
-# num3() - 3 digits grouping
+# num3() - format integer with 3-digit grouping
 # usage: $(call num3,num)
 #
 
@@ -591,7 +591,7 @@ fi
 endef
 
 #
-# relpath() - path relative to home
+# relpath() - return path relative to home
 # usage: $(call relpath,path)
 #
 
