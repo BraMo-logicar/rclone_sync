@@ -60,7 +60,7 @@ start:
 	kv_set "$(status)" started_at_epoch $$t0
 	kv_set "$(status)" started_at $(call at,$$t0)
 	kv_set "$(status)" rules_done 0
-	kv_set "$(status)" rules_total 0
+	kv_set "$(status)" rules_total -
 	kv_set "$(status)" current_ruleid -
 	kv_set "$(status)" current_rule_src -
 	kv_set "$(status)" current_rule_dst -
@@ -71,7 +71,7 @@ start:
 	kv_set "$(status)" ended_at_epoch -
 	kv_set "$(status)" ended_at -
 	kv_set "$(status)" total_elapsed -
-	kv_set "$(status)" rc 0
+	kv_set "$(status)" rc -
 
 	$(call log,start '$(project)' (v$(version)) @ $(hostname) ($(ip)) \
         (runid=$$runid))
@@ -213,14 +213,14 @@ status status-v:
 	printf "$$BLD%s (v%s) @ %s (%s)$$RST\n\n" \
         $(project) $(version) $(hostname) $(t_now)
 
-	gstate=$$(kv_get "$$status" state)
-	[ "$$gstate" = RUNNING ] && running=true || running=false
+	state=$$(kv_get "$$status" state)
+	gstate=$(call get_gstate,$$state)
 
 	k=$$(kv_get "$$status" rules_done)
 	n=$$(kv_get "$$status" rules_total)
 	pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
 
-	if $$running; then
+	if [ $$gstate = running ]; then
 	    t0=$(t)
 	    started_at_epoch=$$(kv_get "$$status" started_at_epoch)
 	    started_at=$$(kv_get "$$status" started_at)
@@ -241,7 +241,7 @@ status status-v:
 	    pids="make=$${make_pid:--}, shell=$${shell_pid:--}, "
 	    pids+="rclone_sync=$${program_pid:--}, rclone=$${rclone_pid:--}"
 
-	    printf "state        : $$_RED_%s$$RST\n" "$$gstate"
+	    printf "state        : $$_RED_%s$$RST\n" "$$state"
 	    printf "runid        : %s\n" $$runid
 	    printf "started at   : %s  (elapsed: %s)\n" $$started_at $$elapsed
 	    printf "current rule : $$_RED_%s$$RST  (elapsed: %s)\n" \
@@ -257,9 +257,13 @@ status status-v:
 	    total_elapsed=$$(kv_get "$$status" total_elapsed)
 	    elapsed=$(call t_hms,$$total_elapsed)
 
-	    printf "state      : $$_RED_%s$$RST\n" "$$gstate"
+	    printf "state      : $$_RED_%s$$RST\n" "$$state"
 	    printf "runid      : %s\n" $$runid
-	    printf "rules      : $$_RED_%d$$RST\n" $$n
+	    if [ $$gstate = completed ]; then
+	        printf "rules      : $$_RED_%d$$RST\n" $$n
+	    else
+	        printf "rules      : $$_RED_%d$$RST (%d completed)\n" $$n $$k
+	    fi
 	    printf "started at : %s\n" $$started_at
 	    printf "ended at   : %s\n" $$ended_at
 	    printf "elapsed    : %s\n" $$elapsed
@@ -280,7 +284,7 @@ status status-v:
 	    sum_checks=0 sum_xfer=0 sum_xfer_mib=0 sum_del=0 sum_elapsed=0
 	    rc_ok=0 rc_fail=0
 
-	    if $$running; then
+	    if [ $$gstate = running ]; then
 	        mapfile -t ruleids < "$(ruleids_list)"
 	    else
 	        mapfile -t ruleids < <(ls $(stats)/$$runid)
@@ -291,12 +295,8 @@ status status-v:
 	        rulef="$(stats)/$$runid/$$ruleid"
 	        rule=$(call truncate,$$ruleid,$(rule_width))
 
-	        if [ ! -f "$$rulef" ]; then
-	            rstate=queue
-	        else
-	            rc=$$(kv_get "$$rulef" rc)
-	            [ -z "$$rc" ] && rstate=run || rstate=done
-	        fi
+	        rc=$$(kv_get "$$rulef" rc)
+	        rstate=$(call get_rstate,$$rulef,$$rc,$$gstate)
 
 	        if [ "$$rstate" = queue ]; then
 	            : $$((queue++))
@@ -317,7 +317,11 @@ status status-v:
 	            printf "$$fmt_run\n" $$rule $$rstate $$start "$$end" $$elapsed
 	        else
 	            rule_elapsed=$$(kv_get "$$rulef" rule_elapsed)
-	            elapsed=$(call t_hms_colon,$$rule_elapsed)
+	            if [ -n "$$rule_elapsed" ]; then
+	                elapsed=$(call t_hms_colon,$$rule_elapsed)
+	            else
+	                elapsed=
+	            fi
 	            checks=$$(kv_get "$$rulef" rclone_checks)
 	            checks=$${checks%/*}
 	            xfer=$$(kv_get "$$rulef" rclone_transferred)
@@ -328,10 +332,10 @@ status status-v:
 
 	            : $$((sum_checks+=checks))
 	            : $$((sum_xfer+=xfer))
-	            sum_xfer_mib=$$(echo "$$sum_xfer_mib+$$xfer_mib" | bc)
+	            sum_xfer_mib=$$(echo "$$sum_xfer_mib+$${xfer_mib:=0}" | bc)
 	            : $$((sum_del+=del))
-	            sum_elapsed=$$(echo "$$sum_elapsed+$$rule_elapsed" | bc)
-	            [ "$$rc" -eq 0 ] && : $$((rc_ok++)) || : $$((rc_fail++))
+	            sum_elapsed=$$(echo "$$sum_elapsed+$${rule_elapsed:=0}" | bc)
+	            [ "$$rc" = 0 ] && : $$((rc_ok++)) || : $$((rc_fail++))
 
 	            printf "$$fmt\n" $$rule $$rstate $$start "$$end" \
                     $$elapsed "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc"
@@ -344,11 +348,13 @@ status status-v:
 
 	    printf "\n$$BLD%s$$RST\n" SUMMARY
 
-	    if $$running; then
+	    if [ $$gstate = running ]; then
 	        printf "    rules      : $$_RED_%d/%d$$RST (%.2f%%)\n" \
                 $$k $$n $$pct
-	    else
+	    elif [ $$gstate = completed ]; then
 	        printf "    rules      : $$_RED_%d$$RST\n" $$n
+	    else
+	        printf "    rules      : $$_RED_%d$$RST (%d completed)\n" $$n $$k
 	    fi
 	    printf "    checks     : %s\n" $(call num3,$$sum_checks)
 	    printf "    xfer       : %s\n" $(call num3,$$sum_xfer)

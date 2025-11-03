@@ -362,7 +362,7 @@ trap_on_signal() {
     kv_set "$(status)" ended_at_epoch $$t3
     kv_set "$(status)" ended_at $(call at,$$t3)
     kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
-    kv_set "$(status)" state "NOT RUNNING (interrupted)"
+    kv_set "$(status)" state "NOT RUNNING (killed)"
     kv_set "$(status)" rc $$rc
 
     k=$$(kv_get "$(status)" rules_done)
@@ -573,6 +573,40 @@ endef
 #
 
 count_rules = $$(grep -Ev '^[[:space:]]*(\#|$$)' "$(rules_list)" | wc -l)
+
+
+#
+# get_gstate() - compute global state ({running,completed,stopped,killed})
+# get_rstate() - compute rule state ({done,fail,run,queue})
+# usage: $(call get_gstate,status)
+# usage: $(call get_rstate,rulef,rc,running)
+#
+
+define get_gstate
+$$(
+    state="$(1)"
+    if [ "$$state" = RUNNING ]; then
+        printf running
+    else
+        printf "%s" $$(echo "$$state" | sed 's/.*(\(.*\)).*/\1/')
+    fi
+)
+endef
+
+define get_rstate
+$$(
+    rulef="$(1)" rc=$(2) gstate=$(3)
+    if [ ! -f "$$rulef" ]; then
+        printf queue
+    elif [ -n "$$rc" ]; then
+        printf done
+    elif [ $$gstate = running ]; then
+        printf run
+    else
+        printf fail
+    fi
+)
+endef
 
 
 # vim: ts=4
