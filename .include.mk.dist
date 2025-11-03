@@ -341,7 +341,6 @@ trap_on_signal() {
     fi
 
     $(call append_rule_log,$$rule_log)
-    $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
     kv_set "$$rulef" rule_ended_at $$rule_ended_at
     if [ -n "$$rule_elapsed" ]; then
         kv_set "$$rulef" rule_elapsed $$rule_elapsed
