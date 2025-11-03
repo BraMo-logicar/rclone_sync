@@ -280,9 +280,15 @@ status status-v:
 	    sum_checks=0 sum_xfer=0 sum_xfer_mib=0 sum_del=0 sum_elapsed=0
 	    rc_ok=0 rc_fail=0
 
+	    if $$running; then
+	        mapfile -t ruleids < "$(ruleids_list)"
+	    else
+	        mapfile -t ruleids < <(ls $(stats)/$$runid)
+	    fi
+
 	    queue=0
-	    while IFS= read -r ruleid; do
-	        rulef="$(last)/$$ruleid"
+	    for ruleid in "$${ruleids[@]}"; do
+	        rulef="$(stats)/$$runid/$$ruleid"
 	        rule=$(call truncate,$$ruleid,$(rule_width))
 
 	        if [ ! -f "$$rulef" ]; then
@@ -330,7 +336,7 @@ status status-v:
 	            printf "$$fmt\n" $$rule $$rstate $$start "$$end" \
                     $$elapsed "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc"
 	        fi
-	    done < "$(ruleids_list)"
+	    done
 
 	    if [ $$queue -gt $(rule_queue) ]; then
 	        printf "(+%d more rules remaining)\n" $$((queue - $(rule_queue)))
