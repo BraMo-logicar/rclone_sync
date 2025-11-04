@@ -210,7 +210,7 @@ status status-v:
 	$(define_kv)
 	$(colors)
 
-	runid=$$($(get_runid)) || exit 1
+	runid=$(get_runid) || exit 1
 	kv_set "$(status)" runid $$runid
 
 	status="$(stats)/$$runid/.status"

@@ -189,19 +189,23 @@ t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 #
 
 define get_runid
-case "$${runid-}" in
-    "")   runid=$$(kv_get $(status) runid) ;;
-    prev) [ -L "$(prev)" ] && runid=$$(readlink "$(prev)") ;;
-    last) [ -L "$(last)" ] && runid=$$(readlink "$(last)") ;;
-esac
-if [ -d "$(stats)/$$runid" ]; then
-    printf "%s" $$runid
-    $(call log,runid: '$$runid')
-else
-    printf "[%s] invalid runid '%s'\n" $(project) $$runid >&2
-    $(call log,invalid runid '$$runid')
-    exit 1
-fi
+$$(
+    case "$${runid-}" in
+        "")   runid=$$(kv_get $(status) runid) ;;
+        prev) [ -L "$(prev)" ] && runid=$$(readlink "$(prev)") ;;
+        last) [ -L "$(last)" ] && runid=$$(readlink "$(last)") ;;
+    esac
+
+    if [ -d "$(stats)/$$runid" ]; then
+        printf "%s" $$runid
+        $(call log,runid: '$$runid')
+        return 0
+    else
+        printf "[%s] invalid runid '%s'\n" $(project) $$runid >&2
+        $(call log,invalid runid '$$runid')
+        return 1
+    fi
+)
 endef
 
 #---------
@@ -285,7 +289,7 @@ define watch_rclone
     else
         kv_set "$(status)" rclone_pid unknown
     fi
-) & printf "%s" $$!
+) & printf "%d" $$!
 endef
 
 #
@@ -489,7 +493,7 @@ endef
 #
 
 make := $(shell basename "$(MAKE)")
-log = printf "%s [%s(%s):%s] %s\n" $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
+log = printf "%s [%s(%s):%d] %s\n" $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 #
 # append_rule_log() - append rclone log to the main log
