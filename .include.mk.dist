@@ -1,7 +1,7 @@
 # Name: .include.mk - include for Makefiles
 # Usage: include .include.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.11.03
+# Date: 2025.11.04
 
 #-----
 # vars
@@ -240,7 +240,7 @@ endef
 
 #
 # watch_child() - return pid of a child process
-# usage: $(call watch_child,ppid,procname,n_iters,sleep)
+# usage: $(call watch_child,ppid,procname,tries,delay)
 #
 
 define watch_child
@@ -269,13 +269,13 @@ endef
 
 #
 # watch_rclone() - discover rclone_pid and rclone_cmd
-# usage: $(watch_rclone)
+# usage: $(call watch_rclone,rulef)
 #
 
 define watch_rclone
 (
-    rclone_pid=$(call
-        watch_child,$$program_pid,rclone,$(watch_tries),$(watch_delay))
+    rulef=$(1) tries=$(watch_tries) delay=$(watch_delay)
+    rclone_pid=$(call watch_child,$$program_pid,rclone,$$tries,$$delay)
     if [ -n "$$rclone_pid" ]; then
         kv_set "$(status)" rclone_pid $$rclone_pid
         rclone_cmd=$(call get_command_by_pid,$$rclone_pid)
@@ -285,7 +285,7 @@ define watch_rclone
     else
         kv_set "$(status)" rclone_pid unknown
     fi
-) & watcher_pid=$$!
+) & printf "%s" $$!
 endef
 
 #
@@ -392,7 +392,7 @@ count_rules = $$(grep -Ev '^[[:space:]]*(\#|$$)' "$(1)" | wc -l)
 #------
 
 #
-# get_rclone_stats() - parse rclone log and extract key/value metrics
+# get_rclone_stats() - parse rclone log and print key/value metrics
 # usage: $(call get_rclone_stats,rule_log)
 #
 
@@ -423,11 +423,11 @@ awk '
 endef
 
 #
-# rclone_stats() - write rclone metrics to the rule stats file
-# usage: $(call rclone_stats,ruleid,rulef,rule_log)
+# save_rclone_stats() - write rclone metrics to the rule stats file
+# usage: $(call save_rclone_stats,ruleid,rulef,rule_log)
 #
 
-define rclone_stats
+define save_rclone_stats
 declare -A S
 while read _k _v; do
     S[$$_k]=$$_v
@@ -493,12 +493,12 @@ log = printf "%s [%s(%s):%s] %s\n" $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 #
 # append_rule_log() - append rclone log to the main log
-# usage: $(call append_rule_log,rule_log)
+# usage: $(call append_rule_log,rule_log,ruleid)
 #
 
 define append_rule_log
 {
-    printf -- "-- begin rclone log (ruleid=%s) --\n" $$ruleid
+    printf -- "-- begin rclone log (ruleid=%s) --\n" $(2)
     sed '$${/^$$/d}' "$(1)"
     printf -- "-- end rclone log --\n"
 } >> "$(logf)"
@@ -525,7 +525,7 @@ endef
 # usage: $(call mib,size)
 #
 
-define mib
+define iec2mib
 $$(
     awk -v s=$(1) '
         function n(x) { sub(/[BKMGTi]*$$/, "", x); return x }

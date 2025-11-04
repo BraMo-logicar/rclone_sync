@@ -1,7 +1,7 @@
 # Name: Makefile - Makefile for $(project)
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.11.03
+# Date: 2025.11.04
 
 include .include.mk
 
@@ -129,15 +129,15 @@ main:
 
 	    "$${program_cmd[@]}" &> "$$rule_log" & program_pid=$$!
 	    kv_set "$(status)" program_pid $$program_pid
-	    $(watch_rclone)
+	    watcher_pid=$(call watch_rclone,$$rulef)
 	    rc=0; wait $$program_pid || rc=$$?
 	    wait $$watcher_pid || true
 
 	    t2=$(t)
 	    rule_elapsed=$(call t_delta,$$t1,$$t2)
 
-	    $(call append_rule_log,$$rule_log)
-	    $(call rclone_stats,$$ruleid,$$rulef,$$rule_log)
+	    $(call append_rule_log,$$rule_log,$$ruleid)
+	    $(call save_rclone_stats,$$ruleid,$$rulef,$$rule_log)
 	    kv_set "$$rulef" rule_ended_at_epoch $$t2
 	    kv_set "$$rulef" rule_ended_at $(call at,$$t2)
 	    kv_set "$$rulef" rule_elapsed $$rule_elapsed
@@ -208,8 +208,10 @@ kill:
 status status-v:
 	@t0=$(t)
 	$(define_kv)
-	runid=$$($(get_runid)) || exit 0
 	$(colors)
+
+	runid=$$($(get_runid)) || exit 1
+	kv_set "$(status)" runid $$runid
 
 	status="$(stats)/$$runid/.status"
 	printf "$$BLD%s (v%s) @ %s (%s)$$RST\n\n" \
