@@ -199,11 +199,10 @@ $$(
     if [ -d "$(stats)/$$runid" ]; then
         printf "%s" $$runid
         $(call log,runid: '$$runid')
-        return 0
     else
         printf "[%s] invalid runid '%s'\n" $(project) $$runid >&2
         $(call log,invalid runid '$$runid')
-        return 1
+        exit 1
     fi
 )
 endef
@@ -289,7 +288,7 @@ define watch_rclone
     else
         kv_set "$(status)" rclone_pid unknown
     fi
-) & printf "%d" $$!
+) & watcher_pid=$$!
 endef
 
 #
@@ -323,7 +322,7 @@ trap_on_signal() {
 
     $(call log,(WARN) caught $$sig signal)
 
-    t2=$(t);
+    t2=$(t)
     rule_ended_at=$(call at,$$t2)
     if [ -n "$${t1-}" ]; then
         rule_elapsed=$(call t_delta,$$t1,$$t2)

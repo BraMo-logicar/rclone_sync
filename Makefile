@@ -129,7 +129,7 @@ main:
 
 	    "$${program_cmd[@]}" &> "$$rule_log" & program_pid=$$!
 	    kv_set "$(status)" program_pid $$program_pid
-	    watcher_pid=$(call watch_rclone,$$rulef)
+	    $(call watch_rclone,$$rulef)
 	    rc=0; wait $$program_pid || rc=$$?
 	    wait $$watcher_pid || true
 
@@ -179,7 +179,6 @@ stop:
 	> "$(stop)"
 	$(call log,graceful stop requested: flag '$(stop)' created$(,) \
         exit after current rule)
-        
 
 kill:
 	@$(define_kv)
