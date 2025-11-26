@@ -74,7 +74,7 @@ watch_delay := .05
 last := $(stats)/last
 prev := $(stats)/prev
 
-status := $(last)/.status
+statusf := $(last)/.status
 
 rule_width := [RULE_WIDTH]
 rule_queue := [RULE_QUEUE]
@@ -191,7 +191,7 @@ t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 define get_runid
 $$(
     case "$${runid-}" in
-        "")   runid=$$(kv_get $(status) runid) ;;
+        "")   runid=$$(kv_get $(statusf) runid) ;;
         prev) [ -L "$(prev)" ] && runid=$$(readlink "$(prev)") ;;
         last) [ -L "$(last)" ] && runid=$$(readlink "$(last)") ;;
     esac
@@ -280,13 +280,13 @@ define watch_rclone
     rulef=$(1) tries=$(watch_tries) delay=$(watch_delay)
     rclone_pid=$(call watch_child,$$program_pid,rclone,$$tries,$$delay)
     if [ -n "$$rclone_pid" ]; then
-        kv_set "$(status)" rclone_pid $$rclone_pid
+        kv_set "$(statusf)" rclone_pid $$rclone_pid
         rclone_cmd=$(call get_command_by_pid,$$rclone_pid)
         if [ -n "$$rclone_cmd" ]; then
             kv_set "$$rulef" rclone_cmd "$$rclone_cmd"
         fi
     else
-        kv_set "$(status)" rclone_pid unknown
+        kv_set "$(statusf)" rclone_pid unknown
     fi
 ) & watcher_pid=$$!
 endef
@@ -302,8 +302,8 @@ if [ -f "$(stop)" ]; then
         $(project) $(1)
     rm -f "$(stop)"
     $(call log,stop flag found: exit after current rule (ruleid='$(1)'))
-    kv_set "$(status)" state "NOT RUNNING (stopped)"
-    kv_set "$(status)" rc 200
+    kv_set "$(statusf)" state "NOT RUNNING (stopped)"
+    kv_set "$(statusf)" rc 200
     exit 0
 fi
 endef
@@ -339,20 +339,20 @@ trap_on_signal() {
     fi
     kv_set "$$rulef" rc $$rc
 
-    kv_set "$(status)" program_pid -
-    kv_set "$(status)" rclone_pid -
+    kv_set "$(statusf)" program_pid -
+    kv_set "$(statusf)" rclone_pid -
     $(call log,[$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
         (elapsed: $$rule_elapsed_hms_ms))
 
-    t0=$$(kv_get "$(status)" started_at_epoch)
+    t0=$$(kv_get "$(statusf)" started_at_epoch)
     t3=$(t)
-    kv_set "$(status)" ended_at_epoch $$t3
-    kv_set "$(status)" ended_at $(call at,$$t3)
-    kv_set "$(status)" total_elapsed $(call t_delta,$$t0,$$t3)
-    kv_set "$(status)" state "NOT RUNNING (killed)"
-    kv_set "$(status)" rc $$rc
+    kv_set "$(statusf)" ended_at_epoch $$t3
+    kv_set "$(statusf)" ended_at $(call at,$$t3)
+    kv_set "$(statusf)" total_elapsed $(call t_delta,$$t0,$$t3)
+    kv_set "$(statusf)" state "NOT RUNNING (killed)"
+    kv_set "$(statusf)" rc $$rc
 
-    k=$$(kv_get "$(status)" rules_done)
+    k=$$(kv_get "$(statusf)" rules_done)
     $(call log,end '$(project)' (runid=$$runid$(,) rules=$$k/$$n) \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
     exit $$rc
@@ -452,7 +452,7 @@ endef
 #
 # get_gstate() - compute global state (running|completed|stopped|killed)
 # get_rstate() - compute rule state (done|fail|run|queue)
-# usage: $(call get_gstate,status)
+# usage: $(call get_gstate,statusf)
 # usage: $(call get_rstate,rulef,gstate)
 #
 
