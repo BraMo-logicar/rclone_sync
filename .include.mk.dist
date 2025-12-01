@@ -1,7 +1,7 @@
 # Name: .include.mk - include for Makefiles
 # Usage: include .include.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.11.04
+# Date: 2025.12.01
 
 #-----
 # vars
@@ -23,12 +23,12 @@ program_name := rclone_sync
 program_path := $(home)/bin/$(program_name)
 
 hostname := $(shell hostname)
-ip       := $(shell hostname -I | awk '{ print $$1 }')
+ip       := $(shell hostname -i)
 
 # cmds
 
-rclone   := /bin/rclone
-sendmail := /sbin/sendmail
+rclone   := /usr/bin/rclone
+sendmail := /usr/sbin/sendmail
 
 # rclone
 
@@ -90,6 +90,7 @@ mail_log := yes
 
 # misc
 
+fortytwo := Forty_two_said_Deep_Thought_with_infinite_majesty_and_calm
 , := ,
 
 #-----
@@ -565,6 +566,44 @@ endef
 #
 
 num3 = $$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
+
+#------
+# email
+#------
+
+define mime_report
+boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
+{
+    printf "From: %s\n" "$(mail_From)"
+    printf "To: %s\n" "$(mail_To)"
+    printf "Subject: %s\n" "$$subject"
+    printf "MIME-Version: 1.0\n"
+    printf "Content-Type: multipart/mixed; boundary=\"%s\"\n" "$$boundary"
+    printf "\n'
+
+    printf "--%s\n" "$$boundary"
+    printf "Content-Type: text/plain; charset=UTF-8\n"
+    printf "Content-Transfer-Encoding: 8bit\n"
+    printf "\n"
+
+    cat "$$reportf"
+
+    if [ $(mail_log) = yes ]; then
+        printf "\n"
+        printf "--%s\n' "$$boundary"
+        printf "Content-Type: text/plain; charset=UTF-8; name=\"%s\"\n" \
+            "$${logf##*/}"
+        printf "Content-Transfer-Encoding: 8bit\n"
+        printf "Content-Disposition: attachment; filename=\"%s\"\n"
+            "$${logf##*/}"
+        printf "\n"
+        cat "$$logf"
+    fi
+
+    printf "\n"
+    printf -- "--%s--\n" "$$boundary"
+} | $(sendmail) -i -f $(mail_from) $(mail_to)
+endef
 
 #------
 # utils

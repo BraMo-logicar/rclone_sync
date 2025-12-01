@@ -378,7 +378,8 @@ report:
 	state=$$(kv_get "$$statusf" state)
 	gstate=$(call get_gstate,$$state)
 	if [ $$gstate = running ]; then
-	    printf "$$_RED_%s is running$$RST: report skipped\n" $(project)
+	    printf "[%s] $$_RED_%s is running$$RST: report skipped\n" \
+            $(project) $(project)
 	    exit 0
 	fi
 
@@ -420,6 +421,43 @@ report:
 	} > "$$reportf"
 
 	$(call log,report (runid=$$runid) saved to '$$reportf' \
+        (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
+
+# report by email
+
+report-mail:
+	@t0=$(t)
+	$(define_kv)
+	$(colors)
+
+	runid=$(get_runid) || exit 1
+
+	statusf="$(stats)/$$runid/.status"
+	state=$$(kv_get "$$statusf" state)
+	gstate=$(call get_gstate,$$state)
+
+	reportf="$(reports)/report-$$runid.txt"
+	if [ ! -f "$$reportf" ]; then
+	    if [ -t 1 ]; then
+	        printf "[%s] $${_RED_}report for runid '%s' does not exist$$RST: \
+                report-mail skipped\n" $(project) $$runid
+	    fi
+		$(call log,report for runid '$$runid' does not exist: \
+            report-mail skipped)
+	    exit 0
+	fi
+
+	host=$$(echo $(hostname) | cut -d. -f1)
+	rules_done=$$(kv_get $$statusf rules_done)
+	rules_total=$$(kv_get $$statusf rules_total)
+
+	subject=$(printf "[%s@%s] rclone sync to %s:%s (runid %s, rules %s/%s)" \
+        $(project) $$host $(remote) $(bucket) $$runid \
+        $$rules_done $$rules_total)
+
+	$(mime_report)
+
+	$(call log,report by email for runid '$$runid' \
         (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # usage
