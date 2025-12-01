@@ -396,9 +396,10 @@ report:
 
 	reportlog="$(reports)/report-$$runid.log"
 	awk "
-	    /-- begin rclone log (runid=$$runid,/ { flag = 1 } flag; /--
-	    /-- end rclone log (runid=$$runid,/ { flag = 0 }" "$(logf)" \
-        > "$$reportlog"
+	    /-- begin rclone log (\runid=$$runid,/ { flag = 1 }
+	    flag
+	    /-- end rclone log \(runid=$$runid,/ { flag = 0 }
+    " "$(logf)" > "$$reportlog"
 	$(call log,[$$runid] report log for runid='$$runid' saved to '$$reportlog')
 
 	rules_done=$$(kv_get $$statusf rules_done)
@@ -445,8 +446,6 @@ report-mail:
 	runid=$(get_runid) || exit 1
 
 	statusf="$(stats)/$$runid/.status"
-	state=$$(kv_get "$$statusf" state)
-	gstate=$(call get_gstate,$$state)
 
 	reportf="$(reports)/report-$$runid.txt"
 	if [ ! -f "$$reportf" ]; then
