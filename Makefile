@@ -73,15 +73,15 @@ start:
 	kv_set "$(statusf)" total_elapsed -
 	kv_set "$(statusf)" rc -
 
-	$(call log,start '$(project)' (v$(version)) @ $(hostname) ($(ip)) \
-        (runid=$$runid))
+	$(call log,[$$runid] start '$(project)' (v$(version)) \
+        @ $(hostname) ($(ip)) (runid=$$runid))
 
 main:
 	@$(define_kv)
 	runid=$$(kv_get $(statusf) runid)
 	n=$(call count_rules,$(rules_list))
 	kv_set "$(statusf)" rules_total $$n
-	$(call log,loop over '$(call relpath,$(rules_list))' ($$n rules))
+	$(call log,[$$runid] loop over '$(call relpath,$(rules_list))' ($$n rules))
 
 	$(define_trap_on_signal)
 	trap 'trap_on_signal SIGINT 2' INT
@@ -118,10 +118,10 @@ main:
 	    kv_set "$(statusf)" current_rule_src "$$src"
 	    kv_set "$(statusf)" current_rule_dst "$$dst"
 
-	    $(call log,rule '$$rule')
-	    $(call log,ruleid '$$ruleid' ($$k/$$n$(,) $$pct%))
-	    $(call log,[$$ruleid] start '$(program_name)')
-	    $(call log,[$$ruleid] command line: $$program_line)
+	    $(call log,[$$runid] rule '$$rule')
+	    $(call log,[$$runid] ruleid '$$ruleid' ($$k/$$n$(,) $$pct%))
+	    $(call log,[$$runid:$$ruleid] start '$(program_name)')
+	    $(call log,[$$runid:$$ruleid] command line: $$program_line)
 
 	    t1=$(t)
 	    kv_set "$$rulef" rule_started_at_epoch $$t1
@@ -136,8 +136,8 @@ main:
 	    t2=$(t)
 	    rule_elapsed=$(call t_delta,$$t1,$$t2)
 
-	    $(call append_rule_log,$$rule_log,$$ruleid)
-	    $(call save_rclone_stats,$$ruleid,$$rulef,$$rule_log)
+	    $(call append_rule_log,$$runid,$$ruleid,$$rule_log)
+	    $(call save_rclone_stats,$$runid,$$ruleid,$$rulef,$$rule_log)
 	    kv_set "$$rulef" rule_ended_at_epoch $$t2
 	    kv_set "$$rulef" rule_ended_at $(call at,$$t2)
 	    kv_set "$$rulef" rule_elapsed $$rule_elapsed
@@ -148,10 +148,10 @@ main:
 	    kv_set "$(statusf)" rclone_pid -
 
 	    [ $$rc -ne 0 ] && warn=" (WARN)" || warn=
-	    $(call log,[$$ruleid]$$warn end '$(program_name)': rc=$$rc \
+	    $(call log,[$$runid:$$ruleid]$$warn end '$(program_name)': rc=$$rc \
             (elapsed: $(call t_hms_ms,$$rule_elapsed)))
 
-	    $(call stop_guard,$$ruleid)
+	    $(call stop_guard,$$runid,$$ruleid)
 	done < <(sed 's/[[:space:]]*#.*//' "$(rules_list)" | awk 'NF')
 
 end:
@@ -168,14 +168,16 @@ end:
 	    kv_set "$(statusf)" state "NOT RUNNING (completed)"
 	    kv_set "$(statusf)" rc 0
 	fi
-	$(call log,end '$(project)' (runid=$$runid, rules=$$k/$$n) \
+	$(call log,[$$runid] end '$(project)' (runid=$$runid, rules=$$k/$$n) \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
 # stop & kill
 
 stop:
-	@printf "[%s] graceful stop requested: exit after current rule\n" \
-        $(project)
+	@$(define_kv)
+	runid=$$(kv_get $(statusf) runid)
+	printf "[%s] graceful stop requested (runid=%s): \
+        exit after current rule\n" $(project) $$runid >&2
 	> "$(stop)"
 	$(call log,graceful stop requested: flag '$(stop)' created$(,) \
         exit after current rule)
@@ -187,13 +189,13 @@ kill:
 	rclone_pid=$$(kv_get "$(statusf)" rclone_pid)
 	printf "[%s] global kill requested (%s=%d, %s=%d, %s=%d)\n" \
         $(project) recipe_shell $$shell_pid \
-        program $$program_pid rclone $$rclone_pid
+        program $$program_pid rclone $$rclone_pid >&2
 	$(call log,kill requested (recipe_shell=$$shell_pid$(,) \
         program=$$program_pid$(,) rclone=$$rclone_pid))
 	for sig in INT TERM KILL; do
 	    for pid in $$rclone_pid $$program_pid $$shell_pid; do
 	         if kill -0 $$pid 2>/dev/null; then
-	             printf "  send SIG%s to %d\n" $$sig $$pid
+	             printf "  send SIG%s to %d\n" $$sig $$pid >&2
 	             kill -s $$sig $$pid 2>/dev/null || true
 	         fi
 	    done
@@ -362,8 +364,8 @@ status status-v:
 	    printf "    rc         : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
-	$(call log,status: runid=$$runid$(,) state=$$gstate$(,) rules=$$k/$$n \
-        (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
+	$(call log,[$$runid] status: runid=$$runid$(,) state=$$gstate$(,) \
+        rules=$$k/$$n (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # report
 
@@ -378,8 +380,11 @@ report:
 	state=$$(kv_get "$$statusf" state)
 	gstate=$(call get_gstate,$$state)
 	if [ $$gstate = running ]; then
-	    printf "[%s] $$_RED_%s is running$$RST: report skipped\n" \
-            $(project) $(project)
+	    if [ -t 1 ]; then
+	        printf "[%s] $$_RED_%s is running$$RST: report skipped\n" \
+                $(project) $(project)
+	    fi
+	    $(call log,$(project) is running: report skipped)
 	    exit 0
 	fi
 
@@ -388,6 +393,13 @@ report:
 	[ -L "$(reports)/last" ] &&
 	    ln -fns $$(readlink "$(reports)/last") "$(reports)/prev"
 	ln -fns $${reportf##*/} "$(reports)/last"
+
+	reportlog="$(reports)/report-$$runid.log"
+	awk "
+	    /-- begin rclone log (runid=$$runid,/ { flag = 1 } flag; /--
+	    /-- end rclone log (runid=$$runid,/ { flag = 0 }" "$(logf)" \
+        > "$$reportlog"
+	$(call log,[$$runid] report log for runid='$$runid' saved to '$$reportlog')
 
 	rules_done=$$(kv_get $$statusf rules_done)
 	rules_total=$$(kv_get $$statusf rules_total)
@@ -420,7 +432,7 @@ report:
 	    $(MAKE) -s runid=$$runid status-v | sed -n '/^RULE/,$$p'
 	} > "$$reportf"
 
-	$(call log,report (runid=$$runid) saved to '$$reportf' \
+	$(call log,[$$runid] report (runid=$$runid) saved to '$$reportf' \
         (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # report by email
@@ -442,22 +454,26 @@ report-mail:
 	        printf "[%s] $${_RED_}report for runid '%s' does not exist$$RST: \
                 report-mail skipped\n" $(project) $$runid
 	    fi
-		$(call log,report for runid '$$runid' does not exist: \
+	    $(call log,report for runid '$$runid' does not exist: \
             report-mail skipped)
 	    exit 0
 	fi
 
-	host=$$(echo $(hostname) | cut -d. -f1)
+	reportlog="$(reports)/report-$$runid.log"
+	if [ ! -f "$$reportlog" ]; then
+	    $(call log,[$$runid] report log for runid '$$runid' does not exist)
+	fi
+
 	rules_done=$$(kv_get $$statusf rules_done)
 	rules_total=$$(kv_get $$statusf rules_total)
 
 	subject=$(printf "[%s@%s] rclone sync to %s:%s (runid %s, rules %s/%s)" \
-        $(project) $$host $(remote) $(bucket) $$runid \
+        $(project) $(host) $(remote) $(bucket) $$runid \
         $$rules_done $$rules_total)
 
-	$(mime_report)
+	$(call mime_report,$$reportf,$$reportlog)
 
-	$(call log,report by email for runid '$$runid' \
+	$(call log,[$$runid] report by email for runid '$$runid' \
         (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # usage
