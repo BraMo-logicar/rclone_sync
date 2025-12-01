@@ -23,6 +23,7 @@ program_name := rclone_sync
 program_path := $(home)/bin/$(program_name)
 
 hostname := $(shell hostname)
+host     := $(shell hostname -s)
 ip       := $(shell hostname -i)
 
 # cmds
@@ -87,6 +88,27 @@ mail_To   := $(project) admin [MAIL_TO]
 mail_to   := [MAIL_TO]
 
 mail_log := yes
+
+# colors
+
+esc   := \033
+
+bld   := $(esc)[1m
+rst   := $(esc)[0m
+
+red   := $(esc)[31m
+grn   := $(esc)[32m
+yel   := $(esc)[33m
+blu   := $(esc)[34m
+mag   := $(esc)[35m
+cyn   := $(esc)[36m
+
+_red_ := $(esc)[91m
+_grn_ := $(esc)[92m
+_yel_ := $(esc)[93m
+_blu_ := $(esc)[94m
+_mag_ := $(esc)[95m
+_cyn_ := $(esc)[96m
 
 # misc
 
@@ -199,10 +221,13 @@ $$(
 
     if [ -d "$(stats)/$$runid" ]; then
         printf "%s" $$runid
-        $(call log,runid: '$$runid')
+        $(call log,[$$runid] runid: '$$runid')
     else
-        printf "[%s] invalid runid '%s'\n" $(project) $$runid >&2
-        $(call log,invalid runid '$$runid')
+        if [ -t 2 ]; then
+            printf "[%s] $${_RED_}invalid runid '%s'$$RST\n" \
+                $(project) $$runid >&2
+        fi
+        $(call log,[$$runid] invalid runid '$$runid')
         exit 1
     fi
 )
@@ -294,19 +319,23 @@ endef
 
 #
 # stop_guard() - exit current rule if a stop flag exists
-# usage: $(call stop_guard,ruleid)
+# usage: $(call stop_guard,runid,ruleid)
 #
 
 define stop_guard
-if [ -f "$(stop)" ]; then
-    printf "[%s] stop flag found: exit after current rule (ruleid='%s')\n" \
-        $(project) $(1)
-    rm -f "$(stop)"
-    $(call log,stop flag found: exit after current rule (ruleid='$(1)'))
-    kv_set "$(statusf)" state "NOT RUNNING (stopped)"
-    kv_set "$(statusf)" rc 200
-    exit 0
-fi
+{
+    runid=$(1) ruleid=$(2)
+    if [ -f "$(stop)" ]; then
+        printf "[%s] stop flag found: exit after current rule \
+            (runid=%s, ruleid=%s)\n" $(project) $$runid $ruleid >&2
+        rm -f "$(stop)"
+        $(call log,[$$runid:$ruleid] stop flag found: \
+            exit after current rule (runid=$$runid$(,) ruleid=$ruleid))
+        kv_set "$(statusf)" state "NOT RUNNING (stopped)"
+        kv_set "$(statusf)" rc 200
+        exit 0
+    fi
+}
 endef
 
 #
@@ -321,7 +350,7 @@ trap_on_signal() {
     local sig=$$1 sigcode=$$2
     local rc=$$((128 + sigcode))
 
-    $(call log,(WARN) caught $$sig signal)
+    $(call log,[$$runid:$$ruleid] (WARN) caught $$sig signal)
 
     t2=$(t)
     rule_ended_at=$(call at,$$t2)
@@ -333,7 +362,7 @@ trap_on_signal() {
         rule_elapsed_hms_ms=unknown
     fi
 
-    $(call append_rule_log,$$rule_log)
+    $(call append_rule_log,$$runid,$$ruleid,$$rule_log)
     kv_set "$$rulef" rule_ended_at $$rule_ended_at
     if [ -n "$$rule_elapsed" ]; then
         kv_set "$$rulef" rule_elapsed $$rule_elapsed
@@ -342,7 +371,7 @@ trap_on_signal() {
 
     kv_set "$(statusf)" program_pid -
     kv_set "$(statusf)" rclone_pid -
-    $(call log,[$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
+    $(call log,[$$runid:$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
         (elapsed: $$rule_elapsed_hms_ms))
 
     t0=$$(kv_get "$(statusf)" started_at_epoch)
@@ -354,7 +383,7 @@ trap_on_signal() {
     kv_set "$(statusf)" rc $$rc
 
     k=$$(kv_get "$(statusf)" rules_done)
-    $(call log,end '$(project)' (runid=$$runid$(,) rules=$$k/$$n) \
+    $(call log,[$$runid] end '$(project)' (runid=$$runid$(,) rules=$$k/$$n) \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
     exit $$rc
 }
@@ -428,22 +457,22 @@ endef
 
 #
 # save_rclone_stats() - write rclone metrics to the rule stats file
-# usage: $(call save_rclone_stats,ruleid,rulef,rule_log)
+# usage: $(call save_rclone_stats,runid,ruleid,rulef,rule_log)
 #
 
 define save_rclone_stats
 declare -A S
 while read _k _v; do
     S[$$_k]=$$_v
-    kv_set "$(2)" $$_k $$_v
-done < <($(call get_rclone_stats,$(3)))
+    kv_set "$(3)" $$_k $$_v
+done < <($(call get_rclone_stats,$(4)))
 printf -v stats_log "checks=%s, transferred=%s (%s) (new=%d, replaced=%d), \
     deleted=%d, elapsed=%s" \
     "$${S[rclone_checks]}" \
     "$${S[rclone_transferred]}" "$${S[rclone_transferred_size]}" \
     "$${S[rclone_copied_new]}" "$${S[rclone_copied_replaced]}" \
     "$${S[rclone_deleted]}" "$${S[rclone_elapsed]}"
-$(call log,[$(1)] rclone stats: $$stats_log)
+$(call log,[$(1):$(2)] rclone stats: $$stats_log)
 endef
 
 #-------
@@ -497,14 +526,15 @@ log = printf "%s [%s(%s):%d] %s\n" $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 #
 # append_rule_log() - append rclone log to the main log
-# usage: $(call append_rule_log,rule_log,ruleid)
+# usage: $(call append_rule_log,runid,ruleid,rule_log)
 #
 
 define append_rule_log
 {
-    printf -- "-- begin rclone log (ruleid=%s) --\n" $(2)
-    sed '$${/^$$/d}' "$(1)"
-    printf -- "-- end rclone log --\n"
+    runid=$(1) ruleid=$(2) rule_log=$(3)
+    printf -- "-- begin rclone log (runid=%s, ruleid=%s) --\n" $$runid $$ruleid
+    sed '$${/^$$/d}' "$$rule_log"
+    printf -- "-- end rclone log (runid=%s, ruleid=%s) --\n" $$runid $$ruleid
 } >> "$(logf)"
 endef
 
@@ -571,9 +601,16 @@ num3 = $$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
 # email
 #------
 
+#
+# mime_report() - send multipart email with report and optional log attach
+# usage: $(call mime_report,reportf,reportlog)
+#
+
 define mime_report
 boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
 {
+    reportf="$(1)" reportlog="$(2)"
+
     printf "From: %s\n" "$(mail_From)"
     printf "To: %s\n" "$(mail_To)"
     printf "Subject: %s\n" "$$subject"
@@ -592,12 +629,12 @@ boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
         printf "\n"
         printf "--%s\n' "$$boundary"
         printf "Content-Type: text/plain; charset=UTF-8; name=\"%s\"\n" \
-            "$${logf##*/}"
+            "$${reportlog##*/}"
         printf "Content-Transfer-Encoding: 8bit\n"
         printf "Content-Disposition: attachment; filename=\"%s\"\n"
-            "$${logf##*/}"
+            "$${reportlog##*/}"
         printf "\n"
-        cat "$$logf"
+        cat "$$reportlog"
     fi
 
     printf "\n"
@@ -615,19 +652,18 @@ endef
 #
 
 define colors
-ESC="\033"
 if [ -t 1 ]; then
-    BLD="$$ESC[1m" RST="$$ESC[0m"
+    BLD="$(bld)" RST="$(rst)"
 
-    RED="$$ESC[31m" _RED_="$$ESC[91m"
-    GRN="$$ESC[32m" _GRN_="$$ESC[92m"
-    YEL="$$ESC[33m" _YEL_="$$ESC[93m"
-    BLU="$$ESC[34m" _BLU_="$$ESC[94m"
-    MAG="$$ESC[35m" _MAG_="$$ESC[95m"
-    CYN="$$ESC[36m" _CYN_="$$ESC[96m"
+    RED="$(red)" _RED_="$(_red_)"
+    GRN="$(grn)" _GRN_="$(_grn_)"
+    YEL="$(yel)" _YEL_="$(_yel_)"
+    BLU="$(blu)" _BLU_="$(_blu_)"
+    MAG="$(mag)" _MAG_="$(_mag_)"
+    CYN="$(cyn)" _CYN_="$(_cyn_)"
 else
     BLD= RST=
-    RED= GRN= YEL= BLU= MAG= CYN=
+     RED=   GRN=   YEL=   BLU=   MAG=   CYN=
     _RED_= _GRN_= _YEL_= _BLU_= _MAG_= _CYN_=
 fi
 endef
