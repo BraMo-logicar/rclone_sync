@@ -27,7 +27,7 @@ list::
 	        printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n"
 	    fi
 	    find "$(src_root)" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" |
-	        sort
+	        grep -vE '^nobackup$$' | sort
 	} > "$(rules_list)"
 	n=$$(wc -l < "$(rules_list)")
 	$(call log,list $$n rules from '$(src_root)' to '$(rules_list)')
@@ -396,10 +396,10 @@ report:
 
 	reportlog="$(reports)/report-$$runid.log"
 	awk "
-	    /-- begin rclone log (\runid=$$runid,/ { flag = 1 }
+	    /-- begin rclone log \(runid=$$runid,/ { flag = 1 }
 	    flag
 	    /-- end rclone log \(runid=$$runid,/ { flag = 0 }
-    " "$(logf)" > "$$reportlog"
+	" "$(logf)" > "$$reportlog"
 	$(call log,[$$runid] report log for runid='$$runid' saved to '$$reportlog')
 
 	rules_done=$$(kv_get $$statusf rules_done)
