@@ -550,7 +550,7 @@ endef
 define truncate
 $$(
     s=$(1) w=$(2)
-    [ $${#s} -le $$w ] && printf "%s" "$$s" || printf "%s+" "$${s:0:$$((n-1))}"
+    [ $${#s} -le $$w ] && printf "%s" "$$s" || printf "%s+" "$${s:0:$$((w-1))}"
 )
 endef
 
