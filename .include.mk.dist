@@ -433,7 +433,11 @@ define get_rclone_stats
 awk '
     function xc(s) { sub(/,$$/, "", s); return s }
 
-    BEGIN { xfer = 0; xfer_new = 0; xfer_replaced = 0; deleted = 0; }
+    BEGIN {
+        checks = 0;
+        xfer = 0; xfer_new = 0; xfer_replaced = 0;
+        deleted = 0;
+    }
 
     /^Checks:/                       { checks = $$2 "/" xc($$4) }
     /^Transferred:/ && !/ETA/        { xfer = $$2 "/" xc($$4) }
