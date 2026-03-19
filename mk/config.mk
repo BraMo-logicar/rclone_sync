@@ -17,7 +17,7 @@ export LC_ALL := C
 
 # main
 
-home := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+home := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
 
 project      := $(shell basename "$(home)")
 version      := 2.0
