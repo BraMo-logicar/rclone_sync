@@ -217,7 +217,7 @@ define stop_guard
         printf "[%s] stop flag found: exit after current rule \
             (runid=%s, ruleid=%s)\n" $(project) $$runid $$ruleid >&2
         rm -f "$(stop)"
-        $(call log,[$$runid:$ruleid] stop flag found: \
+        $(call log,[$$runid:$$ruleid] stop flag found: \
             exit after current rule (runid=$$runid$(,) ruleid=$$ruleid))
         kv_set "$(statusf)" state "NOT RUNNING (stopped)"
         kv_set "$(statusf)" rc 200
