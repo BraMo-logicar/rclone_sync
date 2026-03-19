@@ -13,6 +13,8 @@ SHELL := /usr/bin/bash
 .ONESHELL:
 .SHELLFLAGS := -euo pipefail -c
 
+export LC_ALL := C
+
 # main
 
 home := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
