@@ -1,4 +1,4 @@
-# Name: .include.mk - include for Makefile
+# Name: .include.mk.dist - include template for Makefile
 # Usage: include .include.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
 # Date: 2026.03.19
@@ -9,24 +9,24 @@
 
 # source/destination
 
-bucket := [BUCKET]
+bucket = [BUCKET]
 
-src_root := [SRC_ROOT]
-dst_root := [DST_ROOT]
+src_root = [SRC_ROOT]
+dst_root = [DST_ROOT]
 
 # rules
 
-rule_width := [RULE_WIDTH]
-rule_queue := [RULE_QUEUE]
+rule_width = [RULE_WIDTH]
+rule_queue = [RULE_QUEUE]
 
 # email
 
-mail_From := $(project) system [MAIL_FROM]
-mail_from := [MAIL_FROM]
-mail_To   := $(project) admin [MAIL_TO]
-mail_to   := [MAIL_TO]
+mail_From = $(project) system [MAIL_FROM]
+mail_from = [MAIL_FROM]
+mail_To   = $(project) admin [MAIL_TO]
+mail_to   = [MAIL_TO]
 
-mail_log := yes
+mail_log = yes
 
 
 # vim: ts=4
