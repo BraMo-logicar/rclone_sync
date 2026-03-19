@@ -619,6 +619,7 @@ boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
 
     printf "From: %s\n" "$(mail_From)"
     printf "To: %s\n" "$(mail_To)"
+    printf "Date: %s\n" "$$(date -R)"
     printf "Subject: %s\n" "$$subject"
     printf "MIME-Version: 1.0\n"
     printf "Content-Type: multipart/mixed; boundary=\"%s\"\n" "$$boundary"
