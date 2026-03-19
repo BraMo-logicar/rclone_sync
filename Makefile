@@ -1,9 +1,10 @@
 # Name: Makefile - Makefile for $(project)
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2025.11.04
+# Date: 2026.03.19
 
-include .include.mk
+include mk/config.mk
+include mk/lib.mk
 
 #
 # targets
