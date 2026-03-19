@@ -1,4 +1,4 @@
-# Name: .include.mk - include for Makefiles
+# Name: .include.mk - include for Makefile
 # Usage: include .include.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
 # Date: 2026.03.19
@@ -7,7 +7,7 @@
 # vars
 #-----
 
-# source/destination, local/remote
+# source/destination
 
 bucket := [BUCKET]
 
