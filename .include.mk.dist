@@ -623,7 +623,7 @@ boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
     printf "Subject: %s\n" "$$subject"
     printf "MIME-Version: 1.0\n"
     printf "Content-Type: multipart/mixed; boundary=\"%s\"\n" "$$boundary"
-    printf "\n'
+    printf "\n"
 
     printf "--%s\n" "$$boundary"
     printf "Content-Type: text/plain; charset=UTF-8\n"
@@ -638,7 +638,7 @@ boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
         printf "Content-Type: text/plain; charset=UTF-8; name=\"%s\"\n" \
             "$${reportlog##*/}"
         printf "Content-Transfer-Encoding: 8bit\n"
-        printf "Content-Disposition: attachment; filename=\"%s\"\n"
+        printf "Content-Disposition: attachment; filename=\"%s\"\n" \
             "$${reportlog##*/}"
         printf "\n"
         cat "$$reportlog"
