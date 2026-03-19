@@ -36,7 +36,7 @@ sendmail := /usr/sbin/sendmail
 # rclone
 
 rclone_conf := $(home)/etc/rclone.conf
-rclone_ver  := $(shell rclone version | sed -n '1s/.* v//p')
+rclone_ver  := $(shell $(rclone) version | sed -n '1s/.* v//p')
 
 # dirs and files
 
