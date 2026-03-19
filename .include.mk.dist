@@ -625,7 +625,7 @@ boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
     printf "Content-Type: multipart/mixed; boundary=\"%s\"\n" "$$boundary"
     printf "\n"
 
-    printf "--%s\n" "$$boundary"
+    printf -- "--%s\n" "$$boundary"
     printf "Content-Type: text/plain; charset=UTF-8\n"
     printf "Content-Transfer-Encoding: 8bit\n"
     printf "\n"
@@ -634,7 +634,7 @@ boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
 
     if [ $(mail_log) = yes ]; then
         printf "\n"
-        printf "--%s\n' "$$boundary"
+        printf -- "--%s\n' "$$boundary"
         printf "Content-Type: text/plain; charset=UTF-8; name=\"%s\"\n" \
             "$${reportlog##*/}"
         printf "Content-Transfer-Encoding: 8bit\n"
