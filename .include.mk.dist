@@ -608,11 +608,11 @@ num3 = $$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
 #------
 
 #
-# mime_report() - send multipart email with report and optional log attach
-# usage: $(call mime_report,reportf,reportlog)
+# send_report() - send multipart email with report and optional log attach
+# usage: $(call send_report,reportf,reportlog)
 #
 
-define mime_report
+define send_report
 boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
 {
     reportf="$(1)" reportlog="$(2)"
