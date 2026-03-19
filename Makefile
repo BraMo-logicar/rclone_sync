@@ -6,6 +6,8 @@
 include mk/config.mk
 include mk/lib.mk
 
+include .include.mk
+
 #
 # targets
 #
