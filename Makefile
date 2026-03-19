@@ -176,8 +176,10 @@ end:
 stop:
 	@$(define_kv)
 	runid=$$(kv_get $(statusf) runid)
-	printf "[%s] graceful stop requested (runid=%s): \
-        exit after current rule\n" $(project) $$runid >&2
+	{
+	    printf "[%s] graceful stop requested (runid=%s): " $(project) $$runid
+	    printf "exit after current rule\n"
+	} >&2
 	> "$(stop)"
 	$(call log,graceful stop requested: flag '$(stop)' created$(,) \
         exit after current rule)
@@ -450,8 +452,9 @@ report-mail:
 	reportf="$(reports)/report-$$runid.txt"
 	if [ ! -f "$$reportf" ]; then
 	    if [ -t 1 ]; then
-	        printf "[%s] $${_RED_}report for runid '%s' does not exist$$RST: \
-                report-mail skipped\n" $(project) $$runid
+	        printf "[%s] $$_RED_report for runid '%s' does not exist$$RST: " \
+                $(project) $$runid
+	        printf "report-mail skipped\n"
 	    fi
 	    $(call log,report for runid '$$runid' does not exist: \
             report-mail skipped)
@@ -466,11 +469,11 @@ report-mail:
 	rules_done=$$(kv_get $$statusf rules_done)
 	rules_total=$$(kv_get $$statusf rules_total)
 
-	subject=$(printf "[%s@%s] rclone sync to %s:%s (runid %s, rules %s/%s)" \
+	subject=$$(printf "[%s@%s] rclone sync to %s:%s (runid %s, rules %s/%s)" \
         $(project) $(host) $(remote) $(bucket) $$runid \
         $$rules_done $$rules_total)
 
-	$(call mime_report,$$reportf,$$reportlog)
+	$(call send_report,$$reportf,$$reportlog)
 
 	$(call log,[$$runid] report by email for runid '$$runid' \
         (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
@@ -486,8 +489,7 @@ usage:
 	ln -fns $${usagef##*/} "$(usage)/last"
 
 	{
-	    printf "Bucket usage (%s, %s)\n" \
-            $(hostname) "$$(date '+%a %d %b %Y')"
+	    printf "Bucket usage (%s, %s)\n" $(hostname) "$$(date '+%a %d %b %Y')"
 	    printf "    bucket: %s\n" $(bucket)
 	    printf "    prefix: %s\n" "$(dst_root)"
 	} >> $$usagef
