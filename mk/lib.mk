@@ -219,7 +219,8 @@ define stop_guard
         rm -f "$(stop)"
         $(call log,[$$runid:$$ruleid] stop flag found: \
             exit after current rule (runid=$$runid$(,) ruleid=$$ruleid))
-        kv_set "$(statusf)" state "NOT RUNNING (stopped)"
+        kv_set "$(statusf)" gstate idle
+        kv_set "$(statusf)" last_result stopped
         kv_set "$(statusf)" rc 200
         exit 0
     fi
@@ -267,7 +268,8 @@ trap_on_signal() {
     kv_set "$(statusf)" ended_at_epoch $$t3
     kv_set "$(statusf)" ended_at $(call at,$$t3)
     kv_set "$(statusf)" total_elapsed $(call t_delta,$$t0,$$t3)
-    kv_set "$(statusf)" state "NOT RUNNING (killed)"
+    kv_set "$(statusf)" gstate idle
+    kv_set "$(statusf)" last_result killed
     kv_set "$(statusf)" rc $$rc
 
     k=$$(kv_get "$(statusf)" rules_done)
@@ -372,22 +374,9 @@ endef
 #-------
 
 #
-# get_gstate() - compute global state (running|completed|stopped|killed)
 # get_rstate() - compute rule state (done|fail|run|queue)
-# usage: $(call get_gstate,statusf)
 # usage: $(call get_rstate,rulef,gstate)
 #
-
-define get_gstate
-$$(
-    state="$(1)"
-    if [ "$$state" = RUNNING ]; then
-        printf running
-    else
-        printf "%s" $$(echo "$$state" | sed 's/.*(\(.*\)).*/\1/')
-    fi
-)
-endef
 
 define get_rstate
 $$(

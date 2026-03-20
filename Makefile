@@ -58,7 +58,7 @@ start:
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
 
 	> "$(statusf)"
-	kv_set "$(statusf)" state RUNNING
+	kv_set "$(statusf)" gstate running
 	kv_set "$(statusf)" runid $$runid
 	kv_set "$(statusf)" started_at_epoch $$t0
 	kv_set "$(statusf)" started_at $(call at,$$t0)
@@ -168,7 +168,8 @@ end:
 	k=$$(kv_get "$(statusf)" rules_done)
 	n=$$(kv_get "$(statusf)" rules_total)
 	if [ $$k -eq $$n ]; then
-	    kv_set "$(statusf)" state "NOT RUNNING (completed)"
+	    kv_set "$(statusf)" gstate idle
+	    kv_set "$(statusf)" last_result completed
 	    kv_set "$(statusf)" rc 0
 	fi
 	$(call log,[$$runid] end '$(project)' (runid=$$runid, rules=$$k/$$n) \
@@ -217,10 +218,11 @@ status status-v:
 	$(colors)
 
 	runid=$(get_runid) || exit 1
-
 	statusf="$(stats)/$$runid/.status"
-	state=$$(kv_get "$$statusf" state)
-	gstate=$(call get_gstate,$$state)
+
+	gstate=$$(kv_get "$$statusf" gstate)
+	[ -n "$$gstate" ] || gstate=idle
+	last_result=$$(kv_get "$$statusf" last_result)
 
 	k=$$(kv_get "$$statusf" rules_done)
 	n=$$(kv_get "$$statusf" rules_total)
@@ -247,7 +249,7 @@ status status-v:
 	    pids="make=$${make_pid:--}, shell=$${shell_pid:--}, "
 	    pids+="rclone_sync=$${program_pid:--}, rclone=$${rclone_pid:--}"
 
-	    printf "state        : $$_RED_%s$$RST\n" "$$state"
+	    printf "state        : $$_RED_%s$$RST\n" $${gstate^^}
 	    printf "runid        : %s\n" $$runid
 	    printf "started at   : %s  (elapsed: %s)\n" $$started_at $$elapsed
 	    printf "current rule : $$_RED_%s$$RST  (elapsed: %s)\n" \
@@ -263,18 +265,21 @@ status status-v:
 	    total_elapsed=$$(kv_get "$$statusf" total_elapsed)
 	    elapsed=$(call t_hms,$$total_elapsed)
 
-	    printf "state      : $$_RED_%s$$RST\n" "$$state"
-	    printf "runid      : %s\n" $$runid
-	    if [ $$gstate = completed ]; then
-	        printf "rules      : $$_RED_%d$$RST\n" $$n
-	    else
-	        printf "rules      : $$_RED_%d (%d completed)$$RST\n" $$n $$k
+	    printf "state       : $$_RED_%s$$RST\n" $${gstate^^}
+	    if [ -n $$last_result ]; then
+	        printf "last result : %s\n" $$last_result
 	    fi
-	    printf "started at : %s\n" $$started_at
-	    printf "ended at   : %s\n" $$ended_at
-	    printf "elapsed    : %s\n" $$elapsed
-	    printf "flow       : %s -> %s\n" "$(lpath)" "$(rpath)"
-	    printf "rclone     : %s\n" $(rclone_ver)
+	    printf "runid       : %s\n" $$runid
+	    if [ $$gstate = completed ]; then
+	        printf "rules       : $$_RED_%d$$RST\n" $$n
+	    else
+	        printf "rules       : $$_RED_%d (%d completed)$$RST\n" $$n $$k
+	    fi
+	    printf "started at  : %s\n" $$started_at
+	    printf "ended at    : %s\n" $$ended_at
+	    printf "elapsed     : %s\n" $$elapsed
+	    printf "flow        : %s -> %s\n" "$(lpath)" "$(rpath)"
+	    printf "rclone      : %s\n" $(rclone_ver)
 	fi
 
 	if [ $@ = status-v ]; then
@@ -356,7 +361,7 @@ status status-v:
 	    if [ $$gstate = running ]; then
 	        printf "    rules      : $$_RED_%d/%d$$RST (%.2f%%)\n" \
                 $$k $$n $$pct
-	    elif [ $$gstate = completed ]; then
+	    elif [ $$last_result = completed ]; then
 	        printf "    rules      : $$_RED_%d$$RST\n" $$n
 	    else
 	        printf "    rules      : $$_RED_%d (%d completed)$$RST\n" $$n $$k
@@ -369,7 +374,7 @@ status status-v:
 	    printf "    rc         : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
-	$(call log,[$$runid] status: runid=$$runid$(,) state=$$gstate$(,) \
+	$(call log,[$$runid] status: runid=$$runid$(,) state=$${gstate^^}$(,) \
         rules=$$k/$$n (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # report
@@ -380,10 +385,10 @@ report:
 	$(colors)
 
 	runid=$(get_runid) || exit 1
-
 	statusf="$(stats)/$$runid/.status"
-	state=$$(kv_get "$$statusf" state)
-	gstate=$(call get_gstate,$$state)
+
+	gstate=$$(kv_get "$$statusf" gstate)
+	[ -n "$$gstate" ] || gstate=idle
 	if [ $$gstate = running ]; then
 	    if [ -t 1 ]; then
 	        printf "[%s] $$_RED_%s is running$$RST: report skipped\n" \
@@ -392,6 +397,7 @@ report:
 	    $(call log,$(project) is running: report skipped)
 	    exit 0
 	fi
+	last_result=$$(kv_get "$$statusf" last_result)
 
 	mkdir -p "$(reports)"
 	reportf="$(reports)/report-$$runid.txt"
@@ -424,7 +430,8 @@ report:
 	    printf "lpath            : %s\n" "$(lpath)"
 	    printf "rpath            : %s\n" "$(rpath)"
 	    printf "runid            : %s\n" "$$runid"
-	    printf "state            : %s\n" "$$gstate"
+	    printf "state            : %s\n" "$${gstate^^}"
+	    printf "last_result      : %s\n" "$$last_result"
 	    printf "started_at_epoch : %s\n" "$$(kv_get $$statusf started_at_epoch)"
 	    printf "started_at       : %s\n" "$$(kv_get $$statusf started_at)"
 	    printf "rules            : %s\n" "$$rules_done/$$rules_total"
