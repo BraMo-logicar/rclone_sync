@@ -371,7 +371,7 @@ status status-v:
 	    printf "    xfer_size  : %s\n" "$(call mib2iec,$$sum_xfer_mib)"
 	    printf "    deleted    : %s\n" $(call num3,$$sum_del)
 	    printf "    elapsed    : %s\n" $(call t_hms,$$sum_elapsed)
-	    printf "    rc         : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
+	    printf "    result     : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
 	$(call log,[$$runid] status: runid=$$runid$(,) state=$${gstate^^}$(,) \
@@ -388,8 +388,7 @@ report:
 	statusf="$(stats)/$$runid/.status"
 
 	gstate=$$(kv_get "$$statusf" gstate)
-	[ -n "$$gstate" ] || gstate=idle
-	if [ $$gstate = running ]; then
+	if [ "$$gstate" = running ]; then
 	    if [ -t 1 ]; then
 	        printf "[%s] $$_RED_%s is running$$RST: report skipped\n" \
                 $(project) $(project)
@@ -397,7 +396,6 @@ report:
 	    $(call log,$(project) is running: report skipped)
 	    exit 0
 	fi
-	last_result=$$(kv_get "$$statusf" last_result)
 
 	mkdir -p "$(reports)"
 	reportf="$(reports)/report-$$runid.txt"
@@ -415,30 +413,23 @@ report:
 
 	rules_done=$$(kv_get $$statusf rules_done)
 	rules_total=$$(kv_get $$statusf rules_total)
-	total_elapsed=$(call t_hms_ms,$$(kv_get $$statusf total_elapsed))
+	elapsed=$(call t_hms_ms,$$(kv_get $$statusf total_elapsed))
 	{
 	    printf "%s (v%s) @ %s (%s)\n" $(project) $(version) $(hostname) $$runid
 	    printf "\n"
-	    printf "home             : %s\n" "$(home)"
-	    printf "project          : %s\n" "$(project)"
-	    printf "version          : %s\n" "$(version)"
-	    printf "program_name     : %s\n" "$(program_name)"
-	    printf "program_path     : %s\n" "$(program_path)"
-	    printf "hostname         : %s\n" "$(hostname)"
-	    printf "ip               : %s\n" "$(ip)"
-	    printf "rclone_ver       : %s\n" "$(rclone_ver)"
-	    printf "lpath            : %s\n" "$(lpath)"
-	    printf "rpath            : %s\n" "$(rpath)"
-	    printf "runid            : %s\n" "$$runid"
-	    printf "state            : %s\n" "$${gstate^^}"
-	    printf "last_result      : %s\n" "$$last_result"
-	    printf "started_at_epoch : %s\n" "$$(kv_get $$statusf started_at_epoch)"
-	    printf "started_at       : %s\n" "$$(kv_get $$statusf started_at)"
-	    printf "rules            : %s\n" "$$rules_done/$$rules_total"
-	    printf "ended_at_epoch   : %s\n" "$$(kv_get $$statusf ended_at_epoch)"
-	    printf "ended_at         : %s\n" "$$(kv_get $$statusf ended_at)"
-	    printf "total_elapsed    : %s\n" "$$total_elapsed"
-	    printf "rc               : %s\n" "$$(kv_get $$statusf rc)"
+	    printf "program     : %s\n" "$(program_name)"
+	    printf "host        : %s\n" "$(hostname) ($(ip))"
+	    printf "runid       : %s\n" "$$runid"
+	    printf "\n"
+	    printf "rclone_ver  : %s\n" "$(rclone_ver)"
+	    printf "source      : %s\n" "$(lpath)"
+	    printf "destination : %s\n" "$(rpath)"
+	    printf "\n"
+	    printf "started_at  : %s\n" "$$(kv_get $$statusf started_at)"
+	    printf "ended_at    : %s\n" "$$(kv_get $$statusf ended_at)"
+	    printf "elapsed     : %s\n" "$$elapsed"
+	    printf "\n"
+	    printf "rules       : %s\n" "$$rules_done/$$rules_total"
 	    printf "\n"
 	    printf -- "-------- rules summary (status-v) --------\n"
 	    printf "\n"
