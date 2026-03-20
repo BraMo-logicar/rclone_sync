@@ -359,19 +359,19 @@ status status-v:
 	    printf "\n$$BLD%s$$RST\n" SUMMARY
 
 	    if [ $$gstate = running ]; then
-	        printf "    rules      : $$_RED_%d/%d$$RST (%.2f%%)\n" \
+	        printf "    rules     : $$_RED_%d/%d$$RST (%.2f%%)\n" \
                 $$k $$n $$pct
 	    elif [ "$$last_result" = completed ]; then
-	        printf "    rules      : $$_RED_%d$$RST\n" $$n
+	        printf "    rules     : $$_RED_%d$$RST\n" $$n
 	    else
-	        printf "    rules      : $$_RED_%d (%d completed)$$RST\n" $$n $$k
+	        printf "    rules     : $$_RED_%d (%d completed)$$RST\n" $$n $$k
 	    fi
-	    printf "    checks     : %s\n" $(call num3,$$sum_checks)
-	    printf "    xfer       : %s\n" $(call num3,$$sum_xfer)
-	    printf "    xfer_size  : %s\n" "$(call mib2iec,$$sum_xfer_mib)"
-	    printf "    deleted    : %s\n" $(call num3,$$sum_del)
-	    printf "    elapsed    : %s\n" $(call t_hms,$$sum_elapsed)
-	    printf "    result     : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
+	    printf "    checks    : %s\n" $(call num3,$$sum_checks)
+	    printf "    xfer      : %s\n" $(call num3,$$sum_xfer)
+	    printf "    xfer_size : %s\n" "$(call mib2iec,$$sum_xfer_mib)"
+	    printf "    deleted   : %s\n" $(call num3,$$sum_del)
+	    printf "    elapsed   : %s\n" $(call t_hms,$$sum_elapsed)
+	    printf "    result    : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
 	$(call log,[$$runid] status: runid=$$runid$(,) state=$${gstate^^}$(,) \
