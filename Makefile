@@ -266,11 +266,11 @@ status status-v:
 	    elapsed=$(call t_hms,$$total_elapsed)
 
 	    printf "state       : $$_RED_%s$$RST\n" $${gstate^^}
-	    if [ -n $$last_result ]; then
+	    if [ -n "$$last_result" ]; then
 	        printf "last result : %s\n" $$last_result
 	    fi
 	    printf "runid       : %s\n" $$runid
-	    if [ $$gstate = completed ]; then
+	    if [ "$$last_result" = completed ]; then
 	        printf "rules       : $$_RED_%d$$RST\n" $$n
 	    else
 	        printf "rules       : $$_RED_%d (%d completed)$$RST\n" $$n $$k
@@ -298,7 +298,7 @@ status status-v:
 	    if [ $$gstate = running ]; then
 	        mapfile -t ruleids < "$(ruleids_list)"
 	    else
-	        mapfile -t ruleids < <(ls $(stats)/$$runid)
+	        mapfile -t ruleids < <(ls -A "$(stats)/$$runid" | grep -vx .status)
 	    fi
 
 	    queue=0
@@ -361,7 +361,7 @@ status status-v:
 	    if [ $$gstate = running ]; then
 	        printf "    rules      : $$_RED_%d/%d$$RST (%.2f%%)\n" \
                 $$k $$n $$pct
-	    elif [ $$last_result = completed ]; then
+	    elif [ "$$last_result" = completed ]; then
 	        printf "    rules      : $$_RED_%d$$RST\n" $$n
 	    else
 	        printf "    rules      : $$_RED_%d (%d completed)$$RST\n" $$n $$k
