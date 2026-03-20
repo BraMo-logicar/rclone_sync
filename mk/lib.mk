@@ -296,7 +296,7 @@ parse_rule() {
         *)        path=$$rule opts= ;;
     esac
     [ "$$path" = . ] && path=
-    ruleid=$$(printf "%s" "$$path" | sed '|/|_|g' | tr '[:space:]' '_')
+    ruleid=$$(printf "%s" "$$path" | sed 's|/|_|g' | tr '[:space:]' '_')
     set -f; eval "$$opts"; set +f
 }
 endef
