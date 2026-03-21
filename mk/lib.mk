@@ -220,7 +220,7 @@ define stop_guard
         $(call log,[$$runid:$$ruleid] stop flag found: \
             exit after current rule (runid=$$runid$(,) ruleid=$$ruleid))
         kv_set "$(statusf)" gstate idle
-        kv_set "$(statusf)" last_result stopped
+        kv_set "$(statusf)" result stopped
         kv_set "$(statusf)" rc 200
         exit 0
     fi
@@ -269,7 +269,7 @@ trap_on_signal() {
     kv_set "$(statusf)" ended_at $(call at,$$t3)
     kv_set "$(statusf)" total_elapsed $(call t_delta,$$t0,$$t3)
     kv_set "$(statusf)" gstate idle
-    kv_set "$(statusf)" last_result killed
+    kv_set "$(statusf)" result killed
     kv_set "$(statusf)" rc $$rc
 
     k=$$(kv_get "$(statusf)" rules_done)

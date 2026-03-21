@@ -172,7 +172,7 @@ end:
 	n=$$(kv_get "$(statusf)" rules_total)
 	if [ $$k -eq $$n ]; then
 	    kv_set "$(statusf)" gstate idle
-	    kv_set "$(statusf)" last_result completed
+	    kv_set "$(statusf)" result completed
 	    kv_set "$(statusf)" rc 0
 	fi
 	$(call log,[$$runid] end '$(project)' (runid=$$runid, rules=$$k/$$n) \
@@ -225,7 +225,7 @@ status status-v:
 
 	gstate=$$(kv_get "$$statusf" gstate)
 	[ -n "$$gstate" ] || gstate=idle
-	last_result=$$(kv_get "$$statusf" last_result)
+	result=$$(kv_get "$$statusf" result)
 
 	k=$$(kv_get "$$statusf" rules_done)
 	n=$$(kv_get "$$statusf" rules_total)
@@ -269,20 +269,20 @@ status status-v:
 	    elapsed=$(call t_hms,$$total_elapsed)
 
 	    printf "state       : $$_RED_%s$$RST\n" $${gstate^^}
-	    if [ -n "$$last_result" ]; then
-	        printf "last result : %s\n" $$last_result
+	    if [ -n "$$result" ]; then
+	        printf "result     : %s\n" $$result
 	    fi
-	    printf "runid       : %s\n" $$runid
-	    if [ "$$last_result" = completed ]; then
-	        printf "rules       : $$_RED_%d$$RST\n" $$n
+	    printf "runid      : %s\n" $$runid
+	    if [ "$$result" = completed ]; then
+	        printf "rules      : $$_RED_%d$$RST\n" $$n
 	    else
-	        printf "rules       : $$_RED_%d (%d completed)$$RST\n" $$n $$k
+	        printf "rules      : $$_RED_%d (%d completed)$$RST\n" $$n $$k
 	    fi
-	    printf "started at  : %s\n" $$started_at
-	    printf "ended at    : %s\n" $$ended_at
-	    printf "elapsed     : %s\n" $$elapsed
-	    printf "flow        : %s -> %s\n" "$(lpath)" "$(rpath)"
-	    printf "rclone      : %s\n" $(rclone_ver)
+	    printf "started at : %s\n" $$started_at
+	    printf "ended at   : %s\n" $$ended_at
+	    printf "elapsed    : %s\n" $$elapsed
+	    printf "flow       : %s -> %s\n" "$(lpath)" "$(rpath)"
+	    printf "rclone     : %s\n" $(rclone_ver)
 	fi
 
 	if [ $@ = status-v ]; then
