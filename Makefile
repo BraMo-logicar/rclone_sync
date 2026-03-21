@@ -53,7 +53,7 @@ dirs:
 
 # main
 
-start:
+start: dirs
 	@t0=$(t)
 	$(define_kv)
 	runid=$(t_znow)
@@ -387,7 +387,7 @@ status status-v:
 
 # report
 
-report:
+report: dirs
 	@t0=$(t)
 	$(define_kv)
 	$(colors)
@@ -487,7 +487,7 @@ report-mail:
 
 # usage
 
-usage:
+usage: dirs
 	@$(define_kv)
 	usagef="$(usage)/usage-$(t_znow)"; > "$$usagef"
 
