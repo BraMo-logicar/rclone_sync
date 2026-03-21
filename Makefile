@@ -18,7 +18,10 @@ include .include.mk
         usage
 
 help:
-	@echo Makefile: Please specify a target: list, start, main, end, ...
+	@echo "Makefile: Please specify a target:"
+	echo "    list, start, main, end, stop, kill"
+	echo "    status(-v) [runid=$runid], report(-mail) [runid=$runid],"
+	echo "    usage, log-last"
 
 $(project): start main end
 
@@ -447,7 +450,6 @@ report-mail:
 	$(colors)
 
 	runid=$(get_runid) || exit 1
-
 	statusf="$(stats)/$$runid/.status"
 
 	reportf="$(reports)/report-$$runid.txt"
