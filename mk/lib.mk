@@ -498,9 +498,9 @@ boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
     printf "Subject: %s\n" "$$subject"
     printf "MIME-Version: 1.0\n"
     printf "Content-Type: multipart/mixed; boundary=\"%s\"\n" "$$boundary"
-    printf "X-Project: $s (v%s)\n" $(project) $(version)
-    printf "X-Program: $s\n" $(program_name)
-    printf "X-Rclone-Version: $s\n" $(rclone_ver)
+    printf "X-Project: %s (v%s)\n" $(project) $(version)
+    printf "X-Program: %s\n" $(program_name)
+    printf "X-Rclone-Version: %s\n" $(rclone_ver)
     printf "\n"
 
     printf -- "--%s\n" "$$boundary"
