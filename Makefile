@@ -15,11 +15,11 @@ include .include.mk
 .PHONY: help dirs \
         list start main end stop kill \
         status status-v report report-mail \
-        usage
+        usage log-last
 
 help:
 	@echo "Makefile: Please specify a target:"
-	echo "    list, start, main, end, stop, kill"
+	echo "    list, dirs, start, main, end, stop, kill"
 	echo "    status(-v) [runid=$runid], report(-mail) [runid=$runid],"
 	echo "    usage, log-last"
 
@@ -46,6 +46,11 @@ list::
 	n=$$(wc -l < "$(ruleids_list)")
 	$(call log,list $$n ruleids from '$(src_root)' to '$(ruleids_list)')
 
+# dirs
+
+dirs:
+	@mkdir -p "$(home)/log" "$(reports)" "$(stats)" "$(tmp)" "$(usage)"
+
 # main
 
 start:
@@ -53,7 +58,7 @@ start:
 	$(define_kv)
 	runid=$(t_znow)
 
-	mkdir -p "$(stats)" "$(stats)/$$runid"
+	mkdir "$(stats)/$$runid"
 	[ -L "$(last)" ] && ln -fns $$(readlink "$(last)") "$(prev)"
 	ln -fns $$runid "$(last)"
 	ln -fns stats/last/.status data/status
@@ -66,7 +71,7 @@ start:
 	kv_set "$(statusf)" started_at_epoch $$t0
 	kv_set "$(statusf)" started_at $(call at,$$t0)
 	kv_set "$(statusf)" rules_done 0
-	kv_set "$(statusf)" rules_total -
+	kv_set "$(statusf)" rules_total 42
 	kv_set "$(statusf)" current_ruleid -
 	kv_set "$(statusf)" current_rule_src -
 	kv_set "$(statusf)" current_rule_dst -
@@ -187,8 +192,8 @@ stop:
 	    printf "[%s] graceful stop requested (runid=%s): " $(project) $$runid
 	    printf "exit after current rule\n"
 	} >&2
-	> "$(stop)"
-	$(call log,graceful stop requested: flag '$(stop)' created$(,) \
+	> "$(stop_flag)"
+	$(call log,graceful stop requested: flag '$(stop_flag)' created$(,) \
         exit after current rule)
 
 kill:
@@ -364,7 +369,7 @@ status status-v:
 	    if [ $$gstate = running ]; then
 	        printf "    rules     : $$_RED_%d/%d$$RST (%.2f%%)\n" \
                 $$k $$n $$pct
-	    elif [ "$$last_result" = completed ]; then
+	    elif [ "$$result" = completed ]; then
 	        printf "    rules     : $$_RED_%d$$RST\n" $$n
 	    else
 	        printf "    rules     : $$_RED_%d (%d completed)$$RST\n" $$n $$k
@@ -400,7 +405,6 @@ report:
 	    exit 0
 	fi
 
-	mkdir -p "$(reports)"
 	reportf="$(reports)/report-$$runid.txt"
 	[ -L "$(reports)/last" ] &&
 	    ln -fns $$(readlink "$(reports)/last") "$(reports)/prev"
