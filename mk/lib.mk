@@ -213,10 +213,10 @@ endef
 define stop_guard
 {
     runid=$(1) ruleid=$(2)
-    if [ -f "$(stop)" ]; then
+    if [ -f "$(stop_flag)" ]; then
         printf "[%s] stop flag found: exit after current rule \
             (runid=%s, ruleid=%s)\n" $(project) $$runid $$ruleid >&2
-        rm -f "$(stop)"
+        rm -f "$(stop_flag)"
         $(call log,[$$runid:$$ruleid] stop flag found: \
             exit after current rule (runid=$$runid$(,) ruleid=$$ruleid))
         kv_set "$(statusf)" gstate idle
