@@ -362,17 +362,17 @@ status status-v:
 	    printf "\n$$BLD%s$$RST\n" SUMMARY
 
 	    if [ $$gstate = running ]; then
-	        printf "    rules     : $$_RED_%d/%d$$RST (%.2f%%)\n" \
-                $$k $$n $$pct
+	        printf "    rules         : $$_RED_%d/%d$$RST (%.2f%%)\n" \
+	            $$k $$n $$pct
 	    else
-	        printf "    rules     : $$_RED_%d/%d$$RST\n" $$k $$n
+	        printf "    rules         : $$_RED_%d/%d$$RST\n" $$k $$n
 	    fi
-	    printf "    checks    : %s\n" $(call num3,$$sum_checks)
-	    printf "    xfer      : %s\n" $(call num3,$$sum_xfer)
-	    printf "    xfer_size : %s\n" "$(call mib2iec,$$sum_xfer_mib)"
-	    printf "    deleted   : %s\n" $(call num3,$$sum_del)
-	    printf "    elapsed   : %s\n" $(call t_hms,$$sum_elapsed)
-	    printf "    result    : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
+	    printf "    checks        : %s\n" $(call num3,$$sum_checks)
+	    printf "    xfer          : %s\n" $(call num3,$$sum_xfer)
+	    printf "    xfer size     : %s\n" "$(call mib2iec,$$sum_xfer_mib)"
+	    printf "    deleted       : %s\n" $(call num3,$$sum_del)
+	    printf "    rules elapsed : %s\n" $(call t_hms,$$sum_elapsed)
+	    printf "    result        : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
 	$(call log,[$$runid] status: runid=$$runid$(,) state=$${gstate^^}$(,) \
@@ -415,9 +415,9 @@ report: dirs
 	rules_total=$$(kv_get $$statusf rules_total)
 	elapsed=$(call t_hms_ms,$$(kv_get $$statusf total_elapsed))
 	{
-	    printf "%s (v%s) @ %s (%s)\n" $(project) $(version) $(hostname) $$runid
+	    printf "%s @ %s (%s)\n" $(project) $(hostname) $$runid
 	    printf "\n"
-	    printf "program     : %s\n" "$(program_name)"
+	    printf "program     : %s (v%s)\n" "$(program_name)" $(version)
 	    printf "host        : %s\n" "$(hostname) ($(ip))"
 	    printf "runid       : %s\n" "$$runid"
 	    printf "\n"
