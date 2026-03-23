@@ -82,6 +82,7 @@ start: dirs
 	kv_set "$(statusf)" ended_at_epoch -
 	kv_set "$(statusf)" ended_at -
 	kv_set "$(statusf)" total_elapsed -
+	kv_set "$(statusf)" result -
 	kv_set "$(statusf)" rc -
 
 	$(call log,[$$runid] start '$(project)' (v$(version)) \
@@ -89,7 +90,7 @@ start: dirs
 
 main:
 	@$(define_kv)
-	runid=$$(kv_get $(statusf) runid)
+	runid=$$(kv_get "$(statusf)" runid)
 	n=$(call count_rules,$(rules_list))
 	kv_set "$(statusf)" rules_total $$n
 	$(call log,[$$runid] loop over '$(call relpath,$(rules_list))' ($$n rules))
@@ -167,7 +168,7 @@ main:
 
 end:
 	@$(define_kv)
-	runid=$$(kv_get $(statusf) runid)
+	runid=$$(kv_get "$(statusf)" runid)
 	t0=$$(kv_get "$(statusf)" started_at_epoch)
 	t3=$(t)
 	kv_set "$(statusf)" ended_at_epoch $$t3
@@ -187,7 +188,7 @@ end:
 
 stop:
 	@$(define_kv)
-	runid=$$(kv_get $(statusf) runid)
+	runid=$$(kv_get "$(statusf)" runid)
 	{
 	    printf "[%s] graceful stop requested (runid=%s): " $(project) $$runid
 	    printf "exit after current rule\n"
@@ -259,35 +260,29 @@ status status-v:
 
 	    printf "state        : $$_RED_%s$$RST\n" $${gstate^^}
 	    printf "runid        : %s\n" $$runid
+	    printf "source       : %s\n" "$$current_rule_src"
+	    printf "destination  : %s\n" "$$current_rule_dst"
+	    printf "progress     : $$_RED_%d/%d$$RST (%.2f%%)\n" $$k $$n $$pct
 	    printf "started at   : %s  (elapsed: %s)\n" $$started_at $$elapsed
 	    printf "current rule : $$_RED_%s$$RST  (elapsed: %s)\n" \
-                               $$current_ruleid $$rule_elapsed
-	    printf "progress     : $$_RED_%d/%d$$RST (%.2f%%)\n" $$k $$n $$pct
-	    printf "flow         : %s -> %s\n" \
-                               "$$current_rule_src" "$$current_rule_dst"
+	                           $$current_ruleid $$rule_elapsed
 	    printf "pids         : %s\n" "$$pids"
-	    printf "rclone       : %s\n" $(rclone_ver)
 	else
 	    started_at=$$(kv_get "$$statusf" started_at)
 	    ended_at=$$(kv_get "$$statusf" ended_at)
-	    total_elapsed=$$(kv_get "$$statusf" total_elapsed)
-	    elapsed=$(call t_hms,$$total_elapsed)
+	    elapsed=$(call t_hms,$$(kv_get "$$statusf" total_elapsed))
 
 	    printf "state       : $$_RED_%s$$RST\n" $${gstate^^}
 	    if [ -n "$$result" ]; then
-	        printf "result     : %s\n" $$result
+	        printf "result      : $$_RED_%s$$RST\n" $$result
 	    fi
-	    printf "runid      : %s\n" $$runid
-	    if [ "$$result" = completed ]; then
-	        printf "rules      : $$_RED_%d$$RST\n" $$n
-	    else
-	        printf "rules      : $$_RED_%d (%d completed)$$RST\n" $$n $$k
-	    fi
-	    printf "started at : %s\n" $$started_at
-	    printf "ended at   : %s\n" $$ended_at
-	    printf "elapsed    : %s\n" $$elapsed
-	    printf "flow       : %s -> %s\n" "$(lpath)" "$(rpath)"
-	    printf "rclone     : %s\n" $(rclone_ver)
+	    printf "runid       : %s\n" $$runid
+	    printf "source      : %s\n" "$(lpath)"
+	    printf "destination : %s\n" "$(rpath)"
+	    printf "rules       : $$_RED_%d/%d$$RST\n" $$k $$n
+	    printf "started at  : %s\n" $$started_at
+	    printf "ended at    : %s\n" $$ended_at
+	    printf "elapsed     : %s\n" $$elapsed
 	fi
 
 	if [ $@ = status-v ]; then
@@ -369,10 +364,8 @@ status status-v:
 	    if [ $$gstate = running ]; then
 	        printf "    rules     : $$_RED_%d/%d$$RST (%.2f%%)\n" \
                 $$k $$n $$pct
-	    elif [ "$$result" = completed ]; then
-	        printf "    rules     : $$_RED_%d$$RST\n" $$n
 	    else
-	        printf "    rules     : $$_RED_%d (%d completed)$$RST\n" $$n $$k
+	        printf "    rules     : $$_RED_%d/%d$$RST\n" $$k $$n
 	    fi
 	    printf "    checks    : %s\n" $(call num3,$$sum_checks)
 	    printf "    xfer      : %s\n" $(call num3,$$sum_xfer)
