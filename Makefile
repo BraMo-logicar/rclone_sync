@@ -94,7 +94,7 @@ start: dirs
 	kv_set "$(statusf)" result -
 	kv_set "$(statusf)" rc -
 
-	$(call log,[$$runid] start '$(project)' (v$(version)) \
+	$(call log,[$$runid] start '$(project)' ($(program_name) v$(version)) \
         @ $(hostname) ($(ip)) (runid=$$runid))
 
 main:
@@ -193,11 +193,12 @@ end:
 	        kv_set "$(statusf)" rc 0
 	    else
 	        kv_set "$(statusf)" result failed
-	        kv_set "$(statusf)" rc 1
-    	fi
+	        kv_set "$(statusf)" rc -1
+	    fi
 	fi
-	$(call log,[$$runid] end '$(project)' (runid=$$runid, rules=$$k/$$n) \
-        (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
+	$(call log,[$$runid] end '$(project)' \
+	    (rules=$$k/$$n$(,) result=$$result$(,) rc=$$rc) \
+	    (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
 
 # stop & kill
 
@@ -209,8 +210,8 @@ stop:
 	    printf "exit after current rule\n"
 	} >&2
 	> "$(stop_flag)"
-	$(call log,graceful stop requested: flag '$(stop_flag)' created$(,) \
-        exit after current rule)
+	$(call log,[$$runid]graceful stop requested: \
+	    flag '$(stop_flag)' created$(,) exit after current rule)
 
 kill:
 	@$(define_kv)

@@ -164,6 +164,7 @@ define watch_child
 $$(
     for _ in {1..$(3)}; do
         child=$$(pgrep -n -P $(1) -x $(2) || true)
+        $(call log,child $$child ppid $$ppid procname $$procname tries $$tries delay $$delay)
         [ -n "$$child" ] && break
         sleep $(4)
     done
@@ -273,7 +274,8 @@ trap_on_signal() {
     kv_set "$(statusf)" rc $$rc
 
     k=$$(kv_get "$(statusf)" rules_done)
-    $(call log,[$$runid] end '$(project)' (runid=$$runid$(,) rules=$$k/$$n) \
+    $(call log,[$$runid] end '$(project)' \
+	    (rules=$$k/$$n$(,) result=$$result$(,) rc=$$rc) \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
     exit $$rc
 }
