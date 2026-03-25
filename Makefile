@@ -95,7 +95,7 @@ start: dirs
 	kv_set "$(statusf)" rc -
 
 	$(call log,[$$runid] start '$(project)' ($(program_name) v$(version)) \
-        @ $(hostname) ($(ip)) (runid=$$runid))
+        @ $(hostname) ($(ip)))
 
 main:
 	@$(define_kv)
@@ -212,18 +212,19 @@ stop:
 	    printf "exit after current rule\n"
 	} >&2
 	> "$(stop_flag)"
-	$(call log,[$$runid]graceful stop requested: \
+	$(call log,[$$runid] graceful stop requested: \
 	    flag '$(stop_flag)' created$(,) exit after current rule)
 
 kill:
 	@$(define_kv)
+	runid=$$(kv_get "$(statusf)" runid)
 	shell_pid=$$(kv_get "$(statusf)" shell_pid)
 	program_pid=$$(kv_get "$(statusf)" program_pid)
 	rclone_pid=$$(kv_get "$(statusf)" rclone_pid)
 	printf "[%s] global kill requested (%s=%d, %s=%d, %s=%d)\n" \
         $(project) recipe_shell $$shell_pid \
         program $$program_pid rclone $$rclone_pid >&2
-	$(call log,kill requested (recipe_shell=$$shell_pid$(,) \
+	$(call log,[$$runid] kill requested (recipe_shell=$$shell_pid$(,) \
         program=$$program_pid$(,) rclone=$$rclone_pid))
 	for sig in INT TERM KILL; do
 	    for pid in $$rclone_pid $$program_pid $$shell_pid; do
@@ -234,7 +235,7 @@ kill:
 	    done
 	    sleep 1
 	done
-	$(call log,kill: sent signals to rclone=$$rclone_pid$(,) \
+	$(call log,[$$runid] kill: sent signals to rclone=$$rclone_pid$(,) \
         program=$$program_pid$(,) recipe_shell=$$shell_pid)
 
 # status
@@ -398,8 +399,8 @@ status status-v:
 	    printf "    rules result  : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
-	$(call log,[$$runid] status: runid=$$runid$(,) state=$${gstate^^}$(,) \
-        rules=$$k/$$n (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
+	$(call log,[$$runid] status: state=$${gstate^^}$(,) rules=$$k/$$n \
+	    (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # report
 
@@ -417,7 +418,7 @@ report: dirs
 	        printf "[%s] $$_RED_%s is running$$RST: report skipped\n" \
                 $(project) $(project)
 	    fi
-	    $(call log,$(project) is running: report skipped)
+	    $(call log,[$$runid] $(project) is running: report skipped)
 	    exit 0
 	fi
 
@@ -432,7 +433,7 @@ report: dirs
 	    flag
 	    /-- end rclone log \(runid=$$runid,/ { flag = 0 }
 	" "$(logf)" > "$$reportlog"
-	$(call log,[$$runid] report log for runid='$$runid' saved to '$$reportlog')
+	$(call log,[$$runid] report log saved to '$$reportlog')
 
 	rules_done=$$(kv_get $$statusf rules_done)
 	rules_total=$$(kv_get $$statusf rules_total)
@@ -459,7 +460,7 @@ report: dirs
 	    $(MAKE) -s runid=$$runid status-v | sed -n '/^RULE/,$$p'
 	} > "$$reportf"
 
-	$(call log,[$$runid] report (runid=$$runid) saved to '$$reportf' \
+	$(call log,[$$runid] report saved to '$$reportf' \
         (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # report by email
@@ -479,14 +480,13 @@ report-mail:
                 $(project) $$runid
 	        printf "report-mail skipped\n"
 	    fi
-	    $(call log,report for runid '$$runid' does not exist: \
-            report-mail skipped)
+	    $(call log,[$$runid] report does not exist: report-mail skipped)
 	    exit 0
 	fi
 
 	reportlog="$(reports)/report-$$runid.log"
 	if [ ! -f "$$reportlog" ]; then
-	    $(call log,[$$runid] report log for runid '$$runid' does not exist)
+	    $(call log,[$$runid] report log does not exist)
 	fi
 
 	rules_done=$$(kv_get $$statusf rules_done)

@@ -109,13 +109,12 @@ $$(
 
     if [ -d "$(stats)/$$runid" ]; then
         printf "%s" $$runid
-        $(call log,[$$runid] runid: '$$runid')
     else
         if [ -t 2 ]; then
             printf "[%s] $${_RED_}invalid runid '%s'$$RST\n" \
                 $(project) $$runid >&2
         fi
-        $(call log,[$$runid] invalid runid '$$runid')
+        $(call log,[$$runid] invalid runid)
         exit 1
     fi
 )
@@ -219,7 +218,7 @@ define stop_guard
             (runid=%s, ruleid=%s)\n" $(project) $$runid $$ruleid >&2
         rm -f "$(stop_flag)"
         $(call log,[$$runid:$$ruleid] stop flag found: \
-            exit after current rule (runid=$$runid$(,) ruleid=$$ruleid))
+            exit after current rule)
         kv_set "$(statusf)" gstate idle
         kv_set "$(statusf)" result stopped
         kv_set "$(statusf)" rc 200
