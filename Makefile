@@ -449,6 +449,7 @@ report: dirs
 	    printf "elapsed     : %s\n" "$$elapsed"
 	    printf "\n"
 	    printf "rules       : %s\n" "$$rules_done/$$rules_total"
+	    printf "result      : %s\n" "$$(kv_get $$statusf result)"
 	    printf "\n"
 	    printf -- "-------- rules summary (status-v) --------\n"
 	    printf "\n"
