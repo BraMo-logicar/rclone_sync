@@ -295,7 +295,9 @@ status status-v:
 	    printf "$$BLD$$fmt$$RST\n" \
             RULE STATE START END ELAPSED CHECKS XFER XFER_MiB DEL RC
 
-	    sum_checks=0 sum_xfer=0 sum_xfer_mib=0 sum_del=0 sum_elapsed=0
+	    sum_checks=0
+	    sum_xfer=0 sum_xfer_new=0 sum_xfer_replaced=0 sum_xfer_mib=0
+	    sum_del=0 sum_elapsed=0
 	    rc_ok=0 rc_fail=0
 
 	    if [ $$gstate = running ]; then
@@ -336,8 +338,9 @@ status status-v:
 	            fi
 	            checks=$$(kv_get "$$rulef" rclone_checks)
 	            checks=$${checks%/*}
-	            xfer=$$(kv_get "$$rulef" rclone_transferred)
-	            xfer=$${xfer%/*}
+	            xfer=$$(kv_get "$$rulef" rclone_transferred) xfer=$${xfer%/*}
+	            xfer_new=$$(kv_get "$$rulef" rclone_copied_new)
+	            xfer_replaced=$$(kv_get "$$rulef" rclone_copied_replaced)
 	            xfer_mib=$$(kv_get "$$rulef" rclone_transferred_size)
 	            xfer_mib=$(call iec2mib,$${xfer_mib%/*})
 	            del=$$(kv_get "$$rulef" rclone_deleted)
@@ -345,6 +348,8 @@ status status-v:
 
 	            : $$((sum_checks+=checks))
 	            : $$((sum_xfer+=xfer))
+	            : $$((sum_xfer_new+=xfer_new))
+	            : $$((sum_xfer_replaced+=xfer_replaced))
 	            sum_xfer_mib=$$(echo "$$sum_xfer_mib+$${xfer_mib:=0}" | bc)
 	            : $$((sum_del+=del))
 	            sum_elapsed=$$(echo "$$sum_elapsed+$${rule_elapsed:=0}" | bc)
@@ -369,6 +374,8 @@ status status-v:
 	    fi
 	    printf "    checks        : %s\n" $(call num3,$$sum_checks)
 	    printf "    xfer          : %s\n" $(call num3,$$sum_xfer)
+	    printf "      new         : %s\n" $(call num3,$$sum_xfer_new)
+	    printf "      replaced    : %s\n" $(call num3,$$sum_xfer_replaced)
 	    printf "    xfer size     : %s\n" "$(call mib2iec,$$sum_xfer_mib)"
 	    printf "    deleted       : %s\n" $(call num3,$$sum_del)
 	    printf "    rules elapsed : %s\n" $(call t_hms,$$sum_elapsed)
@@ -421,7 +428,6 @@ report: dirs
 	    printf "host        : %s\n" "$(hostname) ($(ip))"
 	    printf "runid       : %s\n" "$$runid"
 	    printf "\n"
-	    printf "rclone_ver  : %s\n" "$(rclone_ver)"
 	    printf "source      : %s\n" "$(lpath)"
 	    printf "destination : %s\n" "$(rpath)"
 	    printf "\n"
