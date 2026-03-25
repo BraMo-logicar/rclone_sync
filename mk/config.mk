@@ -20,8 +20,8 @@ export LC_ALL := C
 home := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
 
 project      := $(shell basename "$(home)")
-version      := 2.0
 program_name := rclone_sync
+version      := 2.0
 program_path := $(home)/bin/$(program_name)
 
 hostname := $(shell hostname)
