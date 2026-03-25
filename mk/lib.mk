@@ -81,9 +81,9 @@ endef
 # t_delta()        - compute time difference (sec.ms)
 # t_delta_hms_ms() - compute time difference (hms.ms)
 # t_delta_hms()    - compute time difference (hms)
-# usage: $(call t_delta,t0,t1)
-# usage: $(call t_delta_hms_ms,t0,t1)
-# usage: $(call t_delta_hms,t0,t1)
+# usage: $(call t_delta,t1,t2)
+# usage: $(call t_delta_hms_ms,t1,t2)
+# usage: $(call t_delta_hms,t1,t2)
 #
 
 t_delta = $$(awk -v t1=$(1) -v t2=$(2) 'BEGIN { printf("%.3f", t2 - t1) }')
