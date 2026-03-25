@@ -505,11 +505,13 @@ boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
     printf "\n"
 
     printf -- "--%s\n" "$$boundary"
-    printf "Content-Type: text/plain; charset=UTF-8\n"
+    printf "Content-Type: text/html; charset=UTF-8\n"
     printf "Content-Transfer-Encoding: 8bit\n"
     printf "\n"
 
+    printf "<html><body><pre>\n"
     cat "$$reportf"
+    printf "</pre></body></html>\n"
 
     if [ $(mail_log) = yes ]; then
         printf "\n"
