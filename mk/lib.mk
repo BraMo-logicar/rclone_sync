@@ -163,7 +163,6 @@ define watch_child
 $$(
     for _ in {1..$(3)}; do
         child=$$(pgrep -n -P $(1) -x $(2) || true)
-        $(call log,child $$child ppid $$ppid procname $$procname tries $$tries delay $$delay)
         [ -n "$$child" ] && break
         sleep $(4)
     done
@@ -186,12 +185,12 @@ endef
 
 #
 # watch_rclone() - discover rclone_pid and rclone_cmd
-# usage: $(call watch_rclone,rulef)
+# usage: $(call watch_rclone,rulef,program_pid)
 #
 
 define watch_rclone
 (
-    rulef=$(1) tries=$(watch_tries) delay=$(watch_delay)
+    rulef=$(1) program_pid=$(2) tries=$(watch_tries) delay=$(watch_delay)
     rclone_pid=$(call watch_child,$$program_pid,rclone,$$tries,$$delay)
     if [ -n "$$rclone_pid" ]; then
         kv_set "$(statusf)" rclone_pid $$rclone_pid
@@ -212,13 +211,11 @@ endef
 
 define stop_guard
 {
-    runid=$(1) ruleid=$(2)
     if [ -f "$(stop_flag)" ]; then
         printf "[%s] stop flag found: exit after current rule \
-            (runid=%s, ruleid=%s)\n" $(project) $$runid $$ruleid >&2
+            (runid=%s, ruleid=%s)\n" $(project) $(1) $(2) >&2
         rm -f "$(stop_flag)"
-        $(call log,[$$runid:$$ruleid] stop flag found: \
-            exit after current rule)
+        $(call log,[$(1):$(2)] stop flag found: exit after current rule)
         kv_set "$(statusf)" gstate idle
         kv_set "$(statusf)" result stopped
         kv_set "$(statusf)" rc 200
@@ -238,6 +235,7 @@ define define_trap_on_signal
 trap_on_signal() {
     local sig=$$1 sigcode=$$2
     local rc=$$((128 + sigcode))
+    local t0 t2 t3 rule_ended_at rule_elapsed rule_elapsed_hms_ms k
 
     $(call log,[$$runid:$$ruleid] (WARN) caught $$sig signal)
 
@@ -357,18 +355,20 @@ endef
 #
 
 define save_rclone_stats
-declare -A S
-while read _k _v; do
-    S[$$_k]=$$_v
-    kv_set "$(3)" $$_k $$_v
-done < <($(call get_rclone_stats,$(4)))
-printf -v stats_log "checks=%s, transferred=%s (%s) (new=%d, replaced=%d), \
-    deleted=%d, elapsed=%s" \
-    "$${S[rclone_checks]}" \
-    "$${S[rclone_transferred]}" "$${S[rclone_transferred_size]}" \
-    "$${S[rclone_copied_new]}" "$${S[rclone_copied_replaced]}" \
-    "$${S[rclone_deleted]}" "$${S[rclone_elapsed]}"
-$(call log,[$(1):$(2)] rclone stats: $$stats_log)
+(
+    declare -A S
+    while read k v; do
+        S[$$k]=$$v
+        kv_set "$(3)" $$k $$v
+    done < <($(call get_rclone_stats,$(4)))
+    printf -v stats_log "checks=%s, transferred=%s (%s) \
+        (new=%d, replaced=%d), deleted=%d, elapsed=%s" \
+        "$${S[rclone_checks]}" \
+        "$${S[rclone_transferred]}" "$${S[rclone_transferred_size]}" \
+        "$${S[rclone_copied_new]}" "$${S[rclone_copied_replaced]}" \
+        "$${S[rclone_deleted]}" "$${S[rclone_elapsed]}"
+    $(call log,[$(1):$(2)] rclone stats: $$stats_log)
+)
 endef
 
 #-------
@@ -414,10 +414,9 @@ log = printf "%s [%s(%s):%d] %s\n" $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 define append_rule_log
 {
-    runid=$(1) ruleid=$(2) rule_log=$(3)
-    printf -- "-- begin rclone log (runid=%s, ruleid=%s) --\n" $$runid $$ruleid
-    sed '$${/^$$/d}' "$$rule_log"
-    printf -- "-- end rclone log (runid=%s, ruleid=%s) --\n" $$runid $$ruleid
+    printf -- "-- begin rclone log (runid=%s, ruleid=%s) --\n" $(1) $(2)
+    sed '$${/^$$/d}' "$(3)"
+    printf -- "-- end rclone log (runid=%s, ruleid=%s) --\n" $(1) $(2)
 } >> "$(logf)"
 endef
 
@@ -486,18 +485,18 @@ num3 = $$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
 
 #
 # send_report() - send multipart email with report and optional log attach
-# usage: $(call send_report,reportf,reportlog)
+# usage: $(call send_report,reportf,reportlog,subject)
 #
 
 define send_report
-boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
-{
+(
+    boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
     reportf="$(1)" reportlog="$(2)"
 
     printf "From: %s\n" "$(mail_From)"
     printf "To: %s\n" "$(mail_To)"
     printf "Date: %s\n" "$$(date -R)"
-    printf "Subject: %s\n" "$$subject"
+    printf "Subject: %s\n" "$(3)"
     printf "MIME-Version: 1.0\n"
     printf "Content-Type: multipart/mixed; boundary=\"%s\"\n" "$$boundary"
     printf "Rclone-Sync-Project: %s (v%s)\n" $(project) $(version)
@@ -527,7 +526,7 @@ boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
 
     printf "\n"
     printf -- "--%s--\n" "$$boundary"
-} | $(sendmail) -i -f $(mail_from) $(mail_to)
+) | $(sendmail) -i -f $(mail_from) $(mail_to)
 endef
 
 #------
