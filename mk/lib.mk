@@ -1,7 +1,7 @@
 # Name: mk/lib.mk - Makefile library
 # Usage: include mk/lib.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2026.03.19
+# Date: 2026.03.25
 
 #-----
 # time
@@ -266,11 +266,12 @@ trap_on_signal() {
 
     t0=$$(kv_get "$(statusf)" started_at_epoch)
     t3=$(t)
+    result=killed
     kv_set "$(statusf)" ended_at_epoch $$t3
     kv_set "$(statusf)" ended_at $(call at,$$t3)
     kv_set "$(statusf)" total_elapsed $(call t_delta,$$t0,$$t3)
     kv_set "$(statusf)" gstate idle
-    kv_set "$(statusf)" result killed
+    kv_set "$(statusf)" result $$result
     kv_set "$(statusf)" rc $$rc
 
     k=$$(kv_get "$(statusf)" rules_done)

@@ -1,7 +1,7 @@
 # Name: Makefile - Makefile for $(project)
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2026.03.19
+# Date: 2026.03.25
 
 include mk/config.mk
 include mk/lib.mk
@@ -187,14 +187,16 @@ end:
 	n=$$(kv_get "$(statusf)" rules_total)
 	kv_set "$(statusf)" gstate idle
 	result=$$(kv_get "$(statusf)" result)
-	if [ $$result != stopped ] && [ $$result != killed ]; then
+	if [ $$result = stopped ] || [ $$result = killed ]; then
+	    rc=$$(kv_get "$(statusf)" rc)
+	else
 	    if [ $$k -eq $$n ]; then
-	        kv_set "$(statusf)" result completed
-	        kv_set "$(statusf)" rc 0
+	        result=completed rc=0
 	    else
-	        kv_set "$(statusf)" result failed
-	        kv_set "$(statusf)" rc -1
+	        result=failed rc=-1
 	    fi
+	    kv_set "$(statusf)" result $$result
+	    kv_set "$(statusf)" rc $$rc
 	fi
 	$(call log,[$$runid] end '$(project)' \
 	    (rules=$$k/$$n$(,) result=$$result$(,) rc=$$rc) \
@@ -496,7 +498,7 @@ report-mail:
 
 	$(call send_report,$$reportf,$$reportlog)
 
-	$(call log,[$$runid] report by email for runid '$$runid' \
+	$(call log,[$$runid] report by email to '$(mail_To)' \
         (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
 
 # usage
