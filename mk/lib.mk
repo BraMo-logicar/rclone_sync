@@ -236,6 +236,7 @@ trap_on_signal() {
     local sig=$$1 sigcode=$$2
     local rc=$$((128 + sigcode))
     local t0 t2 t3 rule_ended_at rule_elapsed rule_elapsed_hms_ms k
+    local result=killed
 
     $(call log,[$$runid:$$ruleid] (WARN) caught $$sig signal)
 
@@ -263,7 +264,6 @@ trap_on_signal() {
 
     t0=$$(kv_get "$(statusf)" started_at_epoch)
     t3=$(t)
-    result=killed
     kv_set "$(statusf)" ended_at_epoch $$t3
     kv_set "$(statusf)" ended_at $(call at,$$t3)
     kv_set "$(statusf)" total_elapsed $(call t_delta,$$t0,$$t3)
@@ -272,6 +272,7 @@ trap_on_signal() {
     kv_set "$(statusf)" rc $$rc
 
     k=$$(kv_get "$(statusf)" rules_done)
+    n=$$(kv_get "$(statusf)" rules_total)
     $(call log,[$$runid] end '$(project)' \
 	    (rules=$$k/$$n$(,) result=$$result$(,) rc=$$rc) \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
