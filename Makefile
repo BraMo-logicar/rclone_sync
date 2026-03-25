@@ -176,10 +176,13 @@ end:
 	kv_set "$(statusf)" total_elapsed $(call t_delta,$$t0,$$t3)
 	k=$$(kv_get "$(statusf)" rules_done)
 	n=$$(kv_get "$(statusf)" rules_total)
+	kv_set "$(statusf)" gstate idle
 	if [ $$k -eq $$n ]; then
-	    kv_set "$(statusf)" gstate idle
 	    kv_set "$(statusf)" result completed
 	    kv_set "$(statusf)" rc 0
+	else
+	    kv_set "$(statusf)" result failed
+	    kv_set "$(statusf)" rc 1
 	fi
 	$(call log,[$$runid] end '$(project)' (runid=$$runid, rules=$$k/$$n) \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
@@ -231,7 +234,6 @@ status status-v:
 
 	gstate=$$(kv_get "$$statusf" gstate)
 	[ -n "$$gstate" ] || gstate=idle
-	result=$$(kv_get "$$statusf" result)
 
 	k=$$(kv_get "$$statusf" rules_done)
 	n=$$(kv_get "$$statusf" rules_total)
@@ -268,14 +270,13 @@ status status-v:
 	                           $$current_ruleid $$rule_elapsed
 	    printf "pids         : %s\n" "$$pids"
 	else
+	    result=$$(kv_get "$$statusf" result)
 	    started_at=$$(kv_get "$$statusf" started_at)
 	    ended_at=$$(kv_get "$$statusf" ended_at)
 	    elapsed=$(call t_hms,$$(kv_get "$$statusf" total_elapsed))
 
 	    printf "state       : $$_RED_%s$$RST\n" $${gstate^^}
-	    if [ -n "$$result" ]; then
-	        printf "result      : $$_RED_%s$$RST\n" $$result
-	    fi
+	    printf "result      : $$_RED_%s$$RST\n" $$result
 	    printf "runid       : %s\n" $$runid
 	    printf "source      : %s\n" "$(lpath)"
 	    printf "destination : %s\n" "$(rpath)"
@@ -379,7 +380,7 @@ status status-v:
 	    printf "    xfer size     : %s\n" "$(call mib2iec,$$sum_xfer_mib)"
 	    printf "    deleted       : %s\n" $(call num3,$$sum_del)
 	    printf "    rules elapsed : %s\n" $(call t_hms,$$sum_elapsed)
-	    printf "    result        : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
+	    printf "    rules result  : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
 	$(call log,[$$runid] status: runid=$$runid$(,) state=$${gstate^^}$(,) \
