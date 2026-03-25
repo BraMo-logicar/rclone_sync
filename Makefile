@@ -13,13 +13,13 @@ include .include.mk
 #
 
 .PHONY: help dirs \
-        list start main end stop kill \
+        list run start main end stop kill \
         status status-v report report-mail \
         usage log-last
 
 help:
 	@echo "Makefile: Please specify a target:"
-	echo "    list, dirs, start, main, end, stop, kill"
+	echo "    list, run, stop, kill"
 	echo "    status(-v) [runid=$runid], report(-mail) [runid=$runid],"
 	echo "    usage, log-last"
 
@@ -45,6 +45,15 @@ list::
 	done < "$(rules_list)" > "$(ruleids_list)"
 	n=$$(wc -l < "$(ruleids_list)")
 	$(call log,list $$n ruleids from '$(src_root)' to '$(ruleids_list)')
+
+# run
+
+run:
+	start_rc=0 main_rc=0
+	$(MAKE) -s start || start_rc=$$?
+	[ $$start_rc -eq 0 ] && { $(MAKE) -s main || main_rc=$$?; }
+	$(MAKE) -s end main_rc=$$main_rc
+	exit $$main_rc
 
 # dirs
 
@@ -177,12 +186,15 @@ end:
 	k=$$(kv_get "$(statusf)" rules_done)
 	n=$$(kv_get "$(statusf)" rules_total)
 	kv_set "$(statusf)" gstate idle
-	if [ $$k -eq $$n ]; then
-	    kv_set "$(statusf)" result completed
-	    kv_set "$(statusf)" rc 0
-	else
-	    kv_set "$(statusf)" result failed
-	    kv_set "$(statusf)" rc 1
+	result=$$(kv_get "$(statusf)" result)
+	if [ $$result != stopped ] && [ $$result != killed ]; then
+	    if [ $$k -eq $$n ]; then
+	        kv_set "$(statusf)" result completed
+	        kv_set "$(statusf)" rc 0
+	    else
+	        kv_set "$(statusf)" result failed
+	        kv_set "$(statusf)" rc 1
+    	fi
 	fi
 	$(call log,[$$runid] end '$(project)' (runid=$$runid, rules=$$k/$$n) \
         (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
