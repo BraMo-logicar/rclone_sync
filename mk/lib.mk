@@ -1,7 +1,7 @@
 # Name: mk/lib.mk - Makefile library
 # Usage: include mk/lib.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2026.03.25
+# Date: 2026.03.30
 
 #-----
 # time
@@ -394,6 +394,29 @@ $$(
         printf fail
     fi
 )
+endef
+
+#-------
+# config
+#-------
+
+#
+# get_config() - extract config params
+# usage: $(get_config)
+#
+
+define get_config
+{
+    type= provider= region= endpoint=
+	while read -r k _ v; do
+        case "$$k" in
+            type)     type=$$v     ;;
+            provider) provider=$$v ;;
+            region)   region=$$v   ;;
+            endpoint) endpoint=$$v ;;
+        esac
+    done < <($(rclone) --config $(rclone_conf) config show $(remote));
+}
 endef
 
 #--------

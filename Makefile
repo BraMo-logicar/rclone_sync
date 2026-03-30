@@ -94,8 +94,16 @@ start: dirs
 	kv_set "$(statusf)" result -
 	kv_set "$(statusf)" rc -
 
+	$(get_config)
+	msg=
+	[ -n "$$type" ]     && msg+="$${msg:+, }type=$$type"
+	[ -n "$$provider" ] && msg+="$${msg:+, }provider=$$provider"
+	[ -n "$$region" ]   && msg+="$${msg:+, }region=$$region"
+	[ -n "$$endpoint" ] && msg+="$${msg:+, }endpoint=$$endpoint"
+
 	$(call log,[$$runid] start '$(project)' ($(program_name) v$(version)) \
 	    @ $(hostname) ($(ip)))
+	$(call log,[$$runid] config: $$msg)
 
 main:
 	@$(define_kv)
@@ -438,12 +446,18 @@ report: dirs
 	rules_done=$$(kv_get $$statusf rules_done)
 	rules_total=$$(kv_get $$statusf rules_total)
 	elapsed=$(call t_hms_ms,$$(kv_get $$statusf total_elapsed))
+	$(get_config)
 	{
 	    printf "%s @ %s (%s)\n" $(project) $(hostname) $$runid
 	    printf "\n"
 	    printf "program     : %s (v%s)\n" "$(program_name)" $(version)
 	    printf "host        : %s\n" "$(hostname) ($(ip))"
 	    printf "runid       : %s\n" "$$runid"
+	    printf "\n"
+	    [ -n "$${type-}" ]     && printf "type        : %s\n" $$type
+	    [ -n "$${provider-}" ] && printf "provider    : %s\n" $$provider
+	    [ -n "$${region-}" ]   && printf "region      : %s\n" $$region
+	    [ -n "$${endpoint-}" ] && printf "endpoint    : %s\n" $$endpoint
 	    printf "\n"
 	    printf "source      : %s\n" "$(lpath)"
 	    printf "destination : %s\n" "$(rpath)"
