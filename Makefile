@@ -150,7 +150,7 @@ main:
 
 	    "$${program_cmd[@]}" &> "$$rule_log" & program_pid=$$!
 	    kv_set "$(statusf)" program_pid $$program_pid
-	    $(call watch_rclone,$$rulef)
+	    $(call watch_rclone,$$rulef,$$program_pid)
 	    rc=0; wait $$program_pid || rc=$$?
 	    wait $$watcher_pid || true
 
@@ -305,7 +305,7 @@ status status-v:
 	if [ $@ = status-v ]; then
 	    printf "\n"
 	    w1=$$(($(rule_width)+1))
-	    fmt="%-$${w1}s  %-5s  %-8s  %-8s  %-8s  %8s  %8s  %8s  %6s  %3s"
+	    fmt="%-$${w1}s  %-5s  %-8s  %-8s  %-8s  %8s  %8s  %10s  %6s  %3s"
 	    fmt_queue="$$MAG%-$${w1}s  %-5s$$RST"
 	    fmt_run="$$_RED_%-$${w1}s  %-5s  %-8s  %-8s  %-8s$$RST"
 
