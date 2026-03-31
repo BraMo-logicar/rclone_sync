@@ -20,7 +20,7 @@ include .include.mk
 help:
 	@echo "Makefile: Please specify a target:"
 	echo "    list, run, stop, kill"
-	echo "    status(-v) [runid=$runid], report(-mail) [runid=$runid],"
+	echo "    status(-v) [runid=<runid>], report(-mail) [runid=<runid>],"
 	echo "    usage, log-last"
 
 $(project): start main end
