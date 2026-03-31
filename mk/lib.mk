@@ -477,11 +477,11 @@ $$(
     awk -v s="$(1)" '
         function n(x) { sub(/(B|[KMGT]iB)$$/, "", x); return x }
         BEGIN {
-            if      (s ~ /^[0-9]+B$$/)   print sprintf("%.1f", n(s) / 1048576)
-            else if (s ~ /^[0-9]+KiB$$/) print sprintf("%.1f", n(s) / 1024)
-            else if (s ~ /^[0-9]+MiB$$/) print sprintf("%.1f", n(s))
-            else if (s ~ /^[0-9]+GiB$$/) print sprintf("%.1f", n(s) * 1024)
-            else if (s ~ /^[0-9]+TiB$$/) print sprintf("%.1f", n(s) * 1048576)
+            if      (s ~ /[0-9]B$$/) print sprintf("%.1f", n(s) / 1048576)
+            else if (s ~ /KiB$$/)    print sprintf("%.1f", n(s) / 1024)
+            else if (s ~ /MiB$$/)    print sprintf("%.1f", n(s))
+            else if (s ~ /GiB$$/)    print sprintf("%.1f", n(s) * 1024)
+            else if (s ~ /TiB$$/)    print sprintf("%.1f", n(s) * 1048576)
         }'
 )
 endef
