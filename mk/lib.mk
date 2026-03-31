@@ -522,22 +522,6 @@ $$(
 endef
 
 #
-# bytes2iec() - convert bytes to best IEC unit (KiB, MiB, GiB) (1 decimal)
-# usage: $(call bytes2iec,bytes)
-#
-
-define bytes2iec
-$$(
-    awk -v n="$(1)" '
-        BEGIN {
-            u = split("B KiB MiB GiB", U)
-            for (i = 1; n >= 1024 && i < u; i++) n /= 1024
-            printf("%.1f %s", n, U[i])
-        }'
-)
-endef
-
-#
 # num3() - format integer with 3-digit grouping
 # usage: $(call num3,num)
 #
