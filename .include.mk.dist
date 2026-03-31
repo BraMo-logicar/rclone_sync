@@ -9,26 +9,26 @@
 
 # source/destination
 
-bucket = [BUCKET]
+bucket := [BUCKET]
 
-src_root = [SRC_ROOT]
-dst_root = [DST_ROOT]
+src_root := [SRC_ROOT]
+dst_root := [DST_ROOT]
 
 # rules
 
-rule_width = [RULE_WIDTH]
-rule_queue = [RULE_QUEUE]
+rule_width := [RULE_WIDTH]
+rule_queue := [RULE_QUEUE]
 
 # email
 
-mail_From = $(project) system [MAIL_FROM]
-mail_from = [MAIL_FROM]
-mail_To   = $(project) admin [MAIL_TO]
-mail_to   = [MAIL_TO]
+mail_From := $(project) system [MAIL_FROM]
+mail_from := [MAIL_FROM]
+mail_To   := $(project) admin [MAIL_TO]
+mail_to   := [MAIL_TO]
 
-mail_log        = [MAIL_LOG]
-mail_log_max    = [MAIL_LOG_MAX]
-mail_log_gz_max = [MAIL_LOG_GZ_MAX]
+mail_log        := [MAIL_LOG]
+mail_log_max    := [MAIL_LOG_MAX]
+mail_log_gz_max := [MAIL_LOG_GZ_MAX]
 
 
 # vim: ts=4
