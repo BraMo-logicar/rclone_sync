@@ -38,7 +38,7 @@ at = $$(date -d @$$(printf "%.0f" $(1)) +%Y.%m.%d-%H:%M:%S)
 
 define t_hms_ms
 $$(
-    awk -v t=$(1) '
+    awk -v t="$(1)" '
         BEGIN {
             s = int(t);
             ms = 1000 * (t - s);
@@ -53,7 +53,7 @@ endef
 
 define t_hms
 $$(
-    awk -v t=$(1) '
+    awk -v t="$(1)" '
         BEGIN {
             s = int(t + .5);
             h = int(s / 3600); s %= 3600;
@@ -67,7 +67,7 @@ endef
 
 define t_hms_colon
 $$(
-    awk -v t=$(1) '
+    awk -v t="$(1)" '
         BEGIN {
             s = int(t + .5);
             h = int(s / 3600); s %= 3600;
@@ -86,7 +86,7 @@ endef
 # usage: $(call t_delta_hms,t1,t2)
 #
 
-t_delta = $$(awk -v t1=$(1) -v t2=$(2) 'BEGIN { printf("%.3f", t2 - t1) }')
+t_delta = $$(awk -v t1="$(1)" -v t2="$(2)" 'BEGIN { printf("%.3f", t2 - t1) }')
 t_delta_hms_ms = $(call t_hms_ms,$(call t_delta,$(1),$(2)))
 t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 
@@ -161,7 +161,7 @@ endef
 
 define watch_child
 $$(
-    ppid=$(1) procname=$(2) tries=$(3) delay=$(4)
+    ppid="$(1)" procname="$(2)" tries="$(3)" delay="$(4)"
     for _ in {1..$$tries}; do
         child=$$(pgrep -n -P $$ppid -x $$procname || true)
       $(call log,[watch_child] try=$$_/$$tries ppid=$$ppid proc=$$procname child=$${child:--})
@@ -179,7 +179,7 @@ endef
 
 define get_command_by_pid
 $$(
-	pid=$(1)
+	pid="$(1)"
     mapfile -d '' -t argv < /proc/$$pid/cmdline
     printf -v cmd "%s " "$${argv[@]}"
     printf "%s" "$${cmd% }"
@@ -193,13 +193,14 @@ endef
 
 define watch_rclone
 (
-    rulef=$(1) program_pid=$(2) tries=$(watch_tries) delay=$(watch_delay)
+    rulef="$(1)" program_pid="$(2)"
+    tries="$(watch_tries)" delay="$(watch_delay)"
   $(call log,[watch_rclone] start rulef=$$rulef program_pid=$$program_pid tries=$$tries delay=$$delay)
     rclone_pid=$(call watch_child,$$program_pid,rclone,$$tries,$$delay)
   $(call log,[watch_rclone] result program_pid=$$program_pid rclone_pid=$${rclone_pid:--})
     if [ -n "$$rclone_pid" ]; then
         kv_set "$(statusf)" rclone_pid $$rclone_pid
-        rclone_cmd=$(call get_command_by_pid,$$rclone_pid)
+        rclone_cmd="$(call get_command_by_pid,$$rclone_pid)"
         if [ -n "$$rclone_cmd" ]; then
             kv_set "$$rulef" rclone_cmd "$$rclone_cmd"
         fi
@@ -362,7 +363,7 @@ endef
 
 define save_rclone_stats
 (
-    runid=$(1) ruleid=$(2) rulef=$(3) rule_log=$(4)
+    runid="$(1)" ruleid="$(2)" rulef="$(3)" rule_log="$(4)"
     declare -A S
     while read k v; do
         S[$$k]=$$v
@@ -389,7 +390,7 @@ endef
 
 define get_rstate
 $$(
-    rulef=$(1) gstate=$(2)
+    rulef="$(1)" gstate="$(2)"
     if [ ! -f "$$rulef" ]; then
         printf queue
     elif rc=$$(kv_get "$$rulef" rc); [ -n "$$rc" ]; then
@@ -461,7 +462,7 @@ endef
 
 define truncate
 $$(
-    s=$(1) w=$(2)
+    s="$(1)" w="$(2)"
     [ $${#s} -le $$w ] && printf "%s" "$$s" || printf "%s+" "$${s:0:$$((w-1))}"
 )
 endef
@@ -473,7 +474,7 @@ endef
 
 define iec2mib
 $$(
-    awk -v s=$(1) '
+    awk -v s="$(1)" '
         function n(x) { sub(/(B|[KMGT]iB)$$/, "", x); return x }
         BEGIN {
             if      (s ~ /^[0-9]+B$$/)   print sprintf("%.1f", n(s) / 1048576)
@@ -492,7 +493,7 @@ endef
 
 define mib2iec
 $$(
-    awk -v mib=$(1) '
+    awk -v mib="$(1)" '
         BEGIN {
             u = split("B KiB MiB GiB TiB", U)
             n = 1048576 * mib
@@ -509,7 +510,7 @@ endef
 
 define iec2bytes
 $$(
-    awk -v s=$(1) '
+    awk -v s="$(1)" '
         function n(x) { sub(/(B|[KMG](iB)?)$$/, "", x); return x }
         BEGIN {
             if      (s ~ /^[0-9]+B?$$/)     print n(s)
@@ -527,7 +528,7 @@ endef
 
 define bytes2iec
 $$(
-    awk -v n=$(1) '
+    awk -v n="$(1)" '
         BEGIN {
             u = split("B KiB MiB GiB", U)
             for (i = 1; n >= 1024 && i < u; i++) n /= 1024
@@ -555,7 +556,7 @@ num3 = $$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
 define send_report
 (
     boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
-    runid=$(1) reportf=$(2) reportlog=$(3) subject=$(4)
+    runid="$(1)" reportf="$(2)" reportlog="$(3)" subject="$(4)"
 
     printf "From: %s\n" "$(mail_From)"
     printf "To: %s\n" "$(mail_To)"
@@ -647,14 +648,14 @@ endef
 
 define colors
 if [ -t 1 ]; then
-    BLD=$(bld) RST=$(rst)
+    BLD="$(bld)" RST="$(rst)"
 
-    RED=$(red) _RED_=$(_red_)
-    GRN=$(grn) _GRN_=$(_grn_)
-    YEL=$(yel) _YEL_=$(_yel_)
-    BLU=$(blu) _BLU_=$(_blu_)
-    MAG=$(mag) _MAG_=$(_mag_)
-    CYN=$(cyn) _CYN_=$(_cyn_)
+    RED="$(red)" _RED_="$(_red_)"
+    GRN="$(grn)" _GRN_="$(_grn_)"
+    YEL="$(yel)" _YEL_="$(_yel_)"
+    BLU="$(blu)" _BLU_="$(_blu_)"
+    MAG="$(mag)" _MAG_="$(_mag_)"
+    CYN="$(cyn)" _CYN_="$(_cyn_)"
 else
     BLD= RST=
      RED=   GRN=   YEL=   BLU=   MAG=   CYN=
