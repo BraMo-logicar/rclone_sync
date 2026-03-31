@@ -102,7 +102,7 @@ t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 define get_runid
 $$(
     case "$${runid-}" in
-        "")   runid=$$(kv_get $(statusf) runid) ;;
+        "")   runid=$$(kv_get "$(statusf)" runid) ;;
         prev) [ -L "$(prev)" ] && runid=$$(readlink "$(prev)") ;;
         last) [ -L "$(last)" ] && runid=$$(readlink "$(last)") ;;
     esac
@@ -577,8 +577,9 @@ define send_report
                 (size=$$log_size > limit=$(mail_log_max)))
         else
             printf "\n"
-            printf "log attachment skipped: file size %d bytes exceeds %s=%s\n" \
-                $$log_size mail_log_gz_max $(mail_log_gz_max)
+            printf "log attachment skipped: \
+                log size (%d bytes) exceeds limit (%s)\n" \
+                $$log_size $(mail_log_gz_max)
             $(call log,[$$runid] log attachment: skip file '$$reportlog' \
                 (size=$$log_size > limit=$(mail_log_gz_max)))
         fi
@@ -600,7 +601,6 @@ define send_report
             printf "\n"
             cat "$$attach_file"
             ;;
-    elif [ "$${attach_mode:-}" = gz ]; then
         gz)
             printf "\n"
             printf -- "--%s\n" "$$boundary"
