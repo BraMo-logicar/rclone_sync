@@ -437,16 +437,24 @@ report: dirs
 	ln -fns $${reportf##*/} "$(reports)/last"
 
 	reportlog="$(reports)/report-$$runid.log"
-	awk "
-	    /-- begin rclone log \(runid=$$runid,/ { flag = 1 }
-	    flag
-	    /-- end rclone log \(runid=$$runid,/ { flag = 0 }
-	" "$(logf)" > "$$reportlog"
+	rules_done=$$(kv_get "$$statusf" rules_done)
+	rules_total=$$(kv_get "$$statusf" rules_total)
+	elapsed=$(call t_hms_ms,$$(kv_get "$$statusf" total_elapsed))
+
+	{
+	    printf "%s @ %s (%s)\n" $(project) $(hostname) $$runid
+	    printf "\n"
+	    printf "runid : %s\n" "$$runid"
+	    printf "rules : %s\n" "$$rules_done/$$rules_total"
+	    printf "\n"
+	    awk "
+	        /-- begin rclone log \(runid=$$runid,/ { in_rule = 1 }
+	        in_rule                                { print }
+	        /-- end rclone log \(runid=$$runid,/   { in_rule = 0; print \"\" }
+	    " "$(logf)"
+	} > "$$reportlog"
 	$(call log,[$$runid] report log saved to '$$reportlog')
 
-	rules_done=$$(kv_get $$statusf rules_done)
-	rules_total=$$(kv_get $$statusf rules_total)
-	elapsed=$(call t_hms_ms,$$(kv_get $$statusf total_elapsed))
 	$(get_config)
 	{
 	    printf "%s @ %s (%s)\n" $(project) $(hostname) $$runid
@@ -463,12 +471,12 @@ report: dirs
 	    printf "source      : %s\n" "$(lpath)"
 	    printf "destination : %s\n" "$(rpath)"
 	    printf "\n"
-	    printf "started_at  : %s\n" "$$(kv_get $$statusf started_at)"
-	    printf "ended_at    : %s\n" "$$(kv_get $$statusf ended_at)"
+	    printf "started_at  : %s\n" "$$(kv_get "$$statusf" started_at)"
+	    printf "ended_at    : %s\n" "$$(kv_get "$$statusf" ended_at)"
 	    printf "elapsed     : %s\n" "$$elapsed"
 	    printf "\n"
 	    printf "rules       : %s\n" "$$rules_done/$$rules_total"
-	    printf "result      : %s\n" "$$(kv_get $$statusf result)"
+	    printf "result      : %s\n" "$$(kv_get "$$statusf" result)"
 	    printf "\n"
 	    printf -- "-------- rules summary (status-v) --------\n"
 	    printf "\n"
@@ -504,8 +512,8 @@ report-mail:
 	    $(call log,[$$runid] report log does not exist)
 	fi
 
-	rules_done=$$(kv_get $$statusf rules_done)
-	rules_total=$$(kv_get $$statusf rules_total)
+	rules_done=$$(kv_get "$$statusf" rules_done)
+	rules_total=$$(kv_get "$$statusf" rules_total)
 
 	subject=$$(printf "[%s@%s] rclone sync to %s:%s (runid %s, rules %s/%s)" \
 	    $(project) $(host) $(remote) $(bucket) $$runid \
