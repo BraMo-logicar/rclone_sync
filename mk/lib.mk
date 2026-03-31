@@ -161,10 +161,12 @@ endef
 
 define watch_child
 $$(
-    for _ in {1..$(3)}; do
-        child=$$(pgrep -n -P $(1) -x $(2) || true)
+    ppid=$(1) procname=$(2) tries=$(3) delay=$(4)
+    for _ in {1..$$tries}; do
+        child=$$(pgrep -n -P $$ppid -x $$procname || true)
+      $(call log,[watch_child] try=$$_/$$tries ppid=$$ppid proc=$$procname child=$${child:--})
         [ -n "$$child" ] && break
-        sleep $(4)
+        sleep $$delay
     done
     printf "%s" "$$child"
 )
@@ -177,7 +179,8 @@ endef
 
 define get_command_by_pid
 $$(
-    mapfile -d '' -t argv < /proc/$(1)/cmdline
+	pid=$(1)
+    mapfile -d '' -t argv < /proc/$$pid/cmdline
     printf -v cmd "%s " "$${argv[@]}"
     printf "%s" "$${cmd% }"
 )
@@ -191,7 +194,9 @@ endef
 define watch_rclone
 (
     rulef=$(1) program_pid=$(2) tries=$(watch_tries) delay=$(watch_delay)
+  $(call log,[watch_rclone] start rulef=$$rulef program_pid=$$program_pid tries=$$tries delay=$$delay)
     rclone_pid=$(call watch_child,$$program_pid,rclone,$$tries,$$delay)
+  $(call log,[watch_rclone] result program_pid=$$program_pid rclone_pid=$${rclone_pid:--})
     if [ -n "$$rclone_pid" ]; then
         kv_set "$(statusf)" rclone_pid $$rclone_pid
         rclone_cmd=$(call get_command_by_pid,$$rclone_pid)
@@ -357,18 +362,19 @@ endef
 
 define save_rclone_stats
 (
+    runid=$(1) ruleid=$(2) rulef=$(3) rule_log=$(4)
     declare -A S
     while read k v; do
         S[$$k]=$$v
-        kv_set "$(3)" $$k $$v
-    done < <($(call get_rclone_stats,$(4)))
+        kv_set "$$rulef" $$k $$v
+    done < <($(call get_rclone_stats,$$rule_log))
     printf -v stats_log "checks=%s, transferred=%s (%s) \
         (new=%d, replaced=%d), deleted=%d, elapsed=%s" \
         "$${S[rclone_checks]}" \
         "$${S[rclone_transferred]}" "$${S[rclone_transferred_size]}" \
         "$${S[rclone_copied_new]}" "$${S[rclone_copied_replaced]}" \
         "$${S[rclone_deleted]}" "$${S[rclone_elapsed]}"
-    $(call log,[$(1):$(2)] rclone stats: $$stats_log)
+    $(call log,[$$runid:$ruleid] rclone stats: $$stats_log)
 )
 endef
 
@@ -383,7 +389,7 @@ endef
 
 define get_rstate
 $$(
-    rulef="$(1)" gstate=$(2)
+    rulef=$(1) gstate=$(2)
     if [ ! -f "$$rulef" ]; then
         printf queue
     elif rc=$$(kv_get "$$rulef" rc); [ -n "$$rc" ]; then
@@ -515,12 +521,12 @@ num3 = $$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
 define send_report
 (
     boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
-    reportf="$(1)" reportlog="$(2)"
+    reportf=$(1) reportlog=$(2) subject=$(3)
 
     printf "From: %s\n" "$(mail_From)"
     printf "To: %s\n" "$(mail_To)"
     printf "Date: %s\n" "$$(date -R)"
-    printf "Subject: %s\n" "$(3)"
+    printf "Subject: %s\n" "$$subject"
     printf "MIME-Version: 1.0\n"
     printf "Content-Type: multipart/mixed; boundary=\"%s\"\n" "$$boundary"
     printf "Rclone-Sync-Project: %s (v%s)\n" $(project) $(version)
@@ -564,14 +570,14 @@ endef
 
 define colors
 if [ -t 1 ]; then
-    BLD="$(bld)" RST="$(rst)"
+    BLD=$(bld) RST=$(rst)
 
-    RED="$(red)" _RED_="$(_red_)"
-    GRN="$(grn)" _GRN_="$(_grn_)"
-    YEL="$(yel)" _YEL_="$(_yel_)"
-    BLU="$(blu)" _BLU_="$(_blu_)"
-    MAG="$(mag)" _MAG_="$(_mag_)"
-    CYN="$(cyn)" _CYN_="$(_cyn_)"
+    RED=$(red) _RED_=$(_red_)
+    GRN=$(grn) _GRN_=$(_grn_)
+    YEL=$(yel) _YEL_=$(_yel_)
+    BLU=$(blu) _BLU_=$(_blu_)
+    MAG=$(mag) _MAG_=$(_mag_)
+    CYN=$(cyn) _CYN_=$(_cyn_)
 else
     BLD= RST=
      RED=   GRN=   YEL=   BLU=   MAG=   CYN=
