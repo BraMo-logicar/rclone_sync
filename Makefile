@@ -157,6 +157,7 @@ main:
 	    kv_set "$$rulef" rule_started_at $(call at,$$t1)
 
 	    "$${program_cmd[@]}" &> "$$rule_log" & program_pid=$$!
+	  $(call log,[$$runid:$$ruleid] launched program_pid=$$program_pid)
 	    kv_set "$(statusf)" program_pid $$program_pid
 	    $(call watch_rclone,$$rulef,$$program_pid)
 	    rc=0; wait $$program_pid || rc=$$?
@@ -510,7 +511,7 @@ report-mail:
 	    $(project) $(host) $(remote) $(bucket) $$runid \
 	    $$rules_done $$rules_total)
 
-	$(call send_report,$$reportf,$$reportlog)
+	$(call send_report,$$reportf,$$reportlog,$$subject)
 
 	$(call log,[$$runid] report by email to '$(mail_To)' \
 	    (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
