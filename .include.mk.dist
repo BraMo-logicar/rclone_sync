@@ -26,7 +26,9 @@ mail_from = [MAIL_FROM]
 mail_To   = $(project) admin [MAIL_TO]
 mail_to   = [MAIL_TO]
 
-mail_log = yes
+mail_log        = [MAIL_LOG]
+mail_log_max    = [MAIL_LOG_MAX]
+mail_log_gz_max = [MAIL_LOG_GZ_MAX]
 
 
 # vim: ts=4
