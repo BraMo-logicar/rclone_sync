@@ -196,10 +196,10 @@ end:
 	n=$$(kv_get "$(statusf)" rules_total)
 	kv_set "$(statusf)" gstate idle
 	result=$$(kv_get "$(statusf)" result)
-	if [ $$result = stopped ] || [ $$result = killed ]; then
+	if [ "$$result" = stopped ] || [ $$result = killed ]; then
 	    rc=$$(kv_get "$(statusf)" rc)
 	else
-	    if [ $$k -eq $$n ]; then
+	    if [ "$$k" -eq "$$n" ]; then
 	        result=completed rc=0
 	    else
 	        result=failed rc=-1
@@ -264,7 +264,7 @@ status status-v:
 	n=$$(kv_get "$$statusf" rules_total)
 	pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
 
-	if [ $$gstate = running ]; then
+	if [ "$$gstate" = running ]; then
 	    t0=$(t)
 	    started_at_epoch=$$(kv_get "$$statusf" started_at_epoch)
 	    started_at=$$(kv_get "$$statusf" started_at)
@@ -326,7 +326,7 @@ status status-v:
 	    sum_del=0 sum_elapsed=0
 	    rc_ok=0 rc_fail=0
 
-	    if [ $$gstate = running ]; then
+	    if [ "$$gstate" = running ]; then
 	        mapfile -t ruleids < "$(ruleids_list)"
 	    else
 	        mapfile -t ruleids < <(ls -A "$(stats)/$$runid" | grep -vx .status)
@@ -340,7 +340,7 @@ status status-v:
 
 	        if [ "$$rstate" = queue ]; then
 	            : $$((queue++))
-	            if [ $$queue -le $(rule_queue) ]; then
+	            if [ "$$queue" -le "$(rule_queue)" ]; then
 	                printf "$$fmt_queue\n" $$rule queue
 	            fi
 	            continue
@@ -386,13 +386,13 @@ status status-v:
 	        fi
 	    done
 
-	    if [ $$queue -gt $(rule_queue) ]; then
+	    if [ "$$queue" -gt "$(rule_queue)" ]; then
 	        printf "(+%d more rules remaining)\n" $$((queue - $(rule_queue)))
 	    fi
 
 	    printf "\n$$BLD%s$$RST\n" SUMMARY
 
-	    if [ $$gstate = running ]; then
+	    if [ "$$gstate" = running ]; then
 	        printf "    rules         : $$_RED_%d/%d$$RST (%.2f%%)\n" \
 	            $$k $$n $$pct
 	    else
@@ -511,7 +511,7 @@ report-mail:
 	    $(project) $(host) $(remote) $(bucket) $$runid \
 	    $$rules_done $$rules_total)
 
-	$(call send_report,$$reportf,$$reportlog,$$subject)
+	$(call send_report,$$runid,$$reportf,$$reportlog,$$subject)
 
 	$(call log,[$$runid] report by email to '$(mail_To)' \
 	    (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))

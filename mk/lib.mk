@@ -575,16 +575,16 @@ define send_report
     printf "<html><body><pre>\n"
     cat "$$reportf"
 
-    if [ $(mail_log) = yes ]; then
+    if [ "$(mail_log)" = yes ]; then
         log_size=$$(stat -c%s "$$reportlog")
         log_max=$(call iec2bytes,$(mail_log_max))
         log_gz_max=$(call iec2bytes,$(mail_log_gz_max))
-        if [ $$log_size -le $$log_max ]; then
+        if [ "$$log_size" -le "$$log_max" ]; then
             attach_mode=raw
             attach_file="$$reportlog"
             $(call log,[$$runid] log attachment: raw file '$$reportlog' \
                 (size=$$log_size))
-        elif [ $$log_size -le $$log_gz_max ]; then
+        elif [ "$$log_size" -le "$$log_gz_max" ]; then
             attach_mode=gz
             attach_file="$(tmp)/$${reportlog##*/}.gz"
             gzip -c "$$reportlog" > "$$attach_file"
