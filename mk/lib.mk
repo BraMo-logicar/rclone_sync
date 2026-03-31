@@ -394,7 +394,7 @@ $$(
         printf queue
     elif rc=$$(kv_get "$$rulef" rc); [ -n "$$rc" ]; then
         printf done
-    elif [ $$gstate = running ]; then
+    elif [ "$$gstate" = running ]; then
         printf run
     else
         printf fail
@@ -591,7 +591,6 @@ define send_report
             $(call log,[$$runid] log attachment: gzip file '$$reportlog' \
                 (size=$$log_size > limit=$(mail_log_max)))
         else
-            attach_mode=skip
             printf "\n"
             printf "log attachment skipped: file size %d bytes exceeds %s=%s\n" \
                 $$log_size mail_log_gz_max $(mail_log_gz_max)
@@ -604,29 +603,33 @@ define send_report
 
     printf "</pre></body></html>\n"
 
-    if [ "$$attach_mode" = raw ]; then
-        printf "\n"
-        printf -- "--%s\n" "$$boundary"
-        printf "Content-Type: text/plain; charset=UTF-8; name=\"%s\"\n" \
-            "$${reportlog##*/}"
-        printf "Content-Transfer-Encoding: 8bit\n"
-        printf "Content-Disposition: attachment; filename=\"%s\"\n" \
-            "$${reportlog##*/}"
-        printf "\n"
-        cat "$$attach_file"
-    elif [ "$$attach_mode" = gz ]; then
-        printf "\n"
-        printf -- "--%s\n" "$$boundary"
-        printf "Content-Type: application/gzip; name=\"%s\"\n" \
-            "$${reportlog##*/}.gz"
-        printf "Content-Transfer-Encoding: base64\n"
-        printf "Content-Disposition: attachment; filename=\"%s\"\n" \
-            "$${reportlog##*/}.gz"
-        printf "\n"
-        base64 "$$attach_file"
-        printf "\n"
-        rm -f "$$attach_file"
-    fi
+    case "$${attach_mode:-}" in
+        raw)
+            printf "\n"
+            printf -- "--%s\n" "$$boundary"
+            printf "Content-Type: text/plain; charset=UTF-8; name=\"%s\"\n" \
+                "$${reportlog##*/}"
+            printf "Content-Transfer-Encoding: 8bit\n"
+            printf "Content-Disposition: attachment; filename=\"%s\"\n" \
+                "$${reportlog##*/}"
+            printf "\n"
+            cat "$$attach_file"
+            ;;
+    elif [ "$${attach_mode:-}" = gz ]; then
+        gz)
+            printf "\n"
+            printf -- "--%s\n" "$$boundary"
+            printf "Content-Type: application/gzip; name=\"%s\"\n" \
+                "$${reportlog##*/}.gz"
+            printf "Content-Transfer-Encoding: base64\n"
+            printf "Content-Disposition: attachment; filename=\"%s\"\n" \
+                "$${reportlog##*/}.gz"
+            printf "\n"
+            base64 "$$attach_file"
+            printf "\n"
+            rm -f "$$attach_file"
+            ;;
+    esac
 
     printf "\n"
     printf -- "--%s--\n" "$$boundary"
