@@ -468,19 +468,19 @@ endef
 
 #
 # iec2mib() - convert IEC size (B, KiB, MiB, GiB, TiB) to MiB (1 decimal)
-# usage: $(call mib,size)
+# usage: $(call iec2mib,size)
 #
 
 define iec2mib
 $$(
     awk -v s=$(1) '
-        function n(x) { sub(/[BKMGTi]*$$/, "", x); return x }
+        function n(x) { sub(/(B|[KMGT]iB)$$/, "", x); return x }
         BEGIN {
-            if      (s ~ /[0-9]B/)   print sprintf("%.1f", n(s) / 1048576)
-            else if (s ~ /[0-9]KiB/) print sprintf("%.1f", n(s) / 1024)
-            else if (s ~ /[0-9]MiB/) print sprintf("%.1f", n(s))
-            else if (s ~ /[0-9]GiB/) print sprintf("%.1f", n(s) * 1024)
-            else if (s ~ /[0-9]TiB/) print sprintf("%.1f", n(s) * 1048576)
+            if      (s ~ /^[0-9]+B$$/)   print sprintf("%.1f", n(s) / 1048576)
+            else if (s ~ /^[0-9]+KiB$$/) print sprintf("%.1f", n(s) / 1024)
+            else if (s ~ /^[0-9]+MiB$$/) print sprintf("%.1f", n(s))
+            else if (s ~ /^[0-9]+GiB$$/) print sprintf("%.1f", n(s) * 1024)
+            else if (s ~ /^[0-9]+TiB$$/) print sprintf("%.1f", n(s) * 1048576)
         }'
 )
 endef
@@ -503,6 +503,40 @@ $$(
 endef
 
 #
+# iec2bytes() - convert IEC size (K[iB], M[iB], G[iB]) to bytes
+# usage: $(call iec2bytes,size)
+#
+
+define iec2bytes
+$$(
+    awk -v s=$(1) '
+        function n(x) { sub(/(B|[KMG](iB)?)$$/, "", x); return x }
+        BEGIN {
+            if      (s ~ /^[0-9]+B?$$/)     print n(s)
+            else if (s ~ /^[0-9]+K(iB)?$$/) print n(s) * 1024
+            else if (s ~ /^[0-9]+M(iB)?$$/) print n(s) * 1048576
+            else if (s ~ /^[0-9]+G(iB)?$$/) print n(s) * 1073741824
+        }'
+)
+endef
+
+#
+# bytes2iec() - convert bytes to best IEC unit (KiB, MiB, GiB) (1 decimal)
+# usage: $(call bytes2iec,bytes)
+#
+
+define bytes2iec
+$$(
+    awk -v n=$(1) '
+        BEGIN {
+            u = split("B KiB MiB GiB", U)
+            for (i = 1; n >= 1024 && i < u; i++) n /= 1024
+            printf("%.1f %s", n, U[i])
+        }'
+)
+endef
+
+#
 # num3() - format integer with 3-digit grouping
 # usage: $(call num3,num)
 #
@@ -514,14 +548,14 @@ num3 = $$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
 #------
 
 #
-# send_report() - send multipart email with report and optional log attach
-# usage: $(call send_report,reportf,reportlog,subject)
+# send_report() - send multipart email with report and optional log attachment
+# usage: $(call send_report,runid,reportf,reportlog,subject)
 #
 
 define send_report
 (
     boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
-    reportf=$(1) reportlog=$(2) subject=$(3)
+    runid=$(1) reportf=$(2) reportlog=$(3) subject=$(4)
 
     printf "From: %s\n" "$(mail_From)"
     printf "To: %s\n" "$(mail_To)"
@@ -540,9 +574,37 @@ define send_report
 
     printf "<html><body><pre>\n"
     cat "$$reportf"
-    printf "</pre></body></html>\n"
 
     if [ $(mail_log) = yes ]; then
+        log_size=$$(stat -c%s "$$reportlog")
+        log_max=$(call iec2bytes,$(mail_log_max))
+        log_gz_max=$(call iec2bytes,$(mail_log_gz_max))
+        if [ $$log_size -le $$log_max ]; then
+            attach_mode=raw
+            attach_file="$$reportlog"
+            $(call log,[$$runid] log attachment: raw file '$$reportlog' \
+                (size=$$log_size))
+        elif [ $$log_size -le $$log_gz_max ]; then
+            attach_mode=gz
+            attach_file="$(tmp)/$${reportlog##*/}.gz"
+            gzip -c "$$reportlog" > "$$attach_file"
+            $(call log,[$$runid] log attachment: gzip file '$$reportlog' \
+                (size=$$log_size > limit=$(mail_log_max)))
+        else
+            attach_mode=skip
+            printf "\n"
+            printf "log attachment skipped: file size %d bytes exceeds %s=%s\n" \
+                $$log_size mail_log_gz_max $(mail_log_gz_max)
+            $(call log,[$$runid] log attachment: skip file '$$reportlog' \
+                (size=$$log_size > limit=$(mail_log_gz_max)))
+        fi
+    else
+        $(call log,[$$runid] log attachment: disabled (mail_log=$(mail_log)))
+    fi
+
+    printf "</pre></body></html>\n"
+
+    if [ "$$attach_mode" = raw ]; then
         printf "\n"
         printf -- "--%s\n" "$$boundary"
         printf "Content-Type: text/plain; charset=UTF-8; name=\"%s\"\n" \
@@ -551,7 +613,19 @@ define send_report
         printf "Content-Disposition: attachment; filename=\"%s\"\n" \
             "$${reportlog##*/}"
         printf "\n"
-        cat "$$reportlog"
+        cat "$$attach_file"
+    elif [ "$$attach_mode" = gz ]; then
+        printf "\n"
+        printf -- "--%s\n" "$$boundary"
+        printf "Content-Type: application/gzip; name=\"%s\"\n" \
+            "$${reportlog##*/}.gz"
+        printf "Content-Transfer-Encoding: base64\n"
+        printf "Content-Disposition: attachment; filename=\"%s\"\n" \
+            "$${reportlog##*/}.gz"
+        printf "\n"
+        base64 "$$attach_file"
+        printf "\n"
+        rm -f "$$attach_file"
     fi
 
     printf "\n"
