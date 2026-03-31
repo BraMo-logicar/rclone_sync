@@ -49,7 +49,7 @@ list::
 # run
 
 run:
-	start_rc=0 main_rc=0
+	@start_rc=0 main_rc=0
 	$(MAKE) -s start || start_rc=$$?
 	[ $$start_rc -eq 0 ] && { $(MAKE) -s main || main_rc=$$?; }
 	$(MAKE) -s end main_rc=$$main_rc
@@ -157,7 +157,6 @@ main:
 	    kv_set "$$rulef" rule_started_at $(call at,$$t1)
 
 	    "$${program_cmd[@]}" &> "$$rule_log" & program_pid=$$!
-	  $(call log,[$$runid:$$ruleid] launched program_pid=$$program_pid)
 	    kv_set "$(statusf)" program_pid $$program_pid
 	    $(call watch_rclone,$$rulef,$$program_pid)
 	    rc=0; wait $$program_pid || rc=$$?

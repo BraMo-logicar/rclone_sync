@@ -162,9 +162,8 @@ endef
 define watch_child
 $$(
     ppid="$(1)" procname="$(2)" tries="$(3)" delay="$(4)"
-    for _ in {1..$$tries}; do
+    for ((i=1; i<=$$tries; i++)); do
         child=$$(pgrep -n -P $$ppid -x $$procname || true)
-      $(call log,[watch_child] try=$$_/$$tries ppid=$$ppid proc=$$procname child=$${child:--})
         [ -n "$$child" ] && break
         sleep $$delay
     done
@@ -195,9 +194,7 @@ define watch_rclone
 (
     rulef="$(1)" program_pid="$(2)"
     tries="$(watch_tries)" delay="$(watch_delay)"
-  $(call log,[watch_rclone] start rulef=$$rulef program_pid=$$program_pid tries=$$tries delay=$$delay)
     rclone_pid=$(call watch_child,$$program_pid,rclone,$$tries,$$delay)
-  $(call log,[watch_rclone] result program_pid=$$program_pid rclone_pid=$${rclone_pid:--})
     if [ -n "$$rclone_pid" ]; then
         kv_set "$(statusf)" rclone_pid $$rclone_pid
         rclone_cmd="$(call get_command_by_pid,$$rclone_pid)"
