@@ -96,14 +96,14 @@ start: dirs
 
 	$(get_config)
 	msg=
-	[ -n "$$type" ]     && msg+="$${msg:+, }type=$$type"
-	[ -n "$$provider" ] && msg+="$${msg:+, }provider=$$provider"
-	[ -n "$$region" ]   && msg+="$${msg:+, }region=$$region"
-	[ -n "$$endpoint" ] && msg+="$${msg:+, }endpoint=$$endpoint"
+	[ -n "$$type" ]     && msg+="$${msg:+ }type=$$type"
+	[ -n "$$provider" ] && msg+="$${msg:+ }provider=$$provider"
+	[ -n "$$region" ]   && msg+="$${msg:+ }region=$$region"
+	[ -n "$$endpoint" ] && msg+="$${msg:+ }endpoint=$$endpoint"
 
 	$(call log,[$$runid] start '$(project)' ($(program_name) v$(version)) \
 	    @ $(hostname) ($(ip)))
-	$(call log,[$$runid] config: $$msg)
+	$(call log,[$$runid] rclone remote: $$msg)
 
 main:
 	@$(define_kv)
@@ -148,7 +148,7 @@ main:
 	    kv_set "$(statusf)" current_rule_dst "$$dst"
 
 	    $(call log,[$$runid] rule '$$rule')
-	    $(call log,[$$runid] ruleid '$$ruleid' ($$k/$$n$(,) $$pct%))
+	    $(call log,[$$runid] ruleid '$$ruleid' ($$k/$$n $$pct%))
 	    $(call log,[$$runid:$$ruleid] start '$(program_name)')
 	    $(call log,[$$runid:$$ruleid] command line: $$program_line)
 
@@ -178,7 +178,7 @@ main:
 
 	    [ $$rc -ne 0 ] && warn=" (WARN)" || warn=
 	    $(call log,[$$runid:$$ruleid]$$warn end '$(program_name)': rc=$$rc \
-	        (elapsed: $(call t_hms_ms,$$rule_elapsed)))
+	        (elapsed $(call t_hms_ms,$$rule_elapsed)))
 
 	    $(call stop_guard,$$runid,$$ruleid)
 	done < <(sed 's/[[:space:]]*#.*//' "$(rules_list)" | awk 'NF')
@@ -207,8 +207,8 @@ end:
 	    kv_set "$(statusf)" rc $$rc
 	fi
 	$(call log,[$$runid] end '$(project)' \
-	    (rules=$$k/$$n$(,) result=$$result$(,) rc=$$rc) \
-	    (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
+	    (rules=$$k/$$n$ result=$$result rc=$$rc \
+	    total_elapsed $(call t_delta_hms_ms,$$t0,$$t3)))
 
 # stop & kill
 
@@ -229,11 +229,11 @@ kill:
 	shell_pid=$$(kv_get "$(statusf)" shell_pid)
 	program_pid=$$(kv_get "$(statusf)" program_pid)
 	rclone_pid=$$(kv_get "$(statusf)" rclone_pid)
-	printf "[%s] global kill requested (%s=%d, %s=%d, %s=%d)\n" \
+	printf "[%s] global kill requested (%s=%d %s=%d %s=%d)\n" \
 	    $(project) recipe_shell $$shell_pid \
 	    program $$program_pid rclone $$rclone_pid >&2
-	$(call log,[$$runid] kill requested (recipe_shell=$$shell_pid$(,) \
-	    program=$$program_pid$(,) rclone=$$rclone_pid))
+	$(call log,[$$runid] kill requested (recipe_shell=$$shell_pid \
+	    program=$$program_pid rclone=$$rclone_pid))
 	for sig in INT TERM KILL; do
 	    for pid in $$rclone_pid $$program_pid $$shell_pid; do
 	         if kill -0 $$pid 2>/dev/null; then
@@ -243,8 +243,8 @@ kill:
 	    done
 	    sleep 1
 	done
-	$(call log,[$$runid] kill: sent signals to rclone=$$rclone_pid$(,) \
-	    program=$$program_pid$(,) recipe_shell=$$shell_pid)
+	$(call log,[$$runid] kill: sent signals to rclone=$$rclone_pid \
+	    program=$$program_pid recipe_shell=$$shell_pid)
 
 # status
 
@@ -289,8 +289,8 @@ status status-v:
 	    printf "source       : %s\n" "$$current_rule_src"
 	    printf "destination  : %s\n" "$$current_rule_dst"
 	    printf "progress     : $$_RED_%d/%d$$RST (%.2f%%)\n" $$k $$n $$pct
-	    printf "started at   : %s  (elapsed: %s)\n" $$started_at $$elapsed
-	    printf "current rule : $$_RED_%s$$RST  (elapsed: %s)\n" \
+	    printf "started at   : %s  (elapsed %s)\n" $$started_at $$elapsed
+	    printf "current rule : $$_RED_%s$$RST  (elapsed %s)\n" \
 	                           $$current_ruleid $$rule_elapsed
 	    printf "pids         : %s\n" "$$pids"
 	else
@@ -404,11 +404,11 @@ status status-v:
 	    printf "    xfer size     : %s\n" "$(call mib2iec,$$sum_xfer_mib)"
 	    printf "    deleted       : %s\n" $(call num3,$$sum_del)
 	    printf "    rules elapsed : %s\n" $(call t_hms,$$sum_elapsed)
-	    printf "    rules result  : ok=%d, fail=%d\n" $$rc_ok $$rc_fail
+	    printf "    rules result  : ok=%d fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
-	$(call log,[$$runid] status: state=$${gstate^^}$(,) rules=$$k/$$n \
-	    (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
+	$(call log,[$$runid] status: state=$${gstate^^} rules=$$k/$$n \
+	    (elapsed $(call t_delta_hms_ms,$$t0,$(t))))
 
 # report
 
@@ -483,7 +483,7 @@ report: dirs
 	} > "$$reportf"
 
 	$(call log,[$$runid] report saved to '$$reportf' \
-	    (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
+	    (elapsed $(call t_delta_hms_ms,$$t0,$(t))))
 
 # report by email
 
@@ -521,7 +521,7 @@ report-mail:
 	$(call send_report,$$runid,$$reportf,$$reportlog,$$subject)
 
 	$(call log,[$$runid] report by email to '$(mail_To)' \
-	    (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
+	    (elapsed $(call t_delta_hms_ms,$$t0,$(t))))
 
 # usage
 
@@ -541,25 +541,25 @@ usage: dirs
 
 	t0=$(t)
 	$(call log,start bucket usage (excluding versions) \
-	    (bucket='$(bucket)', prefix='$(dst_root)'))
+	    (bucket='$(bucket)' prefix='$(dst_root)'))
 	{
 	    printf "    excluding versions:\n"
 	    $(rclone) --config "$(rclone_conf)" size "$(rpath)" |
 	        sed 's/^/        /'
 	} >> "$$usagef"
 	$(call log,end bucket usage (excluding versions) \
-	    (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
+	    (elapsed $(call t_delta_hms_ms,$$t0,$(t))))
 
 	t0=$(t)
 	$(call log,start bucket usage (including versions) \
-	    (bucket='$(bucket)', prefix='$(dst_root)'))
+	    (bucket='$(bucket)' prefix='$(dst_root)'))
 	{
 	    printf "    including versions:\n"
 	    $(rclone) --config "$(rclone_conf)" size --s3-versions "$(rpath)" |
 	        sed 's/^/        /'
 	} >> "$$usagef"
 	$(call log,end bucket usage (including versions) \
-	    (elapsed: $(call t_delta_hms_ms,$$t0,$(t))))
+	    (elapsed $(call t_delta_hms_ms,$$t0,$(t))))
 
 # logs
 

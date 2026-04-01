@@ -263,7 +263,7 @@ trap_on_signal() {
     kv_set "$(statusf)" program_pid -
     kv_set "$(statusf)" rclone_pid -
     $(call log,[$$runid:$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
-        (elapsed: $$rule_elapsed_hms_ms))
+        (elapsed $$rule_elapsed_hms_ms))
 
     t0=$$(kv_get "$(statusf)" started_at_epoch)
     t3=$(t)
@@ -277,8 +277,8 @@ trap_on_signal() {
     k=$$(kv_get "$(statusf)" rules_done)
     n=$$(kv_get "$(statusf)" rules_total)
     $(call log,[$$runid] end '$(project)' \
-	    (rules=$$k/$$n$(,) result=$$result$(,) rc=$$rc) \
-        (total elapsed: $(call t_delta_hms_ms,$$t0,$$t3)))
+	    (rules=$$k/$$n result=$$result rc=$$rc) \
+        (total_elapsed $(call t_delta_hms_ms,$$t0,$$t3)))
     exit $$rc
 }
 endef
@@ -366,13 +366,10 @@ define save_rclone_stats
         S[$$k]=$$v
         kv_set "$$rulef" $$k $$v
     done < <($(call get_rclone_stats,$$rule_log))
-    printf -v stats_log "checks=%s, transferred=%s (%s) \
-        (new=%d, replaced=%d), deleted=%d, elapsed=%s" \
-        "$${S[rclone_checks]}" \
-        "$${S[rclone_transferred]}" "$${S[rclone_transferred_size]}" \
-        "$${S[rclone_copied_new]}" "$${S[rclone_copied_replaced]}" \
-        "$${S[rclone_deleted]}" "$${S[rclone_elapsed]}"
-    $(call log,[$$runid:$ruleid] rclone stats: $$stats_log)
+    $(call log,[$$runid:$$ruleid] rclone stats: checks=$${S[rclone_checks]} \
+        transferred=$${S[rclone_transferred]} ($${S[rclone_transferred_size]}) \
+        (new=$${S[rclone_copied_new]} replaced=$${S[rclone_copied_replaced]}) \
+        deleted=$${S[rclone_deleted]} elapsed=$${S[rclone_elapsed]}"
 )
 endef
 
