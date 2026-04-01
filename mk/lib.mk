@@ -367,8 +367,9 @@ define save_rclone_stats
         kv_set "$$rulef" $$k $$v
     done < <($(call get_rclone_stats,$$rule_log))
     $(call log,[$$runid:$$ruleid] rclone stats: checks=$${S[rclone_checks]} \
-        transferred=$${S[rclone_transferred]} ($${S[rclone_transferred_size]}) \
+        transferred=$${S[rclone_transferred]} \
         (new=$${S[rclone_copied_new]} replaced=$${S[rclone_copied_replaced]}) \
+        transferred_size=$${S[rclone_transferred_size]} \
         deleted=$${S[rclone_deleted]} elapsed=$${S[rclone_elapsed]}"
 )
 endef
@@ -439,9 +440,9 @@ log = printf "%s [%s(%s):%d] %s\n" $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 define append_rule_log
 {
-    printf -- "-- begin rclone log (runid=%s, ruleid=%s) --\n" $(1) $(2)
+    printf -- "-- begin rclone log: runid=%s ruleid=%s --\n" $(1) $(2)
     sed '$${/^$$/d}' "$(3)"
-    printf -- "-- end rclone log (runid=%s, ruleid=%s) --\n" $(1) $(2)
+    printf -- "-- end rclone log: runid=%s ruleid=%s --\n" $(1) $(2)
 } >> "$(logf)"
 endef
 

@@ -447,9 +447,9 @@ report: dirs
 	    printf "rules : %s\n" "$$rules_done/$$rules_total"
 	    printf "\n"
 	    awk "
-	        /-- begin rclone log \(runid=$$runid,/ { in_rule = 1 }
-	        in_rule                                { print }
-	        /-- end rclone log \(runid=$$runid,/   { in_rule = 0; print \"\" }
+	        /-- begin rclone log: runid=$$runid / { in_rule = 1 }
+	        in_rule                               { print }
+	        /-- end rclone log: runid=$$runid /   { in_rule = 0; print \"\" }
 	    " "$(logf)"
 	} > "$$reportlog"
 	$(call log,[$$runid] report log saved to '$$reportlog')
