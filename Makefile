@@ -514,7 +514,7 @@ report-mail:
 	rules_done=$$(kv_get "$$statusf" rules_done)
 	rules_total=$$(kv_get "$$statusf" rules_total)
 
-	subject=$$(printf "[%s@%s] rclone sync to %s:%s (runid %s, rules %s/%s)" \
+	subject=$$(printf "[%s@%s] rclone sync to %s:%s (runid=%s rules=%s/%s)" \
 	    $(project) $(host) $(remote) $(bucket) $$runid \
 	    $$rules_done $$rules_total)
 
