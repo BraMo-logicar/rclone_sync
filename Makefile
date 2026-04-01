@@ -534,9 +534,11 @@ usage: dirs
 	ln -fns $${usagef##*/} "$(usage)/last"
 
 	{
-	    printf "Bucket usage (%s, %s)\n" $(hostname) "$$(date '+%a %d %b %Y')"
-	    printf "    bucket: %s\n" $(bucket)
-	    printf "    prefix: %s\n" "$(dst_root)"
+	    printf "Bucket usage\n"
+	    printf "    host   : %s\n" $(hostname)
+	    printf "    date   : %s\n" $(bucket)
+	    printf "    bucket : %s\n" $$(date +%F)
+	    printf "    prefix : %s\n" "$(dst_root)"
 	} >> $$usagef
 
 	t0=$(t)
