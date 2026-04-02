@@ -216,7 +216,7 @@ define stop_guard
 {
     if [ -f "$(stop_flag)" ]; then
         printf "[%s] stop flag found: exit after current rule \
-            (runid=%s, ruleid=%s)\n" $(project) $(1) $(2) >&2
+            (runid=%s ruleid=%s)\n" $(project) $(1) $(2) >&2
         rm -f "$(stop_flag)"
         $(call log,[$(1):$(2)] stop flag found: exit after current rule)
         kv_set "$(statusf)" gstate idle
@@ -262,8 +262,8 @@ trap_on_signal() {
 
     kv_set "$(statusf)" program_pid -
     kv_set "$(statusf)" rclone_pid -
-    $(call log,[$$runid:$$ruleid] (WARN) end '$(program_name)': rc=$$rc \
-        (elapsed $$rule_elapsed_hms_ms))
+    $(call log,[$$runid:$$ruleid] (WARN) end '$(program_name)': \
+        rc=$$rc (elapsed $$rule_elapsed_hms_ms))
 
     t0=$$(kv_get "$(statusf)" started_at_epoch)
     t3=$(t)
@@ -277,8 +277,8 @@ trap_on_signal() {
     k=$$(kv_get "$(statusf)" rules_done)
     n=$$(kv_get "$(statusf)" rules_total)
     $(call log,[$$runid] end '$(project)' \
-	    (rules=$$k/$$n result=$$result rc=$$rc) \
-        (total_elapsed $(call t_delta_hms_ms,$$t0,$$t3)))
+	    (rules=$$k/$$n result=$$result rc=$$rc \
+        total_elapsed=$(call t_delta_hms_ms,$$t0,$$t3)))
     exit $$rc
 }
 endef
@@ -370,7 +370,7 @@ define save_rclone_stats
         transferred=$${S[rclone_transferred]} \
         (new=$${S[rclone_copied_new]} replaced=$${S[rclone_copied_replaced]}) \
         transferred_size=$${S[rclone_transferred_size]} \
-        deleted=$${S[rclone_deleted]} elapsed=$${S[rclone_elapsed]}"
+        deleted=$${S[rclone_deleted]} elapsed=$${S[rclone_elapsed]})
 )
 endef
 
@@ -440,9 +440,9 @@ log = printf "%s [%s(%s):%d] %s\n" $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 define append_rule_log
 {
-    printf -- "-- begin rclone log: runid=%s ruleid=%s --\n" $(1) $(2)
+    printf -- "-- begin rclone log (runid=%s ruleid=%s) --\n" $(1) $(2)
     sed '$${/^$$/d}' "$(3)"
-    printf -- "-- end rclone log: runid=%s ruleid=%s --\n" $(1) $(2)
+    printf -- "-- end rclone log (runid=%s ruleid=%s) --\n" $(1) $(2)
 } >> "$(logf)"
 endef
 

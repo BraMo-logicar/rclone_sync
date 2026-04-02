@@ -207,8 +207,8 @@ end:
 	    kv_set "$(statusf)" rc $$rc
 	fi
 	$(call log,[$$runid] end '$(project)' \
-	    (rules=$$k/$$n$ result=$$result rc=$$rc \
-	    total_elapsed $(call t_delta_hms_ms,$$t0,$$t3)))
+	    (rules=$$k/$$n result=$$result rc=$$rc) \
+	    (total_elapsed $(call t_delta_hms_ms,$$t0,$$t3)))
 
 # stop & kill
 
@@ -281,8 +281,8 @@ status status-v:
 	    shell_pid=$$(kv_get "$$statusf" shell_pid)
 	    program_pid=$$(kv_get "$$statusf" program_pid)
 	    rclone_pid=$$(kv_get "$$statusf" rclone_pid)
-	    pids="make=$${make_pid:--}, shell=$${shell_pid:--}, "
-	    pids+="rclone_sync=$${program_pid:--}, rclone=$${rclone_pid:--}"
+	    pids="make=$${make_pid:--} shell=$${shell_pid:--} "
+	    pids+="rclone_sync=$${program_pid:--} rclone=$${rclone_pid:--}"
 
 	    printf "state        : $$_RED_%s$$RST\n" $${gstate^^}
 	    printf "runid        : %s\n" $$runid
@@ -446,11 +446,19 @@ report: dirs
 	    printf "runid : %s\n" "$$runid"
 	    printf "rules : %s\n" "$$rules_done/$$rules_total"
 	    printf "\n"
-	    awk "
-	        /-- begin rclone log: runid=$$runid / { in_rule = 1 }
-	        in_rule                               { print }
-	        /-- end rclone log: runid=$$runid /   { in_rule = 0; print \"\" }
-	    " "$(logf)"
+	    awk '
+	        /-- begin rclone log \(runid='$$runid' / {
+	            sub(/.*ruleid=/, "# ruleid: "); sub(/\).*/, "")
+	            sep = sprintf("#%*s", length-1, ""); gsub(/ /, "-", sep)
+	            print sep; print; print sep
+	            in_rule = 1; next
+	        }
+	        /-- end rclone log \(runid='$$runid' / {
+	            print ""
+	            in_rule = 0; next
+	        }
+	        in_rule
+	    ' "$(logf)"
 	} > "$$reportlog"
 	$(call log,[$$runid] report log saved to '$$reportlog')
 
