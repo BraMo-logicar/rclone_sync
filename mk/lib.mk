@@ -107,7 +107,8 @@ $$(
         last) [ -L "$(last)" ] && runid=$$(readlink "$(last)") ;;
     esac
 
-    if [ -d "$(stats)/$$runid" ]; then
+    subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
+    if [ -d "$(stats)/$$subdir/$$runid" ]; then
         printf "%s" $$runid
     else
         if [ -t 2 ]; then
