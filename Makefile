@@ -178,7 +178,7 @@ main:
 
 	    [ $$rc -ne 0 ] && warn=" (WARN)" || warn=
 	    $(call log,[$$runid:$$ruleid]$$warn end '$(program_name)': rc=$$rc \
-	        (elapsed $(call t_hms_ms,$$rule_elapsed)))
+	        (elapsed=$(call t_hms_ms,$$rule_elapsed)))
 
 	    $(call stop_guard,$$runid,$$ruleid)
 	done < <(sed 's/[[:space:]]*#.*//' "$(rules_list)" | awk 'NF')
@@ -208,7 +208,7 @@ end:
 	fi
 	$(call log,[$$runid] end '$(project)' \
 	    (rules=$$k/$$n result=$$result rc=$$rc) \
-	    (total_elapsed $(call t_delta_hms_ms,$$t0,$$t3)))
+	    (total_elapsed=$(call t_delta_hms_ms,$$t0,$$t3)))
 
 # stop & kill
 
@@ -289,8 +289,8 @@ status status-v:
 	    printf "source       : %s\n" "$$current_rule_src"
 	    printf "destination  : %s\n" "$$current_rule_dst"
 	    printf "progress     : $$_RED_%d/%d$$RST (%.2f%%)\n" $$k $$n $$pct
-	    printf "started at   : %s  (elapsed %s)\n" $$started_at $$elapsed
-	    printf "current rule : $$_RED_%s$$RST  (elapsed %s)\n" \
+	    printf "started at   : %s  (elapsed=%s)\n" $$started_at $$elapsed
+	    printf "current rule : $$_RED_%s$$RST  (elapsed=%s)\n" \
 	                           $$current_ruleid $$rule_elapsed
 	    printf "pids         : %s\n" "$$pids"
 	else
@@ -408,7 +408,7 @@ status status-v:
 	fi
 
 	$(call log,[$$runid] status: state=$${gstate^^} rules=$$k/$$n \
-	    (elapsed $(call t_delta_hms_ms,$$t0,$(t))))
+	    (elapsed=$(call t_delta_hms_ms,$$t0,$(t))))
 
 # report
 
@@ -491,7 +491,7 @@ report: dirs
 	} > "$$reportf"
 
 	$(call log,[$$runid] report saved to '$$reportf' \
-	    (elapsed $(call t_delta_hms_ms,$$t0,$(t))))
+	    (elapsed=$(call t_delta_hms_ms,$$t0,$(t))))
 
 # report by email
 
@@ -529,7 +529,7 @@ report-mail:
 	$(call send_report,$$runid,$$reportf,$$reportlog,$$subject)
 
 	$(call log,[$$runid] report by email to '$(mail_To)' \
-	    (elapsed $(call t_delta_hms_ms,$$t0,$(t))))
+	    (elapsed=$(call t_delta_hms_ms,$$t0,$(t))))
 
 # usage
 
@@ -558,7 +558,7 @@ usage: dirs
 	        sed 's/^/        /'
 	} >> "$$usagef"
 	$(call log,end bucket usage (excluding versions) \
-	    (elapsed $(call t_delta_hms_ms,$$t0,$(t))))
+	    (elapsed=$(call t_delta_hms_ms,$$t0,$(t))))
 
 	t0=$(t)
 	$(call log,start bucket usage (including versions) \
@@ -569,7 +569,7 @@ usage: dirs
 	        sed 's/^/        /'
 	} >> "$$usagef"
 	$(call log,end bucket usage (including versions) \
-	    (elapsed $(call t_delta_hms_ms,$$t0,$(t))))
+	    (elapsed=$(call t_delta_hms_ms,$$t0,$(t))))
 
 # logs
 

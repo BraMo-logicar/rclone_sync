@@ -263,7 +263,7 @@ trap_on_signal() {
     kv_set "$(statusf)" program_pid -
     kv_set "$(statusf)" rclone_pid -
     $(call log,[$$runid:$$ruleid] (WARN) end '$(program_name)': \
-        rc=$$rc (elapsed $$rule_elapsed_hms_ms))
+        rc=$$rc (elapsed=$$rule_elapsed_hms_ms))
 
     t0=$$(kv_get "$(statusf)" started_at_epoch)
     t3=$(t)
