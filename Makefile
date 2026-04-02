@@ -243,6 +243,7 @@ kill:
 	    done
 	    sleep 1
 	done
+	kv_set "$(statusf)" gstate idle
 	$(call log,[$$runid] kill: sent signals to rclone=$$rclone_pid \
 	    program=$$program_pid recipe_shell=$$shell_pid)
 
