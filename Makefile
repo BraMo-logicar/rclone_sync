@@ -66,10 +66,12 @@ start: dirs
 	@t0=$(t)
 	$(define_kv)
 	runid=$(t_znow)
+	subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
+	statsdir="$(stats)/$$subdir/$$runid"
 
-	mkdir "$(stats)/$$runid"
+	mkdir -p "$$statsdir"
 	[ -L "$(last)" ] && ln -fns $$(readlink "$(last)") "$(prev)"
-	ln -fns $$runid "$(last)"
+	ln -fns "$$subdir/$$runid" "$(last)"
 	ln -fns stats/last/.status data/status
 
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
@@ -108,6 +110,9 @@ start: dirs
 main:
 	@$(define_kv)
 	runid=$$(kv_get "$(statusf)" runid)
+	subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
+	statsdir="$(stats)/$$subdir/$$runid"
+
 	n=$(call count_rules,$(rules_list))
 	kv_set "$(statusf)" rules_total $$n
 	$(call log,[$$runid] loop over '$(call relpath,$(rules_list))' ($$n rules))
@@ -125,7 +130,7 @@ main:
 	    : $$((k++))
 
 	    parse_rule "$$rule"
-	    rulef="$(stats)/$$runid/$$ruleid"; > "$$rulef"
+	    rulef="$$statsdir/$$ruleid"; > "$$rulef"
 	    rule_log="$(logrun)/$$ruleid.log"
 	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
 
@@ -255,7 +260,9 @@ status status-v:
 	$(colors)
 
 	runid=$(get_runid) || exit 1
-	statusf="$(stats)/$$runid/.status"
+	subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
+	statsdir="$(stats)/$$subdir/$$runid"
+	statusf="$$statsdir/.status"
 
 	gstate=$$(kv_get "$$statusf" gstate)
 	[ -n "$$gstate" ] || gstate=idle
@@ -329,13 +336,13 @@ status status-v:
 	    if [ "$$gstate" = running ]; then
 	        mapfile -t ruleids < "$(ruleids_list)"
 	    else
-	        mapfile -t ruleids < <(ls -A "$(stats)/$$runid" | grep -vx .status)
+	        mapfile -t ruleids < <(ls -A "$$statsdir" | grep -vx .status)
 	    fi
 
 	    queue=0
 	    for ruleid in "$${ruleids[@]}"; do
 	        rule=$(call truncate,$$ruleid,$(rule_width))
-	        rulef="$(stats)/$$runid/$$ruleid"
+	        rulef="$$statsdir/$$ruleid"
 	        rstate=$(call get_rstate,$$rulef,$$gstate)
 
 	        if [ "$$rstate" = queue ]; then
@@ -419,7 +426,9 @@ report: dirs
 	$(colors)
 
 	runid=$(get_runid) || exit 1
-	statusf="$(stats)/$$runid/.status"
+	subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
+	statsdir="$(stats)/$$subdir/$$runid"
+	statusf="$$statsdir/.status"
 
 	gstate=$$(kv_get "$$statusf" gstate)
 	if [ "$$gstate" = running ]; then
@@ -431,12 +440,14 @@ report: dirs
 	    exit 0
 	fi
 
-	reportf="$(reports)/report-$$runid.txt"
+	reportsdir="$(reports)/$$subdir"
+	mkdir -p "$$reportsdir"
+	reportf="$$reportsdir/report-$$runid.txt"
 	[ -L "$(reports)/last" ] &&
 	    ln -fns $$(readlink "$(reports)/last") "$(reports)/prev"
-	ln -fns $${reportf##*/} "$(reports)/last"
+	ln -fns "$$subdir/report-$$runid.txt" "$(reports)/last"
 
-	reportlog="$(reports)/report-$$runid.log"
+	reportlog="$$reportsdir/report-$$runid.log"
 	rules_done=$$(kv_get "$$statusf" rules_done)
 	rules_total=$$(kv_get "$$statusf" rules_total)
 	elapsed=$(call t_hms_ms,$$(kv_get "$$statusf" total_elapsed))
@@ -502,9 +513,12 @@ report-mail:
 	$(colors)
 
 	runid=$(get_runid) || exit 1
-	statusf="$(stats)/$$runid/.status"
+	subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
+	statsdir="$(stats)/$$subdir/$$runid"
+	statusf="$$statsdir/.status"
 
-	reportf="$(reports)/report-$$runid.txt"
+	reportsdir="$(reports)/$$subdir"
+	reportf="$$reportsdir/report-$$runid.txt"
 	if [ ! -f "$$reportf" ]; then
 	    if [ -t 1 ]; then
 	        printf "[%s] $$_RED_report for runid '%s' does not exist$$RST: " \
@@ -515,7 +529,7 @@ report-mail:
 	    exit 0
 	fi
 
-	reportlog="$(reports)/report-$$runid.log"
+	reportlog="$$reportsdir/report-$$runid.log"
 	if [ ! -f "$$reportlog" ]; then
 	    $(call log,[$$runid] report log does not exist)
 	fi
@@ -536,7 +550,11 @@ report-mail:
 
 usage: dirs
 	@$(define_kv)
-	usagef="$(usage)/usage-$(t_znow)"; > "$$usagef"
+	ts=$(t_znow)
+	subdir="$${ts:0:4}/$${ts:0:4}.$${ts:4:2}"
+	usagedir="$(usage)/$$subdir"
+	mkdir -p "$$usagedir"
+	usagef="$$usagedir/usage-$$ts; > "$$usagef"
 
 	[ -L "$(usage)/last" ] &&
 	    ln -fns $$(readlink "$(usage)/last") "$(usage)/prev"
