@@ -551,7 +551,7 @@ report-mail:
 usage: dirs
 	@$(define_kv)
 	ts=$(t_znow)
-	subdir="$${ts:0:4}/$${ts:0:4}.$${ts:4:2}"
+	subdir=$${ts:0:4}
 	usagedir="$(usage)/$$subdir"
 	mkdir -p "$$usagedir"
 	usagef="$$usagedir/usage-$$ts; > "$$usagef"
