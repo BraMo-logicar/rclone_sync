@@ -97,7 +97,7 @@ t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 #
 # get_runid() - get and validate runid
 # usage: $(get_runid)
-#
+# caller vars: runid (r)
 
 define get_runid
 $$(
@@ -189,6 +189,7 @@ endef
 #
 # watch_rclone() - discover rclone_pid and rclone_cmd
 # usage: $(call watch_rclone,rulef,program_pid)
+# caller vars: watcher_pid (w)
 #
 
 define watch_rclone
@@ -233,6 +234,7 @@ endef
 # trap_on_signal()        - handle signals
 # usage: $(define_trap_on_signal)
 #        trap_on_signal signal rc
+# caller vars: runid (r), ruleid (r), t1 (r), rule_log (r), rulef (r)
 #
 
 define define_trap_on_signal
@@ -293,6 +295,7 @@ endef
 # parse_rule()        - parse a rule and set key=value
 # usage: $(define_parse_rule)
 #        parse_rule rule
+# caller vars: path (w), opts (w), ruleid (w), eval()
 #
 
 define define_parse_rule
@@ -406,6 +409,7 @@ endef
 #
 # get_config() - extract config params
 # usage: $(get_config)
+# caller vars: type (w), provider (w), region (w), endpoint (w)
 #
 
 define get_config
