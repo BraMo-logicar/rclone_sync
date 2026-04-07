@@ -415,9 +415,6 @@ status status-v:
 	    printf "    rules result  : ok=%d fail=%d\n" $$rc_ok $$rc_fail
 	fi
 
-	$(call log,[$$runid] status: state=$${gstate^^} rules=$$k/$$n \
-	    (elapsed=$(call t_delta_hms_ms,$$t0,$(t))))
-
 # report
 
 report: dirs
