@@ -1,7 +1,7 @@
 # Name: Makefile - Makefile for $(project)
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2026.03.25
+# Date: 2026.04.07
 
 include mk/config.mk
 include mk/lib.mk
@@ -273,7 +273,7 @@ status status-v:
 	    elapsed=$(call t_delta_hms,$$started_at_epoch,$$t0)
 
 	    current_ruleid=$$(kv_get "$$statusf" current_ruleid)
-	    rulef="$(last)/$$current_ruleid"
+	    rulef="$$statsdir/$$current_ruleid"
 	    rule_started_at_epoch=$$(kv_get "$$rulef" rule_started_at_epoch)
 	    rule_elapsed=$(call t_delta_hms,$$rule_started_at_epoch,$$t0)
 
@@ -432,7 +432,7 @@ report: dirs
 
 	$(call report_paths,$$runid)
 	mkdir -p "$$reportsdir"
-	$(call rotate_last_prev,$(last),$(prev),$$subdir/$$runid)
+	$(call rotate_last_prev,$(last),$(prev),$$subdir/report-$$runid.txt)
 
 	rules_done=$$(kv_get "$$statusf" rules_done)
 	rules_total=$$(kv_get "$$statusf" rules_total)
