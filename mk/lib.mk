@@ -1,7 +1,7 @@
 # Name: mk/lib.mk - Makefile library
 # Usage: include mk/lib.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2026.03.30
+# Date: 2026.04.07
 
 #-----
 # time
@@ -98,6 +98,7 @@ t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 # get_runid() - get and validate runid
 # usage: $(get_runid)
 # caller vars: runid (r)
+#
 
 define get_runid
 $$(
@@ -119,6 +120,48 @@ $$(
         exit 1
     fi
 )
+endef
+
+#
+# run_paths() - derive run paths from runid
+# usage: $(call run_paths,runid)
+# caller vars: subdir (w), statsdir (w), statusf (w)
+#
+
+define run_paths
+{
+    _runid=$(1)
+    subdir="$${_runid:0:4}/$${_runid:0:4}.$${_runid:4:2}"
+    statsdir="$(stats)/$$subdir/$$_runid"
+    statusf="$$statsdir/.status"
+}
+endef
+
+#
+# report_paths() - derive report paths from runid
+# usage: $(call report_paths,runid)
+# caller vars: subdir (r), reportsdir (w), reportf (w), reportlog (w)
+#
+
+define report_paths
+{
+    _runid=$(1)
+    reportsdir="$(reports)/$$subdir"
+    reportf="$$reportsdir/report-$$_runid.txt"
+    reportlog="$$reportsdir/report-$$_runid.log"
+}
+endef
+
+#
+# rotate_last_prev() - rotate last & prev symlinks
+# usage: $(call rotate_last_prev,last,prev,target)
+#
+
+define rotate_last_prev
+{
+    [ -L "$(1)" ] && ln -fns "$$(readlink "$(1)")" "$(2)"
+    ln -fns "$(3)" "$(1)"
+}
 endef
 
 #---------
@@ -646,6 +689,13 @@ else
     _RED_= _GRN_= _YEL_= _BLU_= _MAG_= _CYN_=
 fi
 endef
+
+#
+# pct() - compute percentage
+# usage: $(call pct,k,n)
+#
+
+pct = $$([ $(2) -gt 0 ] && printf "scale=2; 100*$$k/$$n" | bc || printf "0.00")
 
 #
 # relpath() - return path relative to home

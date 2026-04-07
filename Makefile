@@ -66,12 +66,10 @@ start: dirs
 	@t0=$(t)
 	$(define_kv)
 	runid=$(t_znow)
-	subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
-	statsdir="$(stats)/$$subdir/$$runid"
+	$(call run_paths,$$runid)
 
 	mkdir -p "$$statsdir"
-	[ -L "$(last)" ] && ln -fns $$(readlink "$(last)") "$(prev)"
-	ln -fns "$$subdir/$$runid" "$(last)"
+	$(call rotate_last_prev,$(last),$(prev),$$subdir/$$runid)
 	ln -fns stats/last/.status data/status
 
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
@@ -110,8 +108,7 @@ start: dirs
 main:
 	@$(define_kv)
 	runid=$$(kv_get "$(statusf)" runid)
-	subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
-	statsdir="$(stats)/$$subdir/$$runid"
+	$(call run_paths,$$runid)
 
 	n=$(call count_rules,$(rules_list))
 	kv_set "$(statusf)" rules_total $$n
@@ -132,7 +129,7 @@ main:
 	    parse_rule "$$rule"
 	    rulef="$$statsdir/$$ruleid"; > "$$rulef"
 	    rule_log="$(logrun)/$$ruleid.log"
-	    pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
+	    pct=$(call pct,$$k,$$n)
 
 	    kv_set "$$rulef" rule "$$rule"
 	    kv_set "$$rulef" ruleid $$ruleid
@@ -260,16 +257,14 @@ status status-v:
 	$(colors)
 
 	runid=$(get_runid) || exit 1
-	subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
-	statsdir="$(stats)/$$subdir/$$runid"
-	statusf="$$statsdir/.status"
+	$(call run_paths,$$runid)
 
 	gstate=$$(kv_get "$$statusf" gstate)
 	[ -n "$$gstate" ] || gstate=idle
 
 	k=$$(kv_get "$$statusf" rules_done)
 	n=$$(kv_get "$$statusf" rules_total)
-	pct=$$(echo "scale=2; 100*$$k/$$n" | bc)
+	pct=$(call pct,$$k,$$n)
 
 	if [ "$$gstate" = running ]; then
 	    t0=$(t)
@@ -423,9 +418,7 @@ report: dirs
 	$(colors)
 
 	runid=$(get_runid) || exit 1
-	subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
-	statsdir="$(stats)/$$subdir/$$runid"
-	statusf="$$statsdir/.status"
+	$(call run_paths,$$runid)
 
 	gstate=$$(kv_get "$$statusf" gstate)
 	if [ "$$gstate" = running ]; then
@@ -437,14 +430,10 @@ report: dirs
 	    exit 0
 	fi
 
-	reportsdir="$(reports)/$$subdir"
+	$(call report_paths,$$runid)
 	mkdir -p "$$reportsdir"
-	reportf="$$reportsdir/report-$$runid.txt"
-	[ -L "$(reports)/last" ] &&
-	    ln -fns $$(readlink "$(reports)/last") "$(reports)/prev"
-	ln -fns "$$subdir/report-$$runid.txt" "$(reports)/last"
+	$(call rotate_last_prev,$(last),$(prev),$$subdir/$$runid)
 
-	reportlog="$$reportsdir/report-$$runid.log"
 	rules_done=$$(kv_get "$$statusf" rules_done)
 	rules_total=$$(kv_get "$$statusf" rules_total)
 	elapsed=$(call t_hms_ms,$$(kv_get "$$statusf" total_elapsed))
@@ -510,12 +499,9 @@ report-mail:
 	$(colors)
 
 	runid=$(get_runid) || exit 1
-	subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
-	statsdir="$(stats)/$$subdir/$$runid"
-	statusf="$$statsdir/.status"
+	$(call run_paths,$$runid)
+	$(call report_paths,$$runid)
 
-	reportsdir="$(reports)/$$subdir"
-	reportf="$$reportsdir/report-$$runid.txt"
 	if [ ! -f "$$reportf" ]; then
 	    if [ -t 1 ]; then
 	        printf "[%s] $$_RED_report for runid '%s' does not exist$$RST: " \
@@ -526,7 +512,6 @@ report-mail:
 	    exit 0
 	fi
 
-	reportlog="$$reportsdir/report-$$runid.log"
 	if [ ! -f "$$reportlog" ]; then
 	    $(call log,[$$runid] report log does not exist)
 	fi
@@ -553,9 +538,7 @@ usage: dirs
 	mkdir -p "$$usagedir"
 	usagef="$$usagedir/usage-$$ts"; > "$$usagef"
 
-	[ -L "$(usage)/last" ] &&
-	    ln -fns $$(readlink "$(usage)/last") "$(usage)/prev"
-	ln -fns $${usagef##*/} "$(usage)/last"
+	$(call rotate_last_prev,$(usage)/last,$(usage)/prev,$${usagef##*/})
 
 	{
 	    printf "Bucket usage\n"
