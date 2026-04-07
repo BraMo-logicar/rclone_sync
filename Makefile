@@ -551,7 +551,7 @@ usage: dirs
 	subdir=$${ts:0:4}
 	usagedir="$(usage)/$$subdir"
 	mkdir -p "$$usagedir"
-	usagef="$$usagedir/usage-$$ts; > "$$usagef"
+	usagef="$$usagedir/usage-$$ts"; > "$$usagef"
 
 	[ -L "$(usage)/last" ] &&
 	    ln -fns $$(readlink "$(usage)/last") "$(usage)/prev"
