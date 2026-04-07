@@ -432,8 +432,6 @@ report: dirs
 
 	$(call report_paths,$$runid)
 	mkdir -p "$$reportsdir"
-	target="$$subdir/report-$$runid.txt"
-	$(call rotate_last_prev,$(reports)/last,$(reports)/prev,$$target)
 
 	rules_done=$$(kv_get "$$statusf" rules_done)
 	rules_total=$$(kv_get "$$statusf" rules_total)
