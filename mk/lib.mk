@@ -695,7 +695,7 @@ endef
 # usage: $(call pct,k,n)
 #
 
-pct = $$([ $(2) -gt 0 ] && printf "scale=2; 100*$$k/$$n" | bc || printf "0.00")
+pct = $$([ $(2) -gt 0 ] && printf "scale=2; 100*$(1)/$(2)" | bc || printf "0.00")
 
 #
 # relpath() - return path relative to home
