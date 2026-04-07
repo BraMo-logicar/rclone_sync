@@ -486,9 +486,15 @@ report: dirs
 	    printf "\n"
 	    $(MAKE) -s runid=$$runid status-v | sed -n '/^RULE/,$$p'
 	} > "$$reportf"
-
 	$(call log,[$$runid] report saved to '$$reportf' \
 	    (elapsed=$(call t_delta_hms_ms,$$t0,$(t))))
+
+	last=$$(readlink "$(last)")
+	ln -fns "$$(dirname "$$last")/report-$$(basename "$$last").txt" \
+	    "$(reports)/last"
+	prev=$$(readlink "$(prev)")
+	ln -fns "$$(dirname "$$prev")/report-$$(basename "$$prev").txt" \
+	    "$(reports)/prev"
 
 # report by email
 
