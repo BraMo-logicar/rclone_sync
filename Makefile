@@ -27,25 +27,6 @@ $(project): start main end
 
 # list
 
-list0::
-	@{
-	    if find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read -r; then
-	        printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n"
-	    fi
-	    find "$(src_root)" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" |
-	        grep -v '^nobackup$$' | sort
-	} > "$(rules_list)"
-	n=$$(wc -l < "$(rules_list)")
-	$(call log,list $$n rules from '$(src_root)' to '$(rules_list)')
-
-	$(define_parse_rule)
-	while IFS= read -r rule; do
-	    parse_rule "$$rule"
-	    printf "%s\n" $$ruleid
-	done < "$(rules_list)" > "$(ruleids_list)"
-	n=$$(wc -l < "$(ruleids_list)")
-	$(call log,list $$n ruleids from '$(src_root)' to '$(ruleids_list)')
-
 list:
 	@: > "$(rules_list)"
 	: > "$(ruleids_list)"
