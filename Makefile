@@ -47,15 +47,15 @@ list0::
 	$(call log,list $$n ruleids from '$(src_root)' to '$(ruleids_list)')
 
 list:
-	: > "$(rules_list)"
+	@: > "$(rules_list)"
 	: > "$(ruleids_list)"
 
 	if [ -f "$(exclude_list)" ]; then
 	    while IFS= read -r xpat; do
 	        case "$$xpat" in
 	            ""|\#*) continue ;;
-	            */*)    xpath+=("$$xpat")) ;;
-	            *)      xrule+=("$$xpat")) ;;
+	            */*)    xpath+=("$$xpat") ;;
+	            *)      xrule+=("$$xpat") ;;
 	        esac
 	    done < "$(exclude_list)"
 	fi
@@ -72,7 +72,7 @@ list:
 	        case "$$path" in
 	            $$xpat)
 	                skip=1
-	                $(call log,exclude rule path '$$path' by pattern '$$pat')
+	                $(call log,exclude rule path '$$path' by pattern '$$xpat')
 	                break ;;
 	        esac
 	    done
