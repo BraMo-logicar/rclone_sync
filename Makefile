@@ -581,13 +581,14 @@ usage: dirs
 	mkdir -p "$$usagedir"
 	usagef="$$usagedir/usage-$$ts"; > "$$usagef"
 
-	$(call rotate_last_prev,$(usage)/last,$(usage)/prev,$${usagef##*/})
+	target=$$subdir/$${usagef##*/}
+	$(call rotate_last_prev,$(usage)/last,$(usage)/prev,$$target)
 
 	{
 	    printf "Bucket usage\n"
 	    printf "    host   : %s\n" $(hostname)
-	    printf "    date   : %s\n" $(bucket)
-	    printf "    bucket : %s\n" $$(date +%F)
+	    printf "    date   : %s\n" $$(date +%F)
+	    printf "    bucket : %s\n" $(bucket)
 	    printf "    prefix : %s\n" "$(dst_root)"
 	} >> $$usagef
 
