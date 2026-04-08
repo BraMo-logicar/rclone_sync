@@ -60,6 +60,7 @@ rpath = $(remote):$(bucket)$(dst_root)
 
 # rules
 
+exclude_list := $(home)/etc/exclude.list
 rules_list   := $(home)/etc/rules.list
 ruleids_list := $(home)/etc/ruleids.list
 

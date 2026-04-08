@@ -27,7 +27,7 @@ $(project): start main end
 
 # list
 
-list::
+list0::
 	@{
 	    if find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read -r; then
 	        printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n"
@@ -45,6 +45,63 @@ list::
 	done < "$(rules_list)" > "$(ruleids_list)"
 	n=$$(wc -l < "$(ruleids_list)")
 	$(call log,list $$n ruleids from '$(src_root)' to '$(ruleids_list)')
+
+list:
+	: > "$(rules_list)"
+	: > "$(ruleids_list)"
+
+	if [ -f "$(exclude_list)" ]; then
+	    while IFS= read -r xpat; do
+	        case "$$xpat" in
+	            ""|\#*) continue ;;
+	            */*)    xpath+=("$$xpat")) ;;
+	            *)      xrule+=("$$xpat")) ;;
+	        esac
+	    done < "$(exclude_list)"
+	fi
+
+	if find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read -r; then
+	    printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n" \
+            >> "$(rules_list)"
+	    printf "root-files\n" >> "$(ruleids_list)"
+	fi
+
+	while IFS= read -r path; do
+	    skip=
+	    for xpat in "$${xrule[@]}"; do
+	        case "$$path" in
+	            $$xpat)
+	                skip=1
+	                $(call log,exclude rule path '$$path' by pattern '$$pat')
+	                break ;;
+	        esac
+	    done
+	    [ -n "$$skip" ] && continue
+
+	    opts=
+	    for xpat in "$${xpath[@]}"; do
+	        head=$${xpat%%/*}
+	        tail=$${xpat#*/}
+	        [ "$$head" = "$$path" ] || continue
+	        opts="$$opts --exclude '/$$tail'"
+	        $(call log,modify rule path '$$path': append option --exclude '/$$tail')
+	    done
+
+	    if [ -n "$$opts" ]; then
+	        printf "%s -- opts=\"%s\"\n" "$$path" "$${opts# }"
+	    else
+	        printf "%s\n" "$$path"
+	    fi >> "$(rules_list)"
+	    printf "%s\n" "$$path" | sed 's|/|_|g; s|[[:space:]]|_|g' \
+	        >> "$(ruleids_list)"
+	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d \
+        -printf "%f\n" | sort)
+
+	n=$$(wc -l < "$(rules_list)")
+	$(call log,list $$n rules from '$(src_root)' to '$(rules_list)')
+
+	n=$$(wc -l < "$(ruleids_list)")
+	$(call log,list $$n ruleids from '$(rules_list)' to '$(ruleids_list)')
 
 # run
 
