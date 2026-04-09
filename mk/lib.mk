@@ -670,8 +670,7 @@ endef
 # usage: $(call num3,num)
 #
 
-num3 = $$(printf '%s' "$(1)" | \
-       sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
+num3 = $$(printf '%s' "$(1)" | sed -E ":a;s/^(-?[0-9]+)([0-9]{3})/\1'\2/;ta")
 
 #------
 # email
