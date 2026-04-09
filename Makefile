@@ -34,7 +34,7 @@ list:
 	if [ -f "$(exclude_list)" ]; then
 	    while IFS= read -r xpat; do
 	        case "$$xpat" in
-	            ""|\#*) continue          ;;
+	            ""|\#*) continue ;;
 	            */*)    xpath+=("$$xpat") ;;
 	            *)      xrule+=("$$xpat") ;;
 	        esac
@@ -89,6 +89,7 @@ xlist:
 	@: > "$(ruleids_list)"
 
 	$(define_parse_rules_conf)
+	$(define_trim)
 	parse_rules_conf || exit 1
 
 	$(define_append_rule)

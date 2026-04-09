@@ -103,7 +103,7 @@ t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 define get_runid
 $$(
     case "$${runid-}" in
-        "")   runid=$$(kv_get "$(statusf)" runid)                         ;;
+        "")   runid=$$(kv_get "$(statusf)" runid) ;;
         prev) [ -L "$(prev)" ] && runid=$$(basename $$(readlink $(prev))) ;;
         last) [ -L "$(last)" ] && runid=$$(basename $$(readlink $(last))) ;;
     esac
@@ -341,18 +341,18 @@ endef
 define define_parse_rules_conf
 define_parse_rules_conf() {
     local line path key val
-    #declare -A rules_skip rules_exclude rules_ruleid rules_opt
+    #declare -A rules_skip rules_exclude rules_ruleid rules_opts
 
     [ -f "$(rules_conf)" ] || return
 
     path=
     while IFS= read -r line; do
+        line=$$(rtrim $$line)
         case "$$line" in
             ''|'#'*) continue ;;
         esac
 
-        # rtrim line ?
-        if [[ "$$line" =~ ^[^[:space:]] ]]; then
+        if [[ "$$line" != [[:space:]]* ]]; then
             path="$$line"
             [ "$$path" = "." ] && dot=1
             continue
@@ -364,10 +364,10 @@ define_parse_rules_conf() {
         val=$${val#"${val%%[![:space:]]*}"}
 
         case "$$key" in
-            skip)    rules_skip["$$path"]=1                 ;;
-            exclude) rules_exclude["$$path"]+=$$'\n'"$$val" ;;
-            ruleid)  rules_ruleid["$$path"]="$$val"         ;;
-            opts)    rules_opts["$$path"]+=$$'\n'"$$val"    ;;
+            skip)    rules_skip["$$path"]=1 ;;
+            exclude) rules_exclude["$$path"]+="$$val"$$'\n' ;;
+            ruleid)  rules_ruleid["$$path"]="$$val" ;;
+            opts)    rules_opts["$$path"]+="$$val"$$'\n' ;;
         esac
     done < "$(rules_conf)"
 }
@@ -383,7 +383,7 @@ endef
 define define_append_rule
 append_rule() {
     local path="$$1"
-    local def_ruleid ruleid opts patt opt
+    local def_ruleid ruleid opts patt opts
 
     if [ -n "$${rules_skip[$$path]:-}" ]; then
         $(call log,[$$runid] skip rule path '$$path' \
@@ -395,12 +395,13 @@ append_rule() {
         def_ruleid='root-files'
         opts='--max-depth 1'
     else
-        def_ruleid=$$(printf "%s" "$$path" | sed 's|/|_|g; s|[[:space:]]|_|g')
+        def_ruleid=$$(printf "%s" "$$path" | sed 's|[[:space:]]|_|g')
         opts=
     fi
 
     if [ -n "$${rules_exclude[$$path]:-}" ]; then
         while IFS= read -r xpat; do
+            [ -n "$$xpat ] || continue
             opts+=" --exclude '$$xpat'"
         done <<< "$${rules_exclude[$$path]}"
     fi
@@ -411,23 +412,21 @@ append_rule() {
             '$$def_ruleid' -> '$$ruleid')
     fi
 
-    if [ -n "$${rules_opt[$$path]:-}" ]; then
+    if [ -n "$${rules_opts[$$path]:-}" ]; then
         while IFS= read -r opt; do
+            [ -n "$$opt ] || continue
             opts+=" $$opt"
-        done <<< "$${rules_opt[$$path]}"
+        done <<< "$${rules_opts[$$path]}"
     fi
 
-    if [ -n "$$opts" ] || [ "$$ruleid" != "$$def_ruleid" ]; then
-        if [ -n "$$opts" ]; then
-            printf "%s -- ruleid=%s opts=\"%s\"\n" \
-                "$$path" "$$ruleid" "$${opts# }" >> "$(rules_list)"
-        else
-            printf "%s -- ruleid=%s\n" \
-                "$$path" "$$ruleid" >> "$(rules_list)"
-        fi
+    suffix=
+    [ "$$ruleid" != "$$def_ruleid" ] && suffix+="ruleid=$$ruleid"
+    [ -n "$$opts" ] && suffix+=" opts=\"$${opts# }\""
+    if [ -n "$suffix" ]; then
+        printf "%s -- %s\n" "$$path" "$$suffix"
     else
-        printf "%s\n" "$$path" >> "$(rules_list)"
-    fi
+        printf "%s\n" "$$path"
+    fi >> "$(rules_list)"
 
     printf "%s\n" "$$ruleid" >> "$(ruleids_list)"
 }
@@ -447,7 +446,7 @@ parse_rule() {
     local rule=$$1
     case "$$rule" in
         *" -- "*) path=$${rule%% -- *} opts=$${rule#* -- } ;;
-        *)        path=$$rule opts=                        ;;
+        *)        path=$$rule opts= ;;
     esac
     [ "$$path" = . ] && path=
     ruleid=$$(printf "%s" "$$path" | sed 's|/|_|g' | tr '[:space:]' '_')
@@ -811,6 +810,27 @@ random = $$(tr -dc '0-9A-Z_a-z' < /dev/urandom | head -c $(1) || true)
 #
 
 relpath = $$(printf "%s" "$(1)" | sed 's|$(home)/||')
+
+#
+# define_trim() - define ltrim() and rtrim() shell functions
+# ltrim()       - remove leading whitespace
+# rtrim()       - remove trailing whitespace
+# usage: $(define_trim)
+#        ltrim string
+#        rtrim string
+#
+
+define define_trim
+ltrim() {
+    local s="$$1"
+    printf "%s" "$${s#"$${s%%[![:space:]]*}"}"
+}
+
+rtrim() {
+    local s="$$1"
+    printf "%s" "$${s%"$${s##*[![:space:]]}"}"
+}
+endef
 
 
 # vim: ts=4
