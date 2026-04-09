@@ -43,7 +43,7 @@ list:
 
 	if find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read -r; then
 	    printf '. -- ruleid=root-files opts="--max-depth 1"\n' \
-            >> "$(rules_list)"
+	        >> "$(rules_list)"
 	    printf 'root-files\n' >> "$(ruleids_list)"
 	fi
 
@@ -76,7 +76,7 @@ list:
 	    printf '%s\n' "$$path" | sed 's|/|_|g;s|[[:space:]]|_|g' \
 	        >> "$(ruleids_list)"
 	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d \
-        -printf '%f\n' | sort)
+	    -printf '%f\n' | sort)
 
 	n=$$(wc -l < "$(rules_list)")
 	$(call log,list $$n rules from '$(src_root)' to '$(rules_list)')
@@ -97,7 +97,7 @@ xlist:
 	while IFS= read -r path; do
 	    append_rule "$$path"
 	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d \
-        -printf '%f\n' | sort)
+	    -printf '%f\n' | sort)
 
 # run
 
@@ -272,7 +272,7 @@ stop:
 	runid=$$(kv_get "$(statusf)" runid)
 	{
 	    printf '[%s] graceful stop requested (runid=%s): ' \
-            "$(project)" "$$runid"
+	        "$(project)" "$$runid"
 	    printf 'exit after current rule\n'
 	} >&2
 	> "$(stop_flag)"
@@ -346,7 +346,7 @@ status status-v:
 	    printf "source       : %s\n" "$$current_rule_src"
 	    printf "destination  : %s\n" "$$current_rule_dst"
 	    printf "progress     : $$_RED_%d/%d$$RST (%.2f%%)\n" \
-                               "$$k" "$$n" "$$pct"
+	                           "$$k" "$$n" "$$pct"
 	    printf "started at   : %s  (elapsed=%s)\n" "$$started_at" "$$elapsed"
 	    printf "current rule : $$_RED_%s$$RST  (elapsed=%s)\n" \
 	                           "$$current_ruleid" "$$rule_elapsed"
@@ -377,7 +377,7 @@ status status-v:
 
 	    printf "$$BLD$$fmt$$RST\n" \
 	        "RULE" "STATE" "START" "END" "ELAPSED" \
-            "CHECKS" "XFER" "XFER_MiB" "DEL" "RC"
+	        "CHECKS" "XFER" "XFER_MiB" "DEL" "RC"
 
 	    sum_checks=0
 	    sum_xfer=0 sum_xfer_new=0 sum_xfer_replaced=0 sum_xfer_mib=0
@@ -413,7 +413,7 @@ status status-v:
 	            elapsed=$(call t_hms_colon,$(call \
 	                t_delta,$$rule_started_at_epoch,$(t)))
 	            printf "$$fmt_run\n" "$$rule" "$$rstate" \
-                    "$$start" "$$end" "$$elapsed"
+	                "$$start" "$$end" "$$elapsed"
 	        else
 	            rule_elapsed=$$(kv_get "$$rulef" rule_elapsed)
 	            if [ -n "$$rule_elapsed" ]; then
@@ -448,7 +448,7 @@ status status-v:
 
 	    if [ "$$queue" -gt "$(rule_queue)" ]; then
 	        printf '(+%d more rules remaining)\n' \
-                "$$((queue - $(rule_queue)))"
+	            "$$((queue - $(rule_queue)))"
 	    fi
 
 	    printf "\n$$BLD%s$$RST\n" "SUMMARY"

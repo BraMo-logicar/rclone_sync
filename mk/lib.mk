@@ -207,7 +207,7 @@ endef
 define get_config
 {
     type= provider= region= endpoint=
-	while read -r k _ v; do
+    while read -r k _ v; do
         case "$$k" in
             type)     type=$$v     ;;
             provider) provider=$$v ;;
@@ -378,7 +378,7 @@ endef
 
 define get_command_by_pid
 $$(
-	pid="$(1)"
+    pid="$(1)"
     mapfile -d '' -t argv < /proc/$$pid/cmdline
     printf -v cmd '%s ' "$${argv[@]}"
     printf '%s' "$${cmd% }"
@@ -479,7 +479,7 @@ trap_on_signal() {
     k=$$(kv_get "$(statusf)" rules_done)
     n=$$(kv_get "$(statusf)" rules_total)
     $(call log,[$$runid] end '$(project)' \
-	    (rules=$$k/$$n result=$$result rc=$$rc \
+        (rules=$$k/$$n result=$$result rc=$$rc \
         total_elapsed=$(call t_delta_hms_ms,$$t0,$$t3)))
     exit $$rc
 }
@@ -670,7 +670,7 @@ endef
 # usage: $(call num3,num)
 #
 
-num3 = $$(printf '%s' "$(1)" |
+num3 = $$(printf '%s' "$(1)" | \
        sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
 
 #------
