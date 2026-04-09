@@ -73,7 +73,7 @@ list:
 	    else
 	        printf '%s\n' "$$path"
 	    fi >> "$(rules_list)"
-	    printf '%s\n' "$$path" | sed 's|/|_|g; s|[[:space:]]|_|g' \
+	    printf '%s\n' "$$path" | sed 's|/|_|g;s|[[:space:]]|_|g' \
 	        >> "$(ruleids_list)"
 	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d \
         -printf '%f\n' | sort)
@@ -271,7 +271,8 @@ stop:
 	@$(define_kv)
 	runid=$$(kv_get "$(statusf)" runid)
 	{
-	    printf '[%s] graceful stop requested (runid=%s): ' $(project) $$runid
+	    printf '[%s] graceful stop requested (runid=%s): ' \
+            "$(project)" "$$runid"
 	    printf 'exit after current rule\n'
 	} >&2
 	> "$(stop_flag)"
@@ -285,14 +286,14 @@ kill:
 	program_pid=$$(kv_get "$(statusf)" program_pid)
 	rclone_pid=$$(kv_get "$(statusf)" rclone_pid)
 	printf '[%s] global kill requested (%s=%d %s=%d %s=%d)\n' \
-	    $(project) recipe_shell $$shell_pid \
-	    program $$program_pid rclone $$rclone_pid >&2
+	    "$(project)" "recipe_shell" "$$shell_pid" \
+	    "program" "$$program_pid" "rclone" "$$rclone_pid" >&2
 	$(call log,[$$runid] kill requested (recipe_shell=$$shell_pid \
 	    program=$$program_pid rclone=$$rclone_pid))
 	for sig in INT TERM KILL; do
 	    for pid in $$rclone_pid $$program_pid $$shell_pid; do
 	         if kill -0 $$pid 2>/dev/null; then
-	             printf '  send SIG%s to %d\n' $$sig $$pid >&2
+	             printf '  send SIG%s to %d\n' "$$sig" "$$pid" >&2
 	             kill -s $$sig $$pid 2>/dev/null || true
 	         fi
 	    done
@@ -319,7 +320,7 @@ status status-v:
 	n=$$(kv_get "$$statusf" rules_total)
 	pct=$(call pct,$$k,$$n)
 
-	if [ "$$gstate" = running ]; then
+	if [ "$$gstate" = "running" ]; then
 	    t0=$(t)
 	    started_at_epoch=$$(kv_get "$$statusf" started_at_epoch)
 	    started_at=$$(kv_get "$$statusf" started_at)
@@ -340,14 +341,15 @@ status status-v:
 	    pids="make=$${make_pid:--} shell=$${shell_pid:--} "
 	    pids+="rclone_sync=$${program_pid:--} rclone=$${rclone_pid:--}"
 
-	    printf "state        : $$_RED_%s$$RST\n" $${gstate^^}
-	    printf "runid        : %s\n" $$runid
+	    printf "state        : $$_RED_%s$$RST\n" "$${gstate^^}"
+	    printf "runid        : %s\n" "$$runid"
 	    printf "source       : %s\n" "$$current_rule_src"
 	    printf "destination  : %s\n" "$$current_rule_dst"
-	    printf "progress     : $$_RED_%d/%d$$RST (%.2f%%)\n" $$k $$n $$pct
-	    printf "started at   : %s  (elapsed=%s)\n" $$started_at $$elapsed
+	    printf "progress     : $$_RED_%d/%d$$RST (%.2f%%)\n" \
+                               "$$k" "$$n" "$$pct"
+	    printf "started at   : %s  (elapsed=%s)\n" "$$started_at" "$$elapsed"
 	    printf "current rule : $$_RED_%s$$RST  (elapsed=%s)\n" \
-	                           $$current_ruleid $$rule_elapsed
+	                           "$$current_ruleid" "$$rule_elapsed"
 	    printf "pids         : %s\n" "$$pids"
 	else
 	    result=$$(kv_get "$$statusf" result)
@@ -355,18 +357,18 @@ status status-v:
 	    ended_at=$$(kv_get "$$statusf" ended_at)
 	    elapsed=$(call t_hms,$$(kv_get "$$statusf" total_elapsed))
 
-	    printf "state       : $$_RED_%s$$RST\n" $${gstate^^}
-	    printf "result      : $$_RED_%s$$RST\n" $$result
-	    printf "runid       : %s\n" $$runid
+	    printf "state       : $$_RED_%s$$RST\n" "$${gstate^^}"
+	    printf "result      : $$_RED_%s$$RST\n" "$$result"
+	    printf "runid       : %s\n" "$$runid"
 	    printf "source      : %s\n" "$(lpath)"
 	    printf "destination : %s\n" "$(rpath)"
-	    printf "rules       : $$_RED_%d/%d$$RST\n" $$k $$n
-	    printf "started at  : %s\n" $$started_at
-	    printf "ended at    : %s\n" $$ended_at
-	    printf "elapsed     : %s\n" $$elapsed
+	    printf "rules       : $$_RED_%d/%d$$RST\n" "$$k" "$$n"
+	    printf "started at  : %s\n" "$$started_at"
+	    printf "ended at    : %s\n" "$$ended_at"
+	    printf "elapsed     : %s\n" "$$elapsed"
 	fi
 
-	if [ $@ = status-v ]; then
+	if [ "$@" = "status-v" ]; then
 	    printf '\n'
 	    w1=$$(($(rule_width)+1))
 	    fmt="%-$${w1}s  %-5s  %-8s  %-8s  %-8s  %8s  %8s  %10s  %6s  %3s"
@@ -374,14 +376,15 @@ status status-v:
 	    fmt_run="$$_RED_%-$${w1}s  %-5s  %-8s  %-8s  %-8s$$RST"
 
 	    printf "$$BLD$$fmt$$RST\n" \
-	        RULE STATE START END ELAPSED CHECKS XFER XFER_MiB DEL RC
+	        "RULE" "STATE" "START" "END" "ELAPSED" \
+            "CHECKS" "XFER" "XFER_MiB" "DEL" "RC"
 
 	    sum_checks=0
 	    sum_xfer=0 sum_xfer_new=0 sum_xfer_replaced=0 sum_xfer_mib=0
 	    sum_del=0 sum_elapsed=0
 	    rc_ok=0 rc_fail=0
 
-	    if [ "$$gstate" = running ]; then
+	    if [ "$$gstate" = "running" ]; then
 	        mapfile -t ruleids < "$(ruleids_list)"
 	    else
 	        mapfile -t ruleids < <(ls -A "$$statsdir" | grep -vx .status)
@@ -393,10 +396,10 @@ status status-v:
 	        rulef="$$statsdir/$$ruleid"
 	        rstate=$(call get_rstate,$$rulef,$$gstate)
 
-	        if [ "$$rstate" = queue ]; then
+	        if [ "$$rstate" = "queue" ]; then
 	            : $$((queue++))
 	            if [ "$$queue" -le "$(rule_queue)" ]; then
-	                printf "$$fmt_queue\n" $$rule queue
+	                printf "$$fmt_queue\n" "$$rule" "queue"
 	            fi
 	            continue
 	        fi
@@ -404,12 +407,13 @@ status status-v:
 	        start=$$(kv_get "$$rulef" rule_started_at); start=$${start#*-}
 	        end=$$(kv_get "$$rulef" rule_ended_at); end=$${end#*-}
 
-	        if [ "$$rstate" = run ]; then
+	        if [ "$$rstate" = "run" ]; then
 	            rule_started_at_epoch=$$(kv_get "$$rulef" \
 	                rule_started_at_epoch)
 	            elapsed=$(call t_hms_colon,$(call \
 	                t_delta,$$rule_started_at_epoch,$(t)))
-	            printf "$$fmt_run\n" $$rule $$rstate $$start "$$end" $$elapsed
+	            printf "$$fmt_run\n" "$$rule" "$$rstate" \
+                    "$$start" "$$end" "$$elapsed"
 	        else
 	            rule_elapsed=$$(kv_get "$$rulef" rule_elapsed)
 	            if [ -n "$$rule_elapsed" ]; then
@@ -436,31 +440,32 @@ status status-v:
 	            sum_elapsed=$$(echo "$$sum_elapsed+$${rule_elapsed:=0}" | bc)
 	            [ "$$rc" = 0 ] && : $$((rc_ok++)) || : $$((rc_fail++))
 
-	            printf "$$fmt\n" $$rule $$rstate $$start "$$end" \
-	                $$elapsed "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc"
+	            printf "$$fmt\n" "$$rule" "$$rstate" "$$start" "$$end" \
+	                "$$elapsed" "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc"
 	        fi
 	    done
 
 	    if [ "$$queue" -gt "$(rule_queue)" ]; then
-	        printf '(+%d more rules remaining)\n' $$((queue - $(rule_queue)))
+	        printf '(+%d more rules remaining)\n' \
+                "$$((queue - $(rule_queue)))"
 	    fi
 
-	    printf "\n$$BLD%s$$RST\n" SUMMARY
+	    printf "\n$$BLD%s$$RST\n" "SUMMARY"
 
-	    if [ "$$gstate" = running ]; then
+	    if [ "$$gstate" = "running" ]; then
 	        printf "    rules         : $$_RED_%d/%d$$RST (%.2f%%)\n" \
-	            $$k $$n $$pct
+	            "$$k" "$$n" "$$pct"
 	    else
-	        printf "    rules         : $$_RED_%d/%d$$RST\n" $$k $$n
+	        printf "    rules         : $$_RED_%d/%d$$RST\n" "$$k" "$$n"
 	    fi
-	    printf "    checks        : %s\n" $(call num3,$$sum_checks)
-	    printf "    xfer          : %s\n" $(call num3,$$sum_xfer)
-	    printf "      new         : %s\n" $(call num3,$$sum_xfer_new)
-	    printf "      replaced    : %s\n" $(call num3,$$sum_xfer_replaced)
+	    printf "    checks        : %s\n" "$(call num3,$$sum_checks)"
+	    printf "    xfer          : %s\n" "$(call num3,$$sum_xfer)"
+	    printf "      new         : %s\n" "$(call num3,$$sum_xfer_new)"
+	    printf "      replaced    : %s\n" "$(call num3,$$sum_xfer_replaced)"
 	    printf "    xfer size     : %s\n" "$(call mib2iec,$$sum_xfer_mib)"
-	    printf "    deleted       : %s\n" $(call num3,$$sum_del)
-	    printf "    rules elapsed : %s\n" $(call t_hms,$$sum_elapsed)
-	    printf "    rules result  : ok=%d fail=%d\n" $$rc_ok $$rc_fail
+	    printf "    deleted       : %s\n" "$(call num3,$$sum_del)"
+	    printf "    rules elapsed : %s\n" "$(call t_hms,$$sum_elapsed)"
+	    printf "    rules result  : ok=%d fail=%d\n" "$$rc_ok" "$$rc_fail"
 	fi
 
 # report
@@ -474,10 +479,10 @@ report: dirs
 	$(call run_paths,$$runid)
 
 	gstate=$$(kv_get "$$statusf" gstate)
-	if [ "$$gstate" = running ]; then
+	if [ "$$gstate" = "running" ]; then
 	    if [ -t 1 ]; then
 	        printf "[%s] $$_RED_%s is running$$RST: report skipped\n" \
-	            $(project) $(project)
+	            "$(project)" "$(project)"
 	    fi
 	    $(call log,[$$runid] $(project) is running: report skipped)
 	    exit 0
@@ -491,7 +496,7 @@ report: dirs
 	elapsed=$(call t_hms_ms,$$(kv_get "$$statusf" total_elapsed))
 
 	{
-	    printf '%s @ %s (%s)\n' $(project) $(hostname) $$runid
+	    printf '%s @ %s (%s)\n' "$(project)" "$(hostname)" "$$runid"
 	    printf '\n"
 	    printf 'runid : %s\n' "$$runid"
 	    printf 'rules : %s\n' "$$rules_done/$$rules_total"
@@ -514,16 +519,16 @@ report: dirs
 
 	$(get_config)
 	{
-	    printf '%s @ %s (%s)\n' $(project) $(hostname) $$runid
+	    printf '%s @ %s (%s)\n' "$(project)" "$(hostname)" "$$runid"
 	    printf '\n'
-	    printf 'program     : %s (v%s)\n' "$(program_name)" $(version)
+	    printf 'program     : %s (v%s)\n' "$(program_name)" "$(version)"
 	    printf 'host        : %s\n' "$(hostname) ($(ip))"
 	    printf 'runid       : %s\n' "$$runid"
 	    printf '\n'
-	    [ -n "$${type-}" ]     && printf 'type        : %s\n' $$type
-	    [ -n "$${provider-}" ] && printf 'provider    : %s\n' $$provider
-	    [ -n "$${region-}" ]   && printf 'region      : %s\n' $$region
-	    [ -n "$${endpoint-}" ] && printf 'endpoint    : %s\n' $$endpoint
+	    [ -n "$${type-}" ]     && printf 'type        : %s\n' "$$type"
+	    [ -n "$${provider-}" ] && printf 'provider    : %s\n' "$$provider"
+	    [ -n "$${region-}" ]   && printf 'region      : %s\n' "$$region"
+	    [ -n "$${endpoint-}" ] && printf 'endpoint    : %s\n' "$$endpoint"
 	    printf '\n'
 	    printf 'source      : %s\n' "$(lpath)"
 	    printf 'destination : %s\n' "$(rpath)"
@@ -563,7 +568,7 @@ report-mail:
 	if [ ! -f "$$reportf" ]; then
 	    if [ -t 1 ]; then
 	        printf "[%s] $$_RED_report for runid '%s' does not exist$$RST: " \
-	            $(project) $$runid
+	            "$(project)" "$$runid"
 	        printf "report-mail skipped\n"
 	    fi
 	    $(call log,[$$runid] report does not exist: report-mail skipped)
@@ -578,8 +583,8 @@ report-mail:
 	rules_total=$$(kv_get "$$statusf" rules_total)
 
 	subject=$$(printf '[%s@%s] rclone sync to %s:%s (runid=%s rules=%s/%s)' \
-	    $(project) $(host) $(remote) $(bucket) $$runid \
-	    $$rules_done $$rules_total)
+	    "$(project)" "$(host)" "$(remote)" "$(bucket)" "$$runid" \
+	    "$$rules_done" "$$rules_total)"
 
 	$(call send_report,$$runid,$$reportf,$$reportlog,$$subject)
 
@@ -601,9 +606,9 @@ usage: dirs
 
 	{
 	    printf 'Bucket usage\n'
-	    printf '    host   : %s\n' $(hostname)
-	    printf '    date   : %s\n' $$(date +%F)
-	    printf '    bucket : %s\n' $(bucket)
+	    printf '    host   : %s\n' "$(hostname)"
+	    printf '    date   : %s\n' "$$(date +%F)"
+	    printf '    bucket : %s\n' "$(bucket)"
 	    printf '    prefix : %s\n' "$(dst_root)"
 	} >> $$usagef
 

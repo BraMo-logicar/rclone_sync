@@ -103,18 +103,18 @@ t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 define get_runid
 $$(
     case "$${runid-}" in
-        "")   runid=$$(kv_get "$(statusf)" runid) ;;
+        '')   runid=$$(kv_get "$(statusf)" runid) ;;
         prev) [ -L "$(prev)" ] && runid=$$(basename $$(readlink $(prev))) ;;
         last) [ -L "$(last)" ] && runid=$$(basename $$(readlink $(last))) ;;
     esac
 
     subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
     if [ -d "$(stats)/$$subdir/$$runid" ]; then
-        printf '%s' $$runid
+        printf '%s' "$$runid"
     else
         if [ -t 2 ]; then
             printf "[%s] $${_RED_}invalid runid '%s'$$RST\n" \
-                $(project) $$runid >&2
+                "$(project)" "$$runid" >&2
         fi
         $(call log,[$$runid] invalid runid)
         exit 1
@@ -184,7 +184,7 @@ kv_set() {
     if grep -q "^$$k:" "$$f"; then
         sed -Ei "s|^$$k:.*|$$k: $$v|" "$$f"
     else
-        printf '%s: %s\n' $$k "$$v" >> "$$f"
+        printf '%s: %s\n' "$$k" "$$v" >> "$$f"
     fi
 }
 
@@ -261,7 +261,7 @@ define stop_guard
 {
     if [ -f "$(stop_flag)" ]; then
         printf '[%s] stop flag found: exit after current rule \
-            (runid=%s ruleid=%s)\n' $(project) $(1) $(2) >&2
+            (runid=%s ruleid=%s)\n' "$(project)" "$(1)" "$(2)" >&2
         rm -f "$(stop_flag)"
         $(call log,[$(1):$(2)] stop flag found: exit after current rule)
         kv_set "$(statusf)" gstate idle
@@ -445,11 +445,11 @@ define define_parse_rule
 parse_rule() {
     local rule=$$1
     case "$$rule" in
-        *" -- "*) path=$${rule%% -- *} opts=$${rule#* -- } ;;
+        *' -- '*) path=$${rule%% -- *} opts=$${rule#* -- } ;;
         *)        path=$$rule opts= ;;
     esac
-    [ "$$path" = . ] && path=
-    ruleid=$$(printf '%s' "$$path" | sed 's|/|_|g' | tr '[:space:]' '_')
+    [ "$$path" = "." ] && path=
+    ruleid=$$(printf '%s' "$$path" | sed 's|/|_|g;s|[[:space:]]|_|g')
     set -f; eval "$$opts"; set +f
 }
 endef
@@ -489,13 +489,13 @@ awk '
     /^Elapsed time:/                 { elapsed = $$3 }
 
     END {
-        printf 'rclone_checks %s\n',           checks
-        printf 'rclone_transferred %s\n',      xfer
-        printf 'rclone_transferred_size %s\n', xfer_size
-        printf 'rclone_copied_new %d\n',       xfer_new
-        printf 'rclone_copied_replaced %d\n',  xfer_replaced
-        printf 'rclone_deleted %d\n',          deleted
-        printf 'rclone_elapsed %s\n',          elapsed
+        printf "rclone_checks %s\n",           checks
+        printf "rclone_transferred %s\n",      xfer
+        printf "rclone_transferred_size %s\n", xfer_size
+        printf "rclone_copied_new %d\n",       xfer_new
+        printf "rclone_copied_replaced %d\n",  xfer_replaced
+        printf "rclone_deleted %d\n",          deleted
+        printf "rclone_elapsed %s\n",          elapsed
     }
 ' "$(1)"
 endef
@@ -537,7 +537,7 @@ $$(
         printf 'queue'
     elif rc=$$(kv_get "$$rulef" rc); [ -n "$$rc" ]; then
         printf 'done'
-    elif [ "$$gstate" = running ]; then
+    elif [ "$$gstate" = "running" ]; then
         printf 'run'
     else
         printf 'fail'
@@ -588,9 +588,9 @@ log = printf '%s [%s(%s):%d] %s\n' $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 define append_rule_log
 {
-    printf -- '-- begin rclone log (runid=%s ruleid=%s) --\n' $(1) $(2)
+    printf -- '-- begin rclone log (runid=%s ruleid=%s) --\n' "$(1)" "$(2)"
     sed '$${/^$$/d}' "$(3)"
-    printf -- '-- end rclone log (runid=%s ruleid=%s) --\n' $(1) $(2)
+    printf -- '-- end rclone log (runid=%s ruleid=%s) --\n' "$(1)" "$(2)"
 } >> "$(logf)"
 endef
 
@@ -669,7 +669,8 @@ endef
 # usage: $(call num3,num)
 #
 
-num3 = $$(printf '%s' $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
+num3 = $$(printf '%s' "$(1)" |
+       sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
 
 #------
 # email
@@ -691,8 +692,8 @@ define send_report
     printf 'Subject: %s\n' "$$subject"
     printf 'MIME-Version: 1.0\n'
     printf 'Content-Type: multipart/mixed; boundary="%s"\n' "$$boundary"
-    printf 'Rclone-Sync-Project: %s (v%s)\n' $(project) $(version)
-    printf 'Rclone-Version: %s\n' $(rclone_ver)
+    printf 'Rclone-Sync-Project: %s (v%s)\n' "$(project)" "$(version)"
+    printf 'Rclone-Version: %s\n' "$(rclone_ver)"
     printf '\n'
 
     printf -- '--%s\n' "$$boundary"
@@ -722,7 +723,7 @@ define send_report
             printf '\n'
             printf 'log attachment skipped: \
                 log size (%d bytes) exceeds limit (%s)\n' \
-                $$log_size $(mail_log_gz_max)
+                "$$log_size" "$(mail_log_gz_max)"
             $(call log,[$$runid] log attachment: skip file '$$reportlog' \
                 (size=$$log_size > limit=$(mail_log_gz_max)))
         fi
