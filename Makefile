@@ -84,6 +84,10 @@ list:
 	n=$$(wc -l < "$(ruleids_list)")
 	$(call log,list $$n ruleids from '$(rules_list)' to '$(ruleids_list)')
 
+xlist:
+	@: > "$(rules_list)"
+	@: > "$(ruleids_list)"
+
 # run
 
 run:
