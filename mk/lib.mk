@@ -103,7 +103,7 @@ t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 define get_runid
 $$(
     case "$${runid-}" in
-        "")   runid=$$(kv_get "$(statusf)" runid) ;;
+        "")   runid=$$(kv_get "$(statusf)" runid)                         ;;
         prev) [ -L "$(prev)" ] && runid=$$(basename $$(readlink $(prev))) ;;
         last) [ -L "$(last)" ] && runid=$$(basename $$(readlink $(last))) ;;
     esac
@@ -337,31 +337,26 @@ endef
 # parse_rules_conf()        - load rules config
 # usage: $(define_parse_rules_conf)
 #        parse_rules_conf
-# caller vars: ...
+
 define define_parse_rules_conf
 define_parse_rules_conf() {
     local line path key val
-
     #declare -A rules_skip rules_exclude rules_ruleid rules_opt
+
+    [ -f "$(rules_conf)" ] || return
+
     path=
-
-    [ -f "$(rules_conf)" ] || return 0
-
     while IFS= read -r line; do
         case "$$line" in
             ''|'#'*) continue ;;
         esac
 
+        # rtrim line ?
         if [[ "$$line" =~ ^[^[:space:]] ]]; then
             path="$$line"
             [ "$$path" = "." ] && dot=1
             continue
         fi
-
-        [ -n "$$path" ] || {
-            $(call log,invalid $(rules_conf): directive without path: '$$line')
-            return 1
-        }
 
         line=$${line#"${line%%[![:space:]]*}"}
         key=$${line%%[[:space:]]*}
@@ -369,100 +364,75 @@ define_parse_rules_conf() {
         val=$${val#"${val%%[![:space:]]*}"}
 
         case "$$key" in
-            skip)
-                rules_skip["$$path"]=1
-                ;;
-            ruleid)
-                [ -n "$$val" ] || {
-                    $(call log,invalid $(rules_conf): missing ruleid for path '$$path')
-                    return 1
-                }
-                rules_ruleid["$$path"]="$$val"
-                ;;
-            exclude)
-                [ -n "$$val" ] || {
-                    $(call log,invalid $(rules_conf): missing exclude pattern for path '$$path')
-                    return 1
-                }
-                rules_exclude["$$path"]+=$$'\n'"$$val"
-                ;;
-            opt)
-                [ -n "$$val" ] || {
-                    $(call log,invalid $(rules_conf): missing opt value for path '$$path')
-                    return 1
-                }
-                rules_opt["$$path"]+=$$'\n'"$$val"
-                ;;
-            *)
-                $(call log,invalid $(rules_conf): unknown directive '$$key' for path '$$path')
-                return 1
-                ;;
+            skip)    rules_skip["$$path"]=1                 ;;
+            exclude) rules_exclude["$$path"]+=$$'\n'"$$val" ;;
+            ruleid)  rules_ruleid["$$path"]="$$val"         ;;
+            opts)    rules_opts["$$path"]+=$$'\n'"$$val"    ;;
         esac
     done < "$(rules_conf)"
 }
 endef
 
+
 # define_append_rule() - define append_rule() shell function
 # append_rule()        - build rule/ruleid and append to {rules,ruleids}_list
 # usage: $(define_append_rule)
 #        append_rule path
-# caller vars: ...
+# caller vars: runid (r)
 
 define define_append_rule
 append_rule() {
     local path="$$1"
-    local default_ruleid ruleid opts patt opt
+    local def_ruleid ruleid opts patt opt
 
-    [ -n "$${rules_skip[$$path]:-}" ] && {
-        $(call log,skip rule path '$$path' by $(rules_conf))
+    if [ -n "$${rules_skip[$$path]:-}" ]; then
+        $(call log,[$$runid] skip rule path '$$path' \
+            by '$(call relpath,$(rules_conf))')
         return 0
-    }
+    fi
 
-#    if [ "$$path" = "." ]; then
-#        default_ruleid=root-files
-#        opts="--max-depth 1"
-#    else
-#        default_ruleid=$$(printf "%s" "$$path" | sed 's|/|_|g; s|[[:space:]]|_|g')
-#        opts=
-#    fi
-#
-#    ruleid=$${rules_ruleid[$$path]:-$$default_ruleid}
-#
-#    if [ -n "$${rules_exclude[$$path]:-}" ]; then
-#        while IFS= read -r pat; do
-#            [ -n "$$pat" ] || continue
-#            if [ "$$path" = "." ]; then
-#                opts+=" --exclude '$$pat'"
-#            else
-#                opts+=" --exclude '/$$pat'"
-#            fi
-#            $(call log,modify rule path '$$path': append option --exclude '$$pat')
-#        done <<< "$${rules_exclude[$$path]}"
-#    fi
-#
-#    if [ -n "$${rules_opt[$$path]:-}" ]; then
-#        while IFS= read -r opt; do
-#            [ -n "$$opt" ] || continue
-#            opts+=" $$opt"
-#            $(call log,modify rule path '$$path': append option $$opt)
-#        done <<< "$${rules_opt[$$path]}"
-#    fi
-#
-#    if [ -n "$$opts" ] || [ "$$ruleid" != "$$default_ruleid" ]; then
-#        if [ -n "$$opts" ]; then
-#            printf "%s -- ruleid=%s opts=\"%s\"\n" \
-#                "$$path" "$$ruleid" "$${opts# }" >> "$(rules_list)"
-#        else
-#            printf "%s -- ruleid=%s\n" \
-#                "$$path" "$$ruleid" >> "$(rules_list)"
-#        fi
-#    else
-#        printf "%s\n" "$$path" >> "$(rules_list)"
-#    fi
-#
-#    printf "%s\n" "$$ruleid" >> "$(ruleids_list)"
+    if [ "$$path" = "." ]; then
+        def_ruleid='root-files'
+        opts='--max-depth 1'
+    else
+        def_ruleid=$$(printf "%s" "$$path" | sed 's|/|_|g; s|[[:space:]]|_|g')
+        opts=
+    fi
+
+    if [ -n "$${rules_exclude[$$path]:-}" ]; then
+        while IFS= read -r xpat; do
+            opts+=" --exclude '$$xpat'"
+        done <<< "$${rules_exclude[$$path]}"
+    fi
+
+    ruleid=$${rules_ruleid[$$path]:-$$def_ruleid}
+    if [ "$$ruleid" != "$$def_ruleid" ]; then
+        $(call log,[$$runid] override ruleid for rule path '$$path': \
+            '$$def_ruleid' -> '$$ruleid')
+    fi
+
+    if [ -n "$${rules_opt[$$path]:-}" ]; then
+        while IFS= read -r opt; do
+            opts+=" $$opt"
+        done <<< "$${rules_opt[$$path]}"
+    fi
+
+    if [ -n "$$opts" ] || [ "$$ruleid" != "$$def_ruleid" ]; then
+        if [ -n "$$opts" ]; then
+            printf "%s -- ruleid=%s opts=\"%s\"\n" \
+                "$$path" "$$ruleid" "$${opts# }" >> "$(rules_list)"
+        else
+            printf "%s -- ruleid=%s\n" \
+                "$$path" "$$ruleid" >> "$(rules_list)"
+        fi
+    else
+        printf "%s\n" "$$path" >> "$(rules_list)"
+    fi
+
+    printf "%s\n" "$$ruleid" >> "$(ruleids_list)"
 }
 endef
+
 
 #
 # define_parse_rule() - define parse_rule() shell function
@@ -477,7 +447,7 @@ parse_rule() {
     local rule=$$1
     case "$$rule" in
         *" -- "*) path=$${rule%% -- *} opts=$${rule#* -- } ;;
-        *)        path=$$rule opts= ;;
+        *)        path=$$rule opts=                        ;;
     esac
     [ "$$path" = . ] && path=
     ruleid=$$(printf "%s" "$$path" | sed 's|/|_|g' | tr '[:space:]' '_')

@@ -34,7 +34,7 @@ list:
 	if [ -f "$(exclude_list)" ]; then
 	    while IFS= read -r xpat; do
 	        case "$$xpat" in
-	            ""|\#*) continue ;;
+	            ""|\#*) continue          ;;
 	            */*)    xpath+=("$$xpat") ;;
 	            *)      xrule+=("$$xpat") ;;
 	        esac
@@ -87,6 +87,15 @@ list:
 xlist:
 	@: > "$(rules_list)"
 	@: > "$(ruleids_list)"
+
+	$(define_parse_rules_conf)
+	parse_rules_conf || exit 1
+
+	$(define_append_rule)
+	[ -n "$${rules_seen[.]:-}" ] && append_rule .
+	while IFS= read -r path; do
+	    append_rule "$$path"
+	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d -printf "%f\n")
 
 # run
 
