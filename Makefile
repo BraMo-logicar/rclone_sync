@@ -104,7 +104,7 @@ xlist:
 run:
 	@start_rc=0 main_rc=0
 	$(MAKE) -s start || start_rc=$$?
-	[ $$start_rc -eq 0 ] && { $(MAKE) -s main || main_rc=$$?; }
+	[ "$$start_rc" -eq 0 ] && { $(MAKE) -s main || main_rc=$$?; }
 	$(MAKE) -s end main_rc=$$main_rc
 	exit $$main_rc
 
@@ -129,15 +129,15 @@ start: dirs
 
 	> "$(statusf)"
 	kv_set "$(statusf)" gstate running
-	kv_set "$(statusf)" runid $$runid
-	kv_set "$(statusf)" started_at_epoch $$t0
-	kv_set "$(statusf)" started_at $(call at,$$t0)
+	kv_set "$(statusf)" runid "$$runid"
+	kv_set "$(statusf)" started_at_epoch "$$t0"
+	kv_set "$(statusf)" started_at "$(call at,$$t0)"
 	kv_set "$(statusf)" rules_done 0
 	kv_set "$(statusf)" rules_total 42
 	kv_set "$(statusf)" current_ruleid -
 	kv_set "$(statusf)" current_rule_src -
 	kv_set "$(statusf)" current_rule_dst -
-	kv_set "$(statusf)" make_pid $$PPID
+	kv_set "$(statusf)" make_pid "$$PPID"
 	kv_set "$(statusf)" shell_pid -
 	kv_set "$(statusf)" program_pid -
 	kv_set "$(statusf)" rclone_pid -
@@ -164,7 +164,7 @@ main:
 	$(call run_paths,$$runid)
 
 	n=$(call count_rules,$(rules_list))
-	kv_set "$(statusf)" rules_total $$n
+	kv_set "$(statusf)" rules_total "$$n"
 	$(call log,[$$runid] loop over '$(call relpath,$(rules_list))' ($$n rules))
 
 	$(define_trap_on_signal)
@@ -172,7 +172,7 @@ main:
 	trap 'trap_on_signal SIGTERM 15' TERM
 	shell_pid=$$$$
 
-	kv_set "$(statusf)" shell_pid $$shell_pid
+	kv_set "$(statusf)" shell_pid "$$shell_pid"
 
 	$(define_parse_rule)
 	k=0
@@ -185,7 +185,7 @@ main:
 	    pct=$(call pct,$$k,$$n)
 
 	    kv_set "$$rulef" rule "$$rule"
-	    kv_set "$$rulef" ruleid $$ruleid
+	    kv_set "$$rulef" ruleid "$$ruleid"
 	    kv_set "$$rulef" progress "$$k/$$n ($$pct%)"
 
 	    src="$(lpath)/$$path"
@@ -198,7 +198,7 @@ main:
 	    kv_set "$$rulef" rule_dst "$$dst"
 	    kv_set "$$rulef" program_cmd "$$program_line"
 
-	    kv_set "$(statusf)" current_ruleid $$ruleid
+	    kv_set "$(statusf)" current_ruleid "$$ruleid"
 	    kv_set "$(statusf)" current_rule_src "$$src"
 	    kv_set "$(statusf)" current_rule_dst "$$dst"
 
@@ -208,11 +208,11 @@ main:
 	    $(call log,[$$runid:$$ruleid] command line: $$program_line)
 
 	    t1=$(t)
-	    kv_set "$$rulef" rule_started_at_epoch $$t1
-	    kv_set "$$rulef" rule_started_at $(call at,$$t1)
+	    kv_set "$$rulef" rule_started_at_epoch "$$t1"
+	    kv_set "$$rulef" rule_started_at "$(call at,$$t1)"
 
 	    "$${program_cmd[@]}" &> "$$rule_log" & program_pid=$$!
-	    kv_set "$(statusf)" program_pid $$program_pid
+	    kv_set "$(statusf)" program_pid "$$program_pid"
 	    $(call watch_rclone,$$rulef,$$program_pid)
 	    rc=0; wait $$program_pid || rc=$$?
 	    wait $$watcher_pid || true
@@ -222,16 +222,16 @@ main:
 
 	    $(call append_rule_log,$$runid,$$ruleid,$$rule_log)
 	    $(call save_rclone_stats,$$runid,$$ruleid,$$rulef,$$rule_log)
-	    kv_set "$$rulef" rule_ended_at_epoch $$t2
-	    kv_set "$$rulef" rule_ended_at $(call at,$$t2)
-	    kv_set "$$rulef" rule_elapsed $$rule_elapsed
-	    kv_set "$$rulef" rc $$rc
+	    kv_set "$$rulef" rule_ended_at_epoch "$$t2"
+	    kv_set "$$rulef" rule_ended_at "$(call at,$$t2)"
+	    kv_set "$$rulef" rule_elapsed "$$rule_elapsed"
+	    kv_set "$$rulef" rc "$$rc"
 
-	    kv_set "$(statusf)" rules_done $$k
+	    kv_set "$(statusf)" rules_done "$$k"
 	    kv_set "$(statusf)" program_pid -
 	    kv_set "$(statusf)" rclone_pid -
 
-	    [ $$rc -ne 0 ] && warn=" (WARN)" || warn=
+	    [ "$$rc" -ne 0 ] && warn=" (WARN)" || warn=
 	    $(call log,[$$runid:$$ruleid]$$warn end '$(program_name)': rc=$$rc \
 	        (elapsed=$(call t_hms_ms,$$rule_elapsed)))
 
@@ -243,14 +243,14 @@ end:
 	runid=$$(kv_get "$(statusf)" runid)
 	t0=$$(kv_get "$(statusf)" started_at_epoch)
 	t3=$(t)
-	kv_set "$(statusf)" ended_at_epoch $$t3
-	kv_set "$(statusf)" ended_at $(call at,$$t3)
-	kv_set "$(statusf)" total_elapsed $(call t_delta,$$t0,$$t3)
+	kv_set "$(statusf)" ended_at_epoch "$$t3"
+	kv_set "$(statusf)" ended_at "$(call at,$$t3)"
+	kv_set "$(statusf)" total_elapsed "$(call t_delta,$$t0,$$t3)"
 	k=$$(kv_get "$(statusf)" rules_done)
 	n=$$(kv_get "$(statusf)" rules_total)
 	kv_set "$(statusf)" gstate idle
 	result=$$(kv_get "$(statusf)" result)
-	if [ "$$result" = stopped ] || [ $$result = killed ]; then
+	if [ "$$result" = "stopped" ] || [ $$result = killed ]; then
 	    rc=$$(kv_get "$(statusf)" rc)
 	else
 	    if [ "$$k" -eq "$$n" ]; then
@@ -258,8 +258,8 @@ end:
 	    else
 	        result=failed rc=-1
 	    fi
-	    kv_set "$(statusf)" result $$result
-	    kv_set "$(statusf)" rc $$rc
+	    kv_set "$(statusf)" result "$$result"
+	    kv_set "$(statusf)" rc "$$rc"
 	fi
 	$(call log,[$$runid] end '$(project)' \
 	    (rules=$$k/$$n result=$$result rc=$$rc) \
@@ -423,7 +423,8 @@ status status-v:
 	            fi
 	            checks=$$(kv_get "$$rulef" rclone_checks)
 	            checks=$${checks%/*}
-	            xfer=$$(kv_get "$$rulef" rclone_transferred) xfer=$${xfer%/*}
+	            xfer=$$(kv_get "$$rulef" rclone_transferred)
+	            xfer=$${xfer%/*}
 	            xfer_new=$$(kv_get "$$rulef" rclone_copied_new)
 	            xfer_replaced=$$(kv_get "$$rulef" rclone_copied_replaced)
 	            xfer_mib=$$(kv_get "$$rulef" rclone_transferred_size)

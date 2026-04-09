@@ -190,142 +190,31 @@ kv_set() {
 
 kv_get() {
     local f=$$1 k=$$2
-    sed -En 's/^'$$k':[[:space:]]*//p' "$$f"
+    sed -En "s/^$$k:[[:space:]]*//p" "$$f"
 }
 endef
 
-#--------
-# process
-#--------
+#-------
+# config
+#-------
 
 #
-# watch_child() - return pid of a child process
-# usage: $(call watch_child,ppid,procname,tries,delay)
+# get_config() - extract config params
+# usage: $(get_config)
+# caller vars: type (w), provider (w), region (w), endpoint (w)
 #
 
-define watch_child
-$$(
-    ppid="$(1)" procname="$(2)" tries="$(3)" delay="$(4)"
-    for ((i=1; i<=$$tries; i++)); do
-        child=$$(pgrep -n -P $$ppid -x $$procname || true)
-        [ -n "$$child" ] && break
-        sleep $$delay
-    done
-    printf '%s' "$$child"
-)
-endef
-
-#
-# get_command_by_pid() - return command line by pid
-# usage: $(call get_command_by_pid,pid)
-#
-
-define get_command_by_pid
-$$(
-	pid="$(1)"
-    mapfile -d '' -t argv < /proc/$$pid/cmdline
-    printf -v cmd '%s ' "$${argv[@]}"
-    printf '%s' "$${cmd% }"
-)
-endef
-
-#
-# watch_rclone() - discover rclone_pid and rclone_cmd
-# usage: $(call watch_rclone,rulef,program_pid)
-# caller vars: watcher_pid (w)
-#
-
-define watch_rclone
-(
-    rulef="$(1)" program_pid="$(2)"
-    tries="$(watch_tries)" delay="$(watch_delay)"
-    rclone_pid=$(call watch_child,$$program_pid,rclone,$$tries,$$delay)
-    if [ -n "$$rclone_pid" ]; then
-        kv_set "$(statusf)" rclone_pid $$rclone_pid
-        rclone_cmd="$(call get_command_by_pid,$$rclone_pid)"
-        if [ -n "$$rclone_cmd" ]; then
-            kv_set "$$rulef" rclone_cmd "$$rclone_cmd"
-        fi
-    else
-        kv_set "$(statusf)" rclone_pid unknown
-    fi
-) & watcher_pid=$$!
-endef
-
-#
-# stop_guard() - exit current rule if a stop flag exists
-# usage: $(call stop_guard,runid,ruleid)
-#
-
-define stop_guard
+define get_config
 {
-    if [ -f "$(stop_flag)" ]; then
-        printf '[%s] stop flag found: exit after current rule \
-            (runid=%s ruleid=%s)\n' "$(project)" "$(1)" "$(2)" >&2
-        rm -f "$(stop_flag)"
-        $(call log,[$(1):$(2)] stop flag found: exit after current rule)
-        kv_set "$(statusf)" gstate idle
-        kv_set "$(statusf)" result stopped
-        kv_set "$(statusf)" rc 200
-        exit 0
-    fi
-}
-endef
-
-#
-# define_trap_on_signal() - define trap_on_signal() shell function
-# trap_on_signal()        - handle signals
-# usage: $(define_trap_on_signal)
-#        trap_on_signal signal rc
-# caller vars: runid (r), ruleid (r), t1 (r), rule_log (r), rulef (r)
-#
-
-define define_trap_on_signal
-trap_on_signal() {
-    local sig=$$1 sigcode=$$2
-    local rc=$$((128 + sigcode))
-    local t0 t2 t3 rule_ended_at rule_elapsed rule_elapsed_hms_ms k
-    local result=killed
-
-    $(call log,[$$runid:$$ruleid] (WARN) caught $$sig signal)
-
-    t2=$(t)
-    rule_ended_at=$(call at,$$t2)
-    if [ -n "$${t1-}" ]; then
-        rule_elapsed=$(call t_delta,$$t1,$$t2)
-        rule_elapsed_hms_ms=$(call t_hms_ms,$$rule_elapsed)
-    else
-        rule_elapsed=
-        rule_elapsed_hms_ms=unknown
-    fi
-
-    $(call append_rule_log,$$runid,$$ruleid,$$rule_log)
-    kv_set "$$rulef" rule_ended_at $$rule_ended_at
-    if [ -n "$$rule_elapsed" ]; then
-        kv_set "$$rulef" rule_elapsed $$rule_elapsed
-    fi
-    kv_set "$$rulef" rc $$rc
-
-    kv_set "$(statusf)" program_pid -
-    kv_set "$(statusf)" rclone_pid -
-    $(call log,[$$runid:$$ruleid] (WARN) end '$(program_name)': \
-        rc=$$rc (elapsed=$$rule_elapsed_hms_ms))
-
-    t0=$$(kv_get "$(statusf)" started_at_epoch)
-    t3=$(t)
-    kv_set "$(statusf)" ended_at_epoch $$t3
-    kv_set "$(statusf)" ended_at $(call at,$$t3)
-    kv_set "$(statusf)" total_elapsed $(call t_delta,$$t0,$$t3)
-    kv_set "$(statusf)" gstate idle
-    kv_set "$(statusf)" result $$result
-    kv_set "$(statusf)" rc $$rc
-
-    k=$$(kv_get "$(statusf)" rules_done)
-    n=$$(kv_get "$(statusf)" rules_total)
-    $(call log,[$$runid] end '$(project)' \
-	    (rules=$$k/$$n result=$$result rc=$$rc \
-        total_elapsed=$(call t_delta_hms_ms,$$t0,$$t3)))
-    exit $$rc
+    type= provider= region= endpoint=
+	while read -r k _ v; do
+        case "$$k" in
+            type)     type=$$v     ;;
+            provider) provider=$$v ;;
+            region)   region=$$v   ;;
+            endpoint) endpoint=$$v ;;
+        esac
+    done < <($(rclone) --config $(rclone_conf) config show $(remote));
 }
 endef
 
@@ -461,6 +350,141 @@ endef
 
 count_rules = $$(grep -Ev '^[[:space:]]*(\#|$$)' "$(1)" | wc -l)
 
+#--------
+# process
+#--------
+
+#
+# watch_child() - return pid of a child process
+# usage: $(call watch_child,ppid,procname,tries,delay)
+#
+
+define watch_child
+$$(
+    ppid="$(1)" procname="$(2)" tries="$(3)" delay="$(4)"
+    for ((i=1; i<=$$tries; i++)); do
+        child=$$(pgrep -n -P $$ppid -x $$procname || true)
+        [ -n "$$child" ] && break
+        sleep $$delay
+    done
+    printf '%s' "$$child"
+)
+endef
+
+#
+# get_command_by_pid() - return command line by pid
+# usage: $(call get_command_by_pid,pid)
+#
+
+define get_command_by_pid
+$$(
+	pid="$(1)"
+    mapfile -d '' -t argv < /proc/$$pid/cmdline
+    printf -v cmd '%s ' "$${argv[@]}"
+    printf '%s' "$${cmd% }"
+)
+endef
+
+#
+# watch_rclone() - discover rclone_pid and rclone_cmd
+# usage: $(call watch_rclone,rulef,program_pid)
+# caller vars: watcher_pid (w)
+#
+
+define watch_rclone
+(
+    rulef="$(1)" program_pid="$(2)"
+    tries="$(watch_tries)" delay="$(watch_delay)"
+    rclone_pid=$(call watch_child,$$program_pid,rclone,$$tries,$$delay)
+    if [ -n "$$rclone_pid" ]; then
+        kv_set "$(statusf)" rclone_pid "$$rclone_pid"
+        rclone_cmd="$(call get_command_by_pid,$$rclone_pid)"
+        if [ -n "$$rclone_cmd" ]; then
+            kv_set "$$rulef" rclone_cmd "$$rclone_cmd"
+        fi
+    else
+        kv_set "$(statusf)" rclone_pid unknown
+    fi
+) & watcher_pid=$$!
+endef
+
+#
+# stop_guard() - exit current rule if a stop flag exists
+# usage: $(call stop_guard,runid,ruleid)
+#
+
+define stop_guard
+{
+    if [ -f "$(stop_flag)" ]; then
+        printf '[%s] stop flag found: exit after current rule \
+            (runid=%s ruleid=%s)\n' "$(project)" "$(1)" "$(2)" >&2
+        rm -f "$(stop_flag)"
+        $(call log,[$(1):$(2)] stop flag found: exit after current rule)
+        kv_set "$(statusf)" gstate idle
+        kv_set "$(statusf)" result stopped
+        kv_set "$(statusf)" rc 200
+        exit 0
+    fi
+}
+endef
+
+#
+# define_trap_on_signal() - define trap_on_signal() shell function
+# trap_on_signal()        - handle signals
+# usage: $(define_trap_on_signal)
+#        trap_on_signal signal rc
+# caller vars: runid (r), ruleid (r), t1 (r), rule_log (r), rulef (r)
+#
+
+define define_trap_on_signal
+trap_on_signal() {
+    local sig=$$1 sigcode=$$2
+    local rc=$$((128 + sigcode))
+    local t0 t2 t3 rule_ended_at rule_elapsed rule_elapsed_hms_ms k
+    local result=killed
+
+    $(call log,[$$runid:$$ruleid] (WARN) caught $$sig signal)
+
+    t2=$(t)
+    rule_ended_at=$(call at,$$t2)
+    if [ -n "$${t1-}" ]; then
+        rule_elapsed=$(call t_delta,$$t1,$$t2)
+        rule_elapsed_hms_ms=$(call t_hms_ms,$$rule_elapsed)
+    else
+        rule_elapsed=
+        rule_elapsed_hms_ms=unknown
+    fi
+
+    $(call append_rule_log,$$runid,$$ruleid,$$rule_log)
+    kv_set "$$rulef" rule_ended_at "$$rule_ended_at"
+    if [ -n "$$rule_elapsed" ]; then
+        kv_set "$$rulef" rule_elapsed "$$rule_elapsed"
+    fi
+    kv_set "$$rulef" rc "$$rc"
+
+    kv_set "$(statusf)" program_pid -
+    kv_set "$(statusf)" rclone_pid -
+    $(call log,[$$runid:$$ruleid] (WARN) end '$(program_name)': \
+        rc=$$rc (elapsed=$$rule_elapsed_hms_ms))
+
+    t0=$$(kv_get "$(statusf)" started_at_epoch)
+    t3=$(t)
+    kv_set "$(statusf)" ended_at_epoch "$$t3"
+    kv_set "$(statusf)" ended_at "$(call at,$$t3)"
+    kv_set "$(statusf)" total_elapsed "$(call t_delta,$$t0,$$t3)"
+    kv_set "$(statusf)" gstate idle
+    kv_set "$(statusf)" result "$$result"
+    kv_set "$(statusf)" rc "$$rc"
+
+    k=$$(kv_get "$(statusf)" rules_done)
+    n=$$(kv_get "$(statusf)" rules_total)
+    $(call log,[$$runid] end '$(project)' \
+	    (rules=$$k/$$n result=$$result rc=$$rc \
+        total_elapsed=$(call t_delta_hms_ms,$$t0,$$t3)))
+    exit $$rc
+}
+endef
+
 #------
 # stats
 #------
@@ -511,7 +535,7 @@ define save_rclone_stats
     declare -A S
     while read k v; do
         S[$$k]=$$v
-        kv_set "$$rulef" $$k $$v
+        kv_set "$$rulef" "$$k" "$$v"
     done < <($(call get_rclone_stats,$$rule_log))
     $(call log,[$$runid:$$ruleid] rclone stats: checks=$${S[rclone_checks]} \
         transferred=$${S[rclone_transferred]} \
@@ -543,30 +567,6 @@ $$(
         printf 'fail'
     fi
 )
-endef
-
-#-------
-# config
-#-------
-
-#
-# get_config() - extract config params
-# usage: $(get_config)
-# caller vars: type (w), provider (w), region (w), endpoint (w)
-#
-
-define get_config
-{
-    type= provider= region= endpoint=
-	while read -r k _ v; do
-        case "$$k" in
-            type)     type=$$v     ;;
-            provider) provider=$$v ;;
-            region)   region=$$v   ;;
-            endpoint) endpoint=$$v ;;
-        esac
-    done < <($(rclone) --config $(rclone_conf) config show $(remote));
-}
 endef
 
 #--------
@@ -606,7 +606,8 @@ endef
 define truncate
 $$(
     s="$(1)" w="$(2)"
-    [ $${#s} -le $$w ] && printf '%s' "$$s" || printf '%s+' "$${s:0:$$((w-1))}"
+    [ "$${#s}" -le "$$w" ] && printf '%s' "$$s" || \
+        printf '%s+' "$${s:0:$$((w-1))}"
 )
 endef
 
