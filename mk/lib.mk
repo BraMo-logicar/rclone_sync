@@ -25,7 +25,7 @@ t_znow = $$(date +%Y%m%d.%H%M%S)
 # usage: $(call at,epoch)
 #
 
-at = $$(date -d @$$(printf "%.0f" $(1)) +%Y.%m.%d-%H:%M:%S)
+at = $$(date -d @$$(printf '%.0f' $(1)) +%Y.%m.%d-%H:%M:%S)
 
 #
 # t_hms_ms()    - format duration as hms.ms
@@ -110,7 +110,7 @@ $$(
 
     subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
     if [ -d "$(stats)/$$subdir/$$runid" ]; then
-        printf "%s" $$runid
+        printf '%s' $$runid
     else
         if [ -t 2 ]; then
             printf "[%s] $${_RED_}invalid runid '%s'$$RST\n" \
@@ -180,11 +180,11 @@ endef
 define define_kv
 kv_set() {
     local f=$$1 k=$$2 v=$$3
-    printf -v v "%s" "$$v"
+    printf -v v '%s' "$$v"
     if grep -q "^$$k:" "$$f"; then
         sed -Ei "s|^$$k:.*|$$k: $$v|" "$$f"
     else
-        printf "%s: %s\n" $$k "$$v" >> "$$f"
+        printf '%s: %s\n' $$k "$$v" >> "$$f"
     fi
 }
 
@@ -211,7 +211,7 @@ $$(
         [ -n "$$child" ] && break
         sleep $$delay
     done
-    printf "%s" "$$child"
+    printf '%s' "$$child"
 )
 endef
 
@@ -224,8 +224,8 @@ define get_command_by_pid
 $$(
 	pid="$(1)"
     mapfile -d '' -t argv < /proc/$$pid/cmdline
-    printf -v cmd "%s " "$${argv[@]}"
-    printf "%s" "$${cmd% }"
+    printf -v cmd '%s ' "$${argv[@]}"
+    printf '%s' "$${cmd% }"
 )
 endef
 
@@ -260,8 +260,8 @@ endef
 define stop_guard
 {
     if [ -f "$(stop_flag)" ]; then
-        printf "[%s] stop flag found: exit after current rule \
-            (runid=%s ruleid=%s)\n" $(project) $(1) $(2) >&2
+        printf '[%s] stop flag found: exit after current rule \
+            (runid=%s ruleid=%s)\n' $(project) $(1) $(2) >&2
         rm -f "$(stop_flag)"
         $(call log,[$(1):$(2)] stop flag found: exit after current rule)
         kv_set "$(statusf)" gstate idle
@@ -339,7 +339,7 @@ endef
 #        parse_rules_conf
 
 define define_parse_rules_conf
-define_parse_rules_conf() {
+parse_rules_conf() {
     local line path key val
     #declare -A rules_skip rules_exclude rules_ruleid rules_opts
 
@@ -383,7 +383,7 @@ endef
 define define_append_rule
 append_rule() {
     local path="$$1"
-    local def_ruleid ruleid opts patt opts
+    local def_ruleid opts xpat ruleid opt suffix
 
     if [ -n "$${rules_skip[$$path]:-}" ]; then
         $(call log,[$$runid] skip rule path '$$path' \
@@ -395,13 +395,13 @@ append_rule() {
         def_ruleid='root-files'
         opts='--max-depth 1'
     else
-        def_ruleid=$$(printf "%s" "$$path" | sed 's|[[:space:]]|_|g')
+        def_ruleid=$$(printf '%s' "$$path" | sed 's/[[:space:]]/_/g')
         opts=
     fi
 
     if [ -n "$${rules_exclude[$$path]:-}" ]; then
         while IFS= read -r xpat; do
-            [ -n "$$xpat ] || continue
+            [ -n "$$xpat" ] || continue
             opts+=" --exclude '$$xpat'"
         done <<< "$${rules_exclude[$$path]}"
     fi
@@ -414,7 +414,7 @@ append_rule() {
 
     if [ -n "$${rules_opts[$$path]:-}" ]; then
         while IFS= read -r opt; do
-            [ -n "$$opt ] || continue
+            [ -n "$$opt" ] || continue
             opts+=" $$opt"
         done <<< "$${rules_opts[$$path]}"
     fi
@@ -423,12 +423,12 @@ append_rule() {
     [ "$$ruleid" != "$$def_ruleid" ] && suffix+="ruleid=$$ruleid"
     [ -n "$$opts" ] && suffix+=" opts=\"$${opts# }\""
     if [ -n "$suffix" ]; then
-        printf "%s -- %s\n" "$$path" "$$suffix"
+        printf '%s -- %s\n' "$$path" "$$suffix"
     else
-        printf "%s\n" "$$path"
+        printf '%s\n' "$$path"
     fi >> "$(rules_list)"
 
-    printf "%s\n" "$$ruleid" >> "$(ruleids_list)"
+    printf '%s\n' "$$ruleid" >> "$(ruleids_list)"
 }
 endef
 
@@ -449,7 +449,7 @@ parse_rule() {
         *)        path=$$rule opts= ;;
     esac
     [ "$$path" = . ] && path=
-    ruleid=$$(printf "%s" "$$path" | sed 's|/|_|g' | tr '[:space:]' '_')
+    ruleid=$$(printf '%s' "$$path" | sed 's|/|_|g' | tr '[:space:]' '_')
     set -f; eval "$$opts"; set +f
 }
 endef
@@ -489,13 +489,13 @@ awk '
     /^Elapsed time:/                 { elapsed = $$3 }
 
     END {
-        printf "rclone_checks %s\n",           checks
-        printf "rclone_transferred %s\n",      xfer
-        printf "rclone_transferred_size %s\n", xfer_size
-        printf "rclone_copied_new %d\n",       xfer_new
-        printf "rclone_copied_replaced %d\n",  xfer_replaced
-        printf "rclone_deleted %d\n",          deleted
-        printf "rclone_elapsed %s\n",          elapsed
+        printf 'rclone_checks %s\n',           checks
+        printf 'rclone_transferred %s\n',      xfer
+        printf 'rclone_transferred_size %s\n', xfer_size
+        printf 'rclone_copied_new %d\n',       xfer_new
+        printf 'rclone_copied_replaced %d\n',  xfer_replaced
+        printf 'rclone_deleted %d\n',          deleted
+        printf 'rclone_elapsed %s\n',          elapsed
     }
 ' "$(1)"
 endef
@@ -534,13 +534,13 @@ define get_rstate
 $$(
     rulef="$(1)" gstate="$(2)"
     if [ ! -f "$$rulef" ]; then
-        printf queue
+        printf 'queue'
     elif rc=$$(kv_get "$$rulef" rc); [ -n "$$rc" ]; then
-        printf done
+        printf 'done'
     elif [ "$$gstate" = running ]; then
-        printf run
+        printf 'run'
     else
-        printf fail
+        printf 'fail'
     fi
 )
 endef
@@ -579,7 +579,7 @@ endef
 #
 
 make := $(shell basename "$(MAKE)")
-log = printf "%s [%s(%s):%d] %s\n" $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
+log = printf '%s [%s(%s):%d] %s\n' $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 #
 # append_rule_log() - append rclone log to the main log
@@ -588,9 +588,9 @@ log = printf "%s [%s(%s):%d] %s\n" $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
 
 define append_rule_log
 {
-    printf -- "-- begin rclone log (runid=%s ruleid=%s) --\n" $(1) $(2)
+    printf -- '-- begin rclone log (runid=%s ruleid=%s) --\n' $(1) $(2)
     sed '$${/^$$/d}' "$(3)"
-    printf -- "-- end rclone log (runid=%s ruleid=%s) --\n" $(1) $(2)
+    printf -- '-- end rclone log (runid=%s ruleid=%s) --\n' $(1) $(2)
 } >> "$(logf)"
 endef
 
@@ -606,7 +606,7 @@ endef
 define truncate
 $$(
     s="$(1)" w="$(2)"
-    [ $${#s} -le $$w ] && printf "%s" "$$s" || printf "%s+" "$${s:0:$$((w-1))}"
+    [ $${#s} -le $$w ] && printf '%s' "$$s" || printf '%s+' "$${s:0:$$((w-1))}"
 )
 endef
 
@@ -669,7 +669,7 @@ endef
 # usage: $(call num3,num)
 #
 
-num3 = $$(printf "%s" $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
+num3 = $$(printf '%s' $(1) | sed -E ':a;s/^(-?[0-9]+)([0-9]{3})/\1'\''\2/;ta')
 
 #------
 # email
@@ -685,22 +685,22 @@ define send_report
     boundary="==$(call random,4)$(fortytwo)==$(call random,4)"
     runid="$(1)" reportf="$(2)" reportlog="$(3)" subject="$(4)"
 
-    printf "From: %s\n" "$(mail_From)"
-    printf "To: %s\n" "$(mail_To)"
-    printf "Date: %s\n" "$$(date -R)"
-    printf "Subject: %s\n" "$$subject"
-    printf "MIME-Version: 1.0\n"
-    printf "Content-Type: multipart/mixed; boundary=\"%s\"\n" "$$boundary"
-    printf "Rclone-Sync-Project: %s (v%s)\n" $(project) $(version)
-    printf "Rclone-Version: %s\n" $(rclone_ver)
-    printf "\n"
+    printf 'From: %s\n' "$(mail_From)"
+    printf 'To: %s\n' "$(mail_To)"
+    printf 'Date: %s\n' "$$(date -R)"
+    printf 'Subject: %s\n' "$$subject"
+    printf 'MIME-Version: 1.0\n'
+    printf 'Content-Type: multipart/mixed; boundary="%s"\n' "$$boundary"
+    printf 'Rclone-Sync-Project: %s (v%s)\n' $(project) $(version)
+    printf 'Rclone-Version: %s\n' $(rclone_ver)
+    printf '\n'
 
-    printf -- "--%s\n" "$$boundary"
-    printf "Content-Type: text/html; charset=UTF-8\n"
-    printf "Content-Transfer-Encoding: 8bit\n"
-    printf "\n"
+    printf -- '--%s\n' "$$boundary"
+    printf 'Content-Type: text/html; charset=UTF-8\n'
+    printf 'Content-Transfer-Encoding: 8bit\n'
+    printf '\n'
 
-    printf "<html><body><pre>\n"
+    printf '<html><body><pre>\n'
     cat "$$reportf"
 
     if [ "$(mail_log)" = yes ]; then
@@ -719,9 +719,9 @@ define send_report
             $(call log,[$$runid] log attachment: gzip file '$$reportlog' \
                 (size=$$log_size > limit=$(mail_log_max)))
         else
-            printf "\n"
-            printf "log attachment skipped: \
-                log size (%d bytes) exceeds limit (%s)\n" \
+            printf '\n'
+            printf 'log attachment skipped: \
+                log size (%d bytes) exceeds limit (%s)\n' \
                 $$log_size $(mail_log_gz_max)
             $(call log,[$$runid] log attachment: skip file '$$reportlog' \
                 (size=$$log_size > limit=$(mail_log_gz_max)))
@@ -730,37 +730,37 @@ define send_report
         $(call log,[$$runid] log attachment: disabled (mail_log=$(mail_log)))
     fi
 
-    printf "</pre></body></html>\n"
+    printf '</pre></body></html>\n'
 
     case "$${attach_mode:-}" in
         raw)
-            printf "\n"
-            printf -- "--%s\n" "$$boundary"
-            printf "Content-Type: text/plain; charset=UTF-8; name=\"%s\"\n" \
+            printf '\n'
+            printf -- '--%s\n' "$$boundary"
+            printf 'Content-Type: text/plain; charset=UTF-8; name="%s"\n' \
                 "$${reportlog##*/}"
-            printf "Content-Transfer-Encoding: 8bit\n"
-            printf "Content-Disposition: attachment; filename=\"%s\"\n" \
+            printf 'Content-Transfer-Encoding: 8bit\n'
+            printf 'Content-Disposition: attachment; filename="%s"\n' \
                 "$${reportlog##*/}"
-            printf "\n"
+            printf '\n'
             cat "$$attach_file"
             ;;
         gz)
-            printf "\n"
-            printf -- "--%s\n" "$$boundary"
-            printf "Content-Type: application/gzip; name=\"%s\"\n" \
+            printf '\n'
+            printf -- '--%s\n' "$$boundary"
+            printf 'Content-Type: application/gzip; name="%s"\n' \
                 "$${reportlog##*/}.gz"
-            printf "Content-Transfer-Encoding: base64\n"
-            printf "Content-Disposition: attachment; filename=\"%s\"\n" \
+            printf 'Content-Transfer-Encoding: base64\n'
+            printf 'Content-Disposition: attachment; filename="%s"\n' \
                 "$${reportlog##*/}.gz"
-            printf "\n"
+            printf '\n'
             base64 "$$attach_file"
-            printf "\n"
+            printf '\n'
             rm -f "$$attach_file"
             ;;
     esac
 
-    printf "\n"
-    printf -- "--%s--\n" "$$boundary"
+    printf '\n'
+    printf -- '--%s--\n' "$$boundary"
 ) | $(sendmail) -i -f $(mail_from) $(mail_to)
 endef
 
@@ -809,7 +809,7 @@ random = $$(tr -dc '0-9A-Z_a-z' < /dev/urandom | head -c $(1) || true)
 # usage: $(call relpath,path)
 #
 
-relpath = $$(printf "%s" "$(1)" | sed 's|$(home)/||')
+relpath = $$(printf '%s' "$(1)" | sed 's|$(home)/||')
 
 #
 # define_trim() - define ltrim() and rtrim() shell functions
@@ -823,12 +823,12 @@ relpath = $$(printf "%s" "$(1)" | sed 's|$(home)/||')
 define define_trim
 ltrim() {
     local s="$$1"
-    printf "%s" "$${s#"$${s%%[![:space:]]*}"}"
+    printf '%s' "$${s#"$${s%%[![:space:]]*}"}"
 }
 
 rtrim() {
     local s="$$1"
-    printf "%s" "$${s%"$${s##*[![:space:]]}"}"
+    printf '%s' "$${s%"$${s##*[![:space:]]}"}"
 }
 endef
 

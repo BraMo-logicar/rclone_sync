@@ -19,9 +19,9 @@ include .include.mk
 
 help:
 	@echo "Makefile: Please specify a target:"
-	echo "    list, run, stop, kill"
-	echo "    status(-v) [runid=<runid>], report(-mail) [runid=<runid>],"
-	echo "    usage, log-last"
+	@echo "    list, run, stop, kill"
+	@echo "    status(-v) [runid=<runid>], report(-mail) [runid=<runid>],"
+	@echo "    usage, log-last"
 
 $(project): start main end
 
@@ -34,17 +34,17 @@ list:
 	if [ -f "$(exclude_list)" ]; then
 	    while IFS= read -r xpat; do
 	        case "$$xpat" in
-	            ""|\#*) continue ;;
-	            */*)    xpath+=("$$xpat") ;;
-	            *)      xrule+=("$$xpat") ;;
+	            ''|'#'*) continue ;;
+	            */*)     xpath+=("$$xpat") ;;
+	            *)       xrule+=("$$xpat") ;;
 	        esac
 	    done < "$(exclude_list)"
 	fi
 
 	if find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read -r; then
-	    printf ". -- ruleid=root-files opts=\"--max-depth 1\"\n" \
+	    printf '. -- ruleid=root-files opts="--max-depth 1"\n' \
             >> "$(rules_list)"
-	    printf "root-files\n" >> "$(ruleids_list)"
+	    printf 'root-files\n' >> "$(ruleids_list)"
 	fi
 
 	while IFS= read -r path; do
@@ -69,14 +69,14 @@ list:
 	    done
 
 	    if [ -n "$$opts" ]; then
-	        printf "%s -- opts=\"%s\"\n" "$$path" "$${opts# }"
+	        printf '%s -- opts="%s"\n' "$$path" "$${opts# }"
 	    else
-	        printf "%s\n" "$$path"
+	        printf '%s\n' "$$path"
 	    fi >> "$(rules_list)"
-	    printf "%s\n" "$$path" | sed 's|/|_|g; s|[[:space:]]|_|g' \
+	    printf '%s\n' "$$path" | sed 's|/|_|g; s|[[:space:]]|_|g' \
 	        >> "$(ruleids_list)"
 	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d \
-        -printf "%f\n" | sort)
+        -printf '%f\n' | sort)
 
 	n=$$(wc -l < "$(rules_list)")
 	$(call log,list $$n rules from '$(src_root)' to '$(rules_list)')
@@ -96,7 +96,8 @@ xlist:
 	[ -n "$${rules_seen[.]:-}" ] && append_rule .
 	while IFS= read -r path; do
 	    append_rule "$$path"
-	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d -printf "%f\n")
+	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d \
+        -printf '%f\n' | sort)
 
 # run
 
@@ -190,7 +191,7 @@ main:
 	    src="$(lpath)/$$path"
 	    dst="$(rpath)/$$path"
 	    program_cmd=("$(program_path)" $${opts:+-o "$$opts"} "$$src" "$$dst")
-	    printf -v program_line "%s " "$${program_cmd[@]}"
+	    printf -v program_line '%s ' "$${program_cmd[@]}"
 	    program_line=$${program_line% }
 
 	    kv_set "$$rulef" rule_src "$$src"
@@ -270,8 +271,8 @@ stop:
 	@$(define_kv)
 	runid=$$(kv_get "$(statusf)" runid)
 	{
-	    printf "[%s] graceful stop requested (runid=%s): " $(project) $$runid
-	    printf "exit after current rule\n"
+	    printf '[%s] graceful stop requested (runid=%s): ' $(project) $$runid
+	    printf 'exit after current rule\n'
 	} >&2
 	> "$(stop_flag)"
 	$(call log,[$$runid] graceful stop requested: \
@@ -283,7 +284,7 @@ kill:
 	shell_pid=$$(kv_get "$(statusf)" shell_pid)
 	program_pid=$$(kv_get "$(statusf)" program_pid)
 	rclone_pid=$$(kv_get "$(statusf)" rclone_pid)
-	printf "[%s] global kill requested (%s=%d %s=%d %s=%d)\n" \
+	printf '[%s] global kill requested (%s=%d %s=%d %s=%d)\n' \
 	    $(project) recipe_shell $$shell_pid \
 	    program $$program_pid rclone $$rclone_pid >&2
 	$(call log,[$$runid] kill requested (recipe_shell=$$shell_pid \
@@ -291,7 +292,7 @@ kill:
 	for sig in INT TERM KILL; do
 	    for pid in $$rclone_pid $$program_pid $$shell_pid; do
 	         if kill -0 $$pid 2>/dev/null; then
-	             printf "  send SIG%s to %d\n" $$sig $$pid >&2
+	             printf '  send SIG%s to %d\n' $$sig $$pid >&2
 	             kill -s $$sig $$pid 2>/dev/null || true
 	         fi
 	    done
@@ -366,7 +367,7 @@ status status-v:
 	fi
 
 	if [ $@ = status-v ]; then
-	    printf "\n"
+	    printf '\n'
 	    w1=$$(($(rule_width)+1))
 	    fmt="%-$${w1}s  %-5s  %-8s  %-8s  %-8s  %8s  %8s  %10s  %6s  %3s"
 	    fmt_queue="$$MAG%-$${w1}s  %-5s$$RST"
@@ -441,7 +442,7 @@ status status-v:
 	    done
 
 	    if [ "$$queue" -gt "$(rule_queue)" ]; then
-	        printf "(+%d more rules remaining)\n" $$((queue - $(rule_queue)))
+	        printf '(+%d more rules remaining)\n' $$((queue - $(rule_queue)))
 	    fi
 
 	    printf "\n$$BLD%s$$RST\n" SUMMARY
@@ -490,11 +491,11 @@ report: dirs
 	elapsed=$(call t_hms_ms,$$(kv_get "$$statusf" total_elapsed))
 
 	{
-	    printf "%s @ %s (%s)\n" $(project) $(hostname) $$runid
-	    printf "\n"
-	    printf "runid : %s\n" "$$runid"
-	    printf "rules : %s\n" "$$rules_done/$$rules_total"
-	    printf "\n"
+	    printf '%s @ %s (%s)\n' $(project) $(hostname) $$runid
+	    printf '\n"
+	    printf 'runid : %s\n' "$$runid"
+	    printf 'rules : %s\n' "$$rules_done/$$rules_total"
+	    printf '\n'
 	    awk '
 	        /-- begin rclone log \(runid='$$runid' / {
 	            sub(/.*ruleid=/, "# ruleid: "); sub(/\).*/, "")
@@ -513,29 +514,29 @@ report: dirs
 
 	$(get_config)
 	{
-	    printf "%s @ %s (%s)\n" $(project) $(hostname) $$runid
-	    printf "\n"
-	    printf "program     : %s (v%s)\n" "$(program_name)" $(version)
-	    printf "host        : %s\n" "$(hostname) ($(ip))"
-	    printf "runid       : %s\n" "$$runid"
-	    printf "\n"
-	    [ -n "$${type-}" ]     && printf "type        : %s\n" $$type
-	    [ -n "$${provider-}" ] && printf "provider    : %s\n" $$provider
-	    [ -n "$${region-}" ]   && printf "region      : %s\n" $$region
-	    [ -n "$${endpoint-}" ] && printf "endpoint    : %s\n" $$endpoint
-	    printf "\n"
-	    printf "source      : %s\n" "$(lpath)"
-	    printf "destination : %s\n" "$(rpath)"
-	    printf "\n"
-	    printf "started_at  : %s\n" "$$(kv_get "$$statusf" started_at)"
-	    printf "ended_at    : %s\n" "$$(kv_get "$$statusf" ended_at)"
-	    printf "elapsed     : %s\n" "$$elapsed"
-	    printf "\n"
-	    printf "rules       : %s\n" "$$rules_done/$$rules_total"
-	    printf "result      : %s\n" "$$(kv_get "$$statusf" result)"
-	    printf "\n"
-	    printf -- "-------- rules summary (status-v) --------\n"
-	    printf "\n"
+	    printf '%s @ %s (%s)\n' $(project) $(hostname) $$runid
+	    printf '\n'
+	    printf 'program     : %s (v%s)\n' "$(program_name)" $(version)
+	    printf 'host        : %s\n' "$(hostname) ($(ip))"
+	    printf 'runid       : %s\n' "$$runid"
+	    printf '\n'
+	    [ -n "$${type-}" ]     && printf 'type        : %s\n' $$type
+	    [ -n "$${provider-}" ] && printf 'provider    : %s\n' $$provider
+	    [ -n "$${region-}" ]   && printf 'region      : %s\n' $$region
+	    [ -n "$${endpoint-}" ] && printf 'endpoint    : %s\n' $$endpoint
+	    printf '\n'
+	    printf 'source      : %s\n' "$(lpath)"
+	    printf 'destination : %s\n' "$(rpath)"
+	    printf '\n'
+	    printf 'started_at  : %s\n' "$$(kv_get "$$statusf" started_at)"
+	    printf 'ended_at    : %s\n' "$$(kv_get "$$statusf" ended_at)"
+	    printf 'elapsed     : %s\n' "$$elapsed"
+	    printf '\n'
+	    printf 'rules       : %s\n' "$$rules_done/$$rules_total"
+	    printf 'result      : %s\n' "$$(kv_get "$$statusf" result)"
+	    printf '\n'
+	    printf -- '-------- rules summary (status-v) --------\n'
+	    printf '\n'
 	    $(MAKE) -s runid=$$runid status-v | sed -n '/^RULE/,$$p'
 	} > "$$reportf"
 	$(call log,[$$runid] report saved to '$$reportf' \
@@ -576,7 +577,7 @@ report-mail:
 	rules_done=$$(kv_get "$$statusf" rules_done)
 	rules_total=$$(kv_get "$$statusf" rules_total)
 
-	subject=$$(printf "[%s@%s] rclone sync to %s:%s (runid=%s rules=%s/%s)" \
+	subject=$$(printf '[%s@%s] rclone sync to %s:%s (runid=%s rules=%s/%s)' \
 	    $(project) $(host) $(remote) $(bucket) $$runid \
 	    $$rules_done $$rules_total)
 
@@ -599,18 +600,18 @@ usage: dirs
 	$(call rotate_last_prev,$(usage)/last,$(usage)/prev,$$target)
 
 	{
-	    printf "Bucket usage\n"
-	    printf "    host   : %s\n" $(hostname)
-	    printf "    date   : %s\n" $$(date +%F)
-	    printf "    bucket : %s\n" $(bucket)
-	    printf "    prefix : %s\n" "$(dst_root)"
+	    printf 'Bucket usage\n'
+	    printf '    host   : %s\n' $(hostname)
+	    printf '    date   : %s\n' $$(date +%F)
+	    printf '    bucket : %s\n' $(bucket)
+	    printf '    prefix : %s\n' "$(dst_root)"
 	} >> $$usagef
 
 	t0=$(t)
 	$(call log,start bucket usage (excluding versions) \
 	    (bucket='$(bucket)' prefix='$(dst_root)'))
 	{
-	    printf "    excluding versions:\n"
+	    printf '    excluding versions:\n'
 	    $(rclone) --config "$(rclone_conf)" size "$(rpath)" |
 	        sed 's/^/        /'
 	} >> "$$usagef"
@@ -621,7 +622,7 @@ usage: dirs
 	$(call log,start bucket usage (including versions) \
 	    (bucket='$(bucket)' prefix='$(dst_root)'))
 	{
-	    printf "    including versions:\n"
+	    printf '    including versions:\n'
 	    $(rclone) --config "$(rclone_conf)" size --s3-versions "$(rpath)" |
 	        sed 's/^/        /'
 	} >> "$$usagef"
