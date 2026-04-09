@@ -16,16 +16,16 @@
 # usage: $(t_znow)
 #
 
-t      = $$(date +%s.%3N)
-t_now  = $$(date +%Y.%m.%d-%H:%M:%S)
-t_znow = $$(date +%Y%m%d.%H%M%S)
+t      = $$(date '+%s.%3N')
+t_now  = $$(date '+%Y.%m.%d-%H:%M:%S')
+t_znow = $$(date '+%Y%m%d.%H%M%S')
 
 #
 # at() - format epoch (sec.ms -> yyyy.mm.dd-hh:mm:ss)
 # usage: $(call at,epoch)
 #
 
-at = $$(date -d @$$(printf '%.0f' $(1)) +%Y.%m.%d-%H:%M:%S)
+at = $$(date -d @$$(printf '%.0f' "$(1)") '+%Y.%m.%d-%H:%M:%S')
 
 #
 # t_hms_ms()    - format duration as hms.ms
@@ -422,7 +422,7 @@ append_rule() {
     suffix=
     [ "$$ruleid" != "$$def_ruleid" ] && suffix+="ruleid=$$ruleid"
     [ -n "$$opts" ] && suffix+=" opts=\"$${opts# }\""
-    if [ -n "$suffix" ]; then
+    if [ -n "$$suffix" ]; then
         printf '%s -- %s\n' "$$path" "$$suffix"
     else
         printf '%s\n' "$$path"
