@@ -46,7 +46,7 @@ stats   := $(data)/stats
 reports := $(data)/reports
 usage   := $(data)/usage
 
-stop_flag   := $(tmp)/stop
+stop_flag := $(tmp)/stop
 
 logf   := $(home)/log/$(project).log
 logrun := $(home)/log/run

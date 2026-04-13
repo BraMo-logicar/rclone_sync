@@ -714,20 +714,22 @@ define send_report
         if [ "$$log_size" -le "$$log_max" ]; then
             attach_mode=raw
             attach_file="$$reportlog"
-            $(call log,[$$runid] log attachment: raw file '$$reportlog' \
-                (size=$$log_size))
+            $(call log,[$$runid] log attachment: raw file \
+                '$(call relpath,$$reportlog)' (size=$$log_size))
         elif [ "$$log_size" -le "$$log_gz_max" ]; then
             attach_mode=gz
             attach_file="$(tmp)/$${reportlog##*/}.gz"
             gzip -c "$$reportlog" > "$$attach_file"
-            $(call log,[$$runid] log attachment: gzip file '$$reportlog' \
+            $(call log,[$$runid] log attachment: gzip file \
+                '$(call relpath,$$reportlog)' \
                 (size=$$log_size > limit=$(mail_log_max)))
         else
             printf '\n'
             printf 'log attachment skipped: \
                 log size (%d bytes) exceeds limit (%s)\n' \
                 "$$log_size" "$(mail_log_gz_max)"
-            $(call log,[$$runid] log attachment: skip file '$$reportlog' \
+            $(call log,[$$runid] log attachment: skip file \
+                '$(call relpath,$$reportlog)' \
                 (size=$$log_size > limit=$(mail_log_gz_max)))
         fi
     else

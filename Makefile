@@ -66,7 +66,8 @@ list:
 	        tail=$${xpat#*/}
 	        [ "$$head" = "$$path" ] || continue
 	        opts="$$opts --exclude '/$$tail'"
-	        $(call log,modify rule path '$$path': append option --exclude '/$$tail')
+	        $(call log, modify rule path '$$path': append option \
+	            --exclude '/$$tail')
 	    done
 
 	    if [ -n "$$opts" ]; then
@@ -80,10 +81,12 @@ list:
 	    -printf '%f\n' | sort)
 
 	n=$$(wc -l < "$(rules_list)")
-	$(call log,list $$n rules from '$(src_root)' to '$(rules_list)')
+	$(call log,list $$n rules from '$(src_root)' to \
+	    '$(call relpath,$(rules_list))')
 
 	n=$$(wc -l < "$(ruleids_list)")
-	$(call log,list $$n ruleids from '$(rules_list)' to '$(ruleids_list)')
+	$(call log,list $$n ruleids from '$(call relpath,$(rules_list))' \
+	    to '$(call relpath,$(ruleids_list))')
 
 xlist:
 	@: > "$(rules_list)"
@@ -166,7 +169,8 @@ main:
 
 	n="$(call count_rules,$(rules_list))"
 	kv_set "$(statusf)" rules_total "$$n"
-	$(call log,[$$runid] loop over '$(call relpath,$(rules_list))' ($$n rules))
+	$(call log,[$$runid] loop over '$(call relpath,$(rules_list))' \
+        ($$n rules))
 
 	$(define_trap_on_signal)
 	trap 'trap_on_signal SIGINT 2' INT
@@ -278,7 +282,8 @@ stop:
 	} >&2
 	> "$(stop_flag)"
 	$(call log,[$$runid] graceful stop requested: \
-	    flag '$(stop_flag)' created$(,) exit after current rule)
+	    flag '$(call relpath,$(stop_flag))' created$(,) \
+	    exit after current rule)
 
 kill:
 	@$(define_kv)
@@ -517,7 +522,7 @@ report: dirs
 	        in_rule
 	    ' "$(logf)"
 	} > "$$reportlog"
-	$(call log,[$$runid] report log saved to '$$reportlog')
+	$(call log,[$$runid] report log saved to '$(call relpath,$$reportlog'))
 
 	$(get_config)
 	{
@@ -546,7 +551,7 @@ report: dirs
 	    printf '\n'
 	    $(MAKE) -s runid=$$runid status-v | sed -n '/^RULE/,$$p'
 	} > "$$reportf"
-	$(call log,[$$runid] report saved to '$$reportf' \
+	$(call log,[$$runid] report saved to '$(call relpath,$$reportf)' \
 	    (elapsed=$(call t_delta_hms_ms,$$t0,$(t))))
 
 	last=$$(readlink "$(last)")
