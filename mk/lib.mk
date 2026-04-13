@@ -104,8 +104,8 @@ define get_runid
 $$(
     case "$${runid-}" in
         '')   runid=$$(kv_get "$(statusf)" runid) ;;
-        prev) [ -L "$(prev)" ] && runid=$$(basename $$(readlink $(prev))) ;;
-        last) [ -L "$(last)" ] && runid=$$(basename $$(readlink $(last))) ;;
+        prev) [ -L "$(prev)" ] && runid="$$(basename "$$(readlink $(prev)")") ;;
+        last) [ -L "$(last)" ] && runid="$$(basename "$$(readlink $(last)")") ;;
     esac
 
     subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
@@ -130,7 +130,7 @@ endef
 
 define run_paths
 {
-    _runid=$(1)
+    _runid="$(1)"
     subdir="$${_runid:0:4}/$${_runid:0:4}.$${_runid:4:2}"
     statsdir="$(stats)/$$subdir/$$_runid"
     statusf="$$statsdir/.status"
@@ -145,7 +145,7 @@ endef
 
 define report_paths
 {
-    _runid=$(1)
+    _runid="$(1)"
     reportsdir="$(reports)/$$subdir"
     reportf="$$reportsdir/report-$$_runid.txt"
     reportlog="$$reportsdir/report-$$_runid.log"
@@ -214,7 +214,7 @@ define get_config
             region)   region=$$v   ;;
             endpoint) endpoint=$$v ;;
         esac
-    done < <($(rclone) --config $(rclone_conf) config show $(remote));
+    done < <($(rclone) --config "$(rclone_conf)" config show "$(remote)");
 }
 endef
 
@@ -236,7 +236,7 @@ parse_rules_conf() {
 
     path=
     while IFS= read -r line; do
-        line=$$(rtrim $$line)
+        line=$$(rtrim "$$line")
         case "$$line" in
             ''|'#'*) continue ;;
         esac
@@ -363,7 +363,7 @@ define watch_child
 $$(
     ppid="$(1)" procname="$(2)" tries="$(3)" delay="$(4)"
     for ((i=1; i<=$$tries; i++)); do
-        child=$$(pgrep -n -P $$ppid -x $$procname || true)
+        child=$$(pgrep -n -P "$$ppid" -x "$$procname" || true)
         [ -n "$$child" ] && break
         sleep $$delay
     done
@@ -395,7 +395,7 @@ define watch_rclone
 (
     rulef="$(1)" program_pid="$(2)"
     tries="$(watch_tries)" delay="$(watch_delay)"
-    rclone_pid=$(call watch_child,$$program_pid,rclone,$$tries,$$delay)
+    rclone_pid="$(call watch_child,$$program_pid,rclone,$$tries,$$delay)"
     if [ -n "$$rclone_pid" ]; then
         kv_set "$(statusf)" rclone_pid "$$rclone_pid"
         rclone_cmd="$(call get_command_by_pid,$$rclone_pid)"
@@ -403,7 +403,7 @@ define watch_rclone
             kv_set "$$rulef" rclone_cmd "$$rclone_cmd"
         fi
     else
-        kv_set "$(statusf)" rclone_pid unknown
+        kv_set "$(statusf)" rclone_pid "unknown"
     fi
 ) & watcher_pid=$$!
 endef
@@ -420,9 +420,9 @@ define stop_guard
             (runid=%s ruleid=%s)\n' "$(project)" "$(1)" "$(2)" >&2
         rm -f "$(stop_flag)"
         $(call log,[$(1):$(2)] stop flag found: exit after current rule)
-        kv_set "$(statusf)" gstate idle
-        kv_set "$(statusf)" result stopped
-        kv_set "$(statusf)" rc 200
+        kv_set "$(statusf)" gstate "idle"
+        kv_set "$(statusf)" result "stopped"
+        kv_set "$(statusf)" rc "200"
         exit 0
     fi
 }
@@ -445,11 +445,11 @@ trap_on_signal() {
 
     $(call log,[$$runid:$$ruleid] (WARN) caught $$sig signal)
 
-    t2=$(t)
-    rule_ended_at=$(call at,$$t2)
+    t2="$(t)"
+    rule_ended_at="$(call at,$$t2)"
     if [ -n "$${t1-}" ]; then
-        rule_elapsed=$(call t_delta,$$t1,$$t2)
-        rule_elapsed_hms_ms=$(call t_hms_ms,$$rule_elapsed)
+        rule_elapsed="$(call t_delta,$$t1,$$t2)"
+        rule_elapsed_hms_ms="$(call t_hms_ms,$$rule_elapsed)"
     else
         rule_elapsed=
         rule_elapsed_hms_ms=unknown
@@ -462,17 +462,17 @@ trap_on_signal() {
     fi
     kv_set "$$rulef" rc "$$rc"
 
-    kv_set "$(statusf)" program_pid -
-    kv_set "$(statusf)" rclone_pid -
+    kv_set "$(statusf)" program_pid "-"
+    kv_set "$(statusf)" rclone_pid "-"
     $(call log,[$$runid:$$ruleid] (WARN) end '$(program_name)': \
         rc=$$rc (elapsed=$$rule_elapsed_hms_ms))
 
     t0=$$(kv_get "$(statusf)" started_at_epoch)
-    t3=$(t)
+    t3="$(t)"
     kv_set "$(statusf)" ended_at_epoch "$$t3"
     kv_set "$(statusf)" ended_at "$(call at,$$t3)"
     kv_set "$(statusf)" total_elapsed "$(call t_delta,$$t0,$$t3)"
-    kv_set "$(statusf)" gstate idle
+    kv_set "$(statusf)" gstate "idle"
     kv_set "$(statusf)" result "$$result"
     kv_set "$(statusf)" rc "$$rc"
 
@@ -480,7 +480,7 @@ trap_on_signal() {
     n=$$(kv_get "$(statusf)" rules_total)
     $(call log,[$$runid] end '$(project)' \
         (rules=$$k/$$n result=$$result rc=$$rc \
-        total_elapsed=$(call t_delta_hms_ms,$$t0,$$t3)))
+        total_elapsed="$(call t_delta_hms_ms,$$t0,$$t3)))"
     exit $$rc
 }
 endef
@@ -579,7 +579,8 @@ endef
 #
 
 make := $(shell basename "$(MAKE)")
-log = printf '%s [%s(%s):%d] %s\n' $(t_now) $(make) $@ $$$$ "$(1)" >> "$(logf)"
+log = printf '%s [%s(%s):%d] %s\n' "$(t_now)" \
+      "$(make)" "$@" "$$$$" "$(1)" >> "$(logf)"
 
 #
 # append_rule_log() - append rclone log to the main log
@@ -704,10 +705,10 @@ define send_report
     printf '<html><body><pre>\n'
     cat "$$reportf"
 
-    if [ "$(mail_log)" = yes ]; then
+    if [ "$(mail_log)" = "yes" ]; then
         log_size=$$(stat -c%s "$$reportlog")
-        log_max=$(call iec2bytes,$(mail_log_max))
-        log_gz_max=$(call iec2bytes,$(mail_log_gz_max))
+        log_max="$(call iec2bytes,$(mail_log_max))"
+        log_gz_max="$(call iec2bytes,$(mail_log_gz_max))"
         if [ "$$log_size" -le "$$log_max" ]; then
             attach_mode=raw
             attach_file="$$reportlog"
@@ -762,7 +763,7 @@ define send_report
 
     printf '\n'
     printf -- '--%s--\n' "$$boundary"
-) | $(sendmail) -i -f $(mail_from) $(mail_to)
+) | $(sendmail) -i -f "$(mail_from)" $(mail_to)
 endef
 
 #------
