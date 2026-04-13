@@ -258,8 +258,10 @@ endef
 #              rules_ruleid (w), rules_opts (w)
 
 define define_load_rules_conf
+declare -A rules_skip rules_exclude rules_ruleid rules_opts
 load_rules_conf() {
     $(define_trim)
+    dot=
     local line path= key val
 
     [ -f "$(rules_conf)" ] || return
@@ -303,7 +305,7 @@ append_rule() {
     local path="$$1"
     local def_ruleid opts= xpat ruleid opt suffix=
 
-    if [ -n "$${rules_skip[$$path]:-}" ]; then
+    if [ -n "$${rules_skip["$$path"]:-}" ]; then
         $(call log,skip rule path '$$path' by '$(call relpath,$(rules_conf))')
         return 0
     fi
@@ -315,24 +317,24 @@ append_rule() {
         def_ruleid=$$(printf '%s' "$$path" | sed 's/[[:space:]]/_/g')
     fi
 
-    if [ -n "$${rules_exclude[$$path]:-}" ]; then
+    if [ -n "$${rules_exclude["$$path"]:-}" ]; then
         while IFS= read -r xpat; do
             [ -n "$$xpat" ] || continue
             opts+=" --exclude '$$xpat'"
-        done <<< "$${rules_exclude[$$path]}"
+        done <<< "$${rules_exclude["$$path"]}"
     fi
 
-    ruleid=$${rules_ruleid[$$path]:-$$def_ruleid}
+    ruleid=$${rules_ruleid["$$path"]:-$$def_ruleid}
     if [ "$$ruleid" != "$$def_ruleid" ]; then
         $(call log,override ruleid for rule path '$$path': \
             '$$def_ruleid' -> '$$ruleid')
     fi
 
-    if [ -n "$${rules_opts[$$path]:-}" ]; then
+    if [ -n "$${rules_opts["$$path"]:-}" ]; then
         while IFS= read -r opt; do
             [ -n "$$opt" ] || continue
             opts+=" $$opt"
-        done <<< "$${rules_opts[$$path]}"
+        done <<< "$${rules_opts["$$path"]}"
     fi
 
     suffix=
