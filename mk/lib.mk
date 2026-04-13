@@ -254,12 +254,13 @@ endef
 # load_rules_conf()        - load rules config
 # usage: $(define_load_rules_conf)
 #        load_rules_conf
+# caller vars: dot (w), rules_skip (w), rules_exclude (w),
+#              rules_ruleid (w), rules_opts (w)
 
 define define_load_rules_conf
 load_rules_conf() {
     $(define_trim)
     local line path key val
-    #declare -A rules_skip rules_exclude rules_ruleid rules_opts
 
     [ -f "$(rules_conf)" ] || return
 
@@ -276,10 +277,11 @@ load_rules_conf() {
             continue
         fi
 
+        [ -n "$$path" ] || continue
+
         line=$$(ltrim "$$line")
         key=$${line%%[[:space:]]*}
-        val=$${line#$$key}
-        val=$$(ltrim "$$val")
+        val=$$(ltrim "$${line#$$key}") 
 
         case "$$key" in
             skip)    rules_skip["$$path"]=1 ;;
@@ -295,7 +297,7 @@ endef
 # append_rule()        - build rule/ruleid and append to {rules,ruleids}_list
 # usage: $(define_append_rule)
 #        append_rule path
-# caller vars: runid (r)
+# caller vars: rules_skip (r) rules_exclude (r) rules_ruleid (r) rules_opts (r)
 
 define define_append_rule
 append_rule() {
@@ -303,8 +305,7 @@ append_rule() {
     local def_ruleid opts xpat ruleid opt suffix
 
     if [ -n "$${rules_skip[$$path]:-}" ]; then
-        $(call log,[$$runid] skip rule path '$$path' \
-            by '$(call relpath,$(rules_conf))')
+        $(call log,skip rule path '$$path' by '$(call relpath,$(rules_conf))')
         return 0
     fi
 
@@ -325,7 +326,7 @@ append_rule() {
 
     ruleid=$${rules_ruleid[$$path]:-$$def_ruleid}
     if [ "$$ruleid" != "$$def_ruleid" ]; then
-        $(call log,[$$runid] override ruleid for rule path '$$path': \
+        $(call log,override ruleid for rule path '$$path': \
             '$$def_ruleid' -> '$$ruleid')
     fi
 
@@ -338,7 +339,7 @@ append_rule() {
 
     suffix=
     [ "$$ruleid" != "$$def_ruleid" ] && suffix+="ruleid=$$ruleid"
-    [ -n "$$opts" ] && suffix+=" opts=\"$${opts# }\""
+    [ -n "$$opts" ] && suffix="$${suffix:+$$suffix }opts=\"$${opts# }\""
     if [ -n "$$suffix" ]; then
         printf '%s -- %s\n' "$$path" "$$suffix"
     else

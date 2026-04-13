@@ -96,7 +96,10 @@ xlist:
 	load_rules_conf || exit 1
 
 	$(define_append_rule)
-	[ -n "$${rules_seen[.]:-}" ] && append_rule .
+	if [ -n "$$dot" ] ||
+	    find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read; then
+	    append_rule .
+	fi
 	while IFS= read -r path; do
 	    append_rule "$$path"
 	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d \

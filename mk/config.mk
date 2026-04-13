@@ -65,6 +65,8 @@ rules_conf   := $(home)/etc/rules.conf
 rules_list   := $(home)/etc/rules.list
 ruleids_list := $(home)/etc/ruleids.list
 
+root_files_ruleid := root-files
+
 # run
 
 watch_tries := 100
