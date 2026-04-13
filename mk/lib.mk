@@ -260,11 +260,10 @@ endef
 define define_load_rules_conf
 load_rules_conf() {
     $(define_trim)
-    local line path key val
+    local line path= key val
 
     [ -f "$(rules_conf)" ] || return
 
-    path=
     while IFS= read -r line; do
         line=$$(rtrim "$$line")
         case "$$line" in
@@ -281,7 +280,7 @@ load_rules_conf() {
 
         line=$$(ltrim "$$line")
         key=$${line%%[[:space:]]*}
-        val=$$(ltrim "$${line#$$key}") 
+        val=$$(ltrim "$${line#$$key}")
 
         case "$$key" in
             skip)    rules_skip["$$path"]=1 ;;
@@ -302,7 +301,7 @@ endef
 define define_append_rule
 append_rule() {
     local path="$$1"
-    local def_ruleid opts xpat ruleid opt suffix
+    local def_ruleid opts= xpat ruleid opt suffix=
 
     if [ -n "$${rules_skip[$$path]:-}" ]; then
         $(call log,skip rule path '$$path' by '$(call relpath,$(rules_conf))')
@@ -310,11 +309,10 @@ append_rule() {
     fi
 
     if [ "$$path" = "." ]; then
-        def_ruleid='root-files'
+        def_ruleid="$(root_files_ruleid)"
         opts='--max-depth 1'
     else
         def_ruleid=$$(printf '%s' "$$path" | sed 's/[[:space:]]/_/g')
-        opts=
     fi
 
     if [ -n "$${rules_exclude[$$path]:-}" ]; then

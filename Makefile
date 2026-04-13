@@ -105,6 +105,14 @@ xlist:
 	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d \
 	    -printf '%f\n' | sort)
 
+	n=$$(wc -l < "$(rules_list)")
+	$(call log,list $$n rules from '$(src_root)' to \
+	    '$(call relpath,$(rules_list))')
+
+	n=$$(wc -l < "$(ruleids_list)")
+	$(call log,list $$n ruleids from '$(call relpath,$(rules_list))' \
+	    to '$(call relpath,$(ruleids_list))')
+
 # run
 
 run:
