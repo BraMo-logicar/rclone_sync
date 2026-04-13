@@ -251,12 +251,12 @@ endef
 #------
 
 # define_parse_rules_conf() - define parse_rules_conf() shell function
-# parse_rules_conf()        - load rules config
-# usage: $(define_parse_rules_conf)
-#        parse_rules_conf
+# load_rules_conf()        - load rules config
+# usage: $(define_load_rules_conf)
+#        load_rules_conf
 
-define define_parse_rules_conf
-parse_rules_conf() {
+define define_load_rules_conf
+load_rules_conf() {
     local line path key val
     #declare -A rules_skip rules_exclude rules_ruleid rules_opts
 
@@ -275,10 +275,10 @@ parse_rules_conf() {
             continue
         fi
 
-        line=$${line#"${line%%[![:space:]]*}"}
+        line=$$(ltrim "$$line")
         key=$${line%%[[:space:]]*}
         val=$${line#$$key}
-        val=$${val#"${val%%[![:space:]]*}"}
+        val=$$(ltrim "$$val")
 
         case "$$key" in
             skip)    rules_skip["$$path"]=1 ;;
