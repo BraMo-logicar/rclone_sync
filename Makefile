@@ -1,7 +1,7 @@
 # Name: Makefile - Makefile for $(project)
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2026.04.07
+# Date: 2026.04.13
 
 include mk/config.mk
 include mk/lib.mk
