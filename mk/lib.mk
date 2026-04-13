@@ -1,7 +1,33 @@
 # Name: mk/lib.mk - Makefile library
 # Usage: include mk/lib.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2026.04.07
+# Date: 2026.04.13
+
+#--------
+# logging
+#--------
+
+#
+# log() - write timestamped log
+# usage: $(call log,message)
+#
+
+make := $(shell basename "$(MAKE)")
+log = printf '%s [%s(%s):%d] %s\n' "$(t_now)" \
+      "$(make)" "$@" "$$$$" "$(1)" >> "$(logf)"
+
+#
+# append_rule_log() - append rclone log to the main log
+# usage: $(call append_rule_log,runid,ruleid,rule_log)
+#
+
+define append_rule_log
+{
+    printf -- '-- begin rclone log (runid=%s ruleid=%s) --\n' "$(1)" "$(2)"
+    sed '$${/^$$/d}' "$(3)"
+    printf -- '-- end rclone log (runid=%s ruleid=%s) --\n' "$(1)" "$(2)"
+} >> "$(logf)"
+endef
 
 #-----
 # time
@@ -90,9 +116,63 @@ t_delta = $$(awk -v t1="$(1)" -v t2="$(2)" 'BEGIN { printf("%.3f", t2 - t1) }')
 t_delta_hms_ms = $(call t_hms_ms,$(call t_delta,$(1),$(2)))
 t_delta_hms = $(call t_hms,$(call t_delta,$(1),$(2)))
 
-#------
-# runid
-#------
+#---------
+# kv store
+#---------
+
+#
+# define_kv() - define kv_get() and kv_set() shell functions
+# kv_set()    - replace key/value (append if missing)
+# kv_get()    - get key/value (empty if missing)
+# usage: $(define_kv)
+#        kv_get file key
+#        kv_set file key value
+#
+
+define define_kv
+kv_set() {
+    local f=$$1 k=$$2 v=$$3
+    printf -v v '%s' "$$v"
+    if grep -q "^$$k:" "$$f"; then
+        sed -Ei "s|^$$k:.*|$$k: $$v|" "$$f"
+    else
+        printf '%s: %s\n' "$$k" "$$v" >> "$$f"
+    fi
+}
+
+kv_get() {
+    local f=$$1 k=$$2
+    sed -En "s/^$$k:[[:space:]]*//p" "$$f"
+}
+endef
+
+#-------
+# config
+#-------
+
+#
+# get_config() - extract config params
+# usage: $(get_config)
+# caller vars: type (w), provider (w), region (w), endpoint (w)
+#
+
+define get_config
+{
+    type= provider= region= endpoint=
+    while read -r k _ v; do
+        case "$$k" in
+            type)     type=$$v     ;;
+            provider) provider=$$v ;;
+            region)   region=$$v   ;;
+            endpoint) endpoint=$$v ;;
+        esac
+    done < <($(rclone) --config "$(rclone_conf)" config show "$(remote)");
+}
+endef
+
+#----
+# run
+#----
 
 #
 # get_runid() - get and validate runid
@@ -166,60 +246,6 @@ define rotate_last_prev
 }
 endef
 
-#---------
-# kv store
-#---------
-
-#
-# define_kv() - define kv_get() and kv_set() shell functions
-# kv_set()    - replace key/value (append if missing)
-# kv_get()    - get key/value (empty if missing)
-# usage: $(define_kv)
-#        kv_get file key
-#        kv_set file key value
-#
-
-define define_kv
-kv_set() {
-    local f=$$1 k=$$2 v=$$3
-    printf -v v '%s' "$$v"
-    if grep -q "^$$k:" "$$f"; then
-        sed -Ei "s|^$$k:.*|$$k: $$v|" "$$f"
-    else
-        printf '%s: %s\n' "$$k" "$$v" >> "$$f"
-    fi
-}
-
-kv_get() {
-    local f=$$1 k=$$2
-    sed -En "s/^$$k:[[:space:]]*//p" "$$f"
-}
-endef
-
-#-------
-# config
-#-------
-
-#
-# get_config() - extract config params
-# usage: $(get_config)
-# caller vars: type (w), provider (w), region (w), endpoint (w)
-#
-
-define get_config
-{
-    type= provider= region= endpoint=
-    while read -r k _ v; do
-        case "$$k" in
-            type)     type=$$v     ;;
-            provider) provider=$$v ;;
-            region)   region=$$v   ;;
-            endpoint) endpoint=$$v ;;
-        esac
-    done < <($(rclone) --config "$(rclone_conf)" config show "$(remote)");
-}
-endef
-
 #------
 # rules
 #------
@@ -263,7 +289,6 @@ parse_rules_conf() {
     done < "$(rules_conf)"
 }
 endef
-
 
 # define_append_rule() - define append_rule() shell function
 # append_rule()        - build rule/ruleid and append to {rules,ruleids}_list
@@ -322,7 +347,6 @@ append_rule() {
     printf '%s\n' "$$ruleid" >> "$(ruleids_list)"
 }
 endef
-
 
 #
 # define_parse_rule() - define parse_rule() shell function
@@ -569,32 +593,6 @@ $$(
         printf 'fail'
     fi
 )
-endef
-
-#--------
-# logging
-#--------
-
-#
-# log() - write timestamped log
-# usage: $(call log,message)
-#
-
-make := $(shell basename "$(MAKE)")
-log = printf '%s [%s(%s):%d] %s\n' "$(t_now)" \
-      "$(make)" "$@" "$$$$" "$(1)" >> "$(logf)"
-
-#
-# append_rule_log() - append rclone log to the main log
-# usage: $(call append_rule_log,runid,ruleid,rule_log)
-#
-
-define append_rule_log
-{
-    printf -- '-- begin rclone log (runid=%s ruleid=%s) --\n' "$(1)" "$(2)"
-    sed '$${/^$$/d}' "$(3)"
-    printf -- '-- end rclone log (runid=%s ruleid=%s) --\n' "$(1)" "$(2)"
-} >> "$(logf)"
 endef
 
 #-----------
