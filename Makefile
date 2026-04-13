@@ -92,9 +92,9 @@ xlist:
 	@: > "$(rules_list)"
 	@: > "$(ruleids_list)"
 
-	$(define_parse_rules_conf)
+	$(define_load_rules_conf)
 	$(define_trim)
-	parse_rules_conf || exit 1
+	load_rules_conf || exit 1
 
 	$(define_append_rule)
 	[ -n "$${rules_seen[.]:-}" ] && append_rule .
