@@ -306,10 +306,6 @@ kill:
 
 # status
 
-xstatus:
-	@$(define_kv)
-	runid=$(get_runid) || exit 1
-
 status status-v:
 	@t0="$(t)"
 	$(define_kv)
@@ -360,7 +356,7 @@ status status-v:
 	    result=$$(kv_get "$$statusf" result)
 	    started_at=$$(kv_get "$$statusf" started_at)
 	    ended_at=$$(kv_get "$$statusf" ended_at)
-	    elapsed="$(call t_hms,$$(kv_get "$$statusf" total_elapsed))
+	    elapsed="$(call t_hms,$$(kv_get "$$statusf" total_elapsed))"
 
 	    printf "state       : $$_RED_%s$$RST\n" "$${gstate^^}"
 	    printf "result      : $$_RED_%s$$RST\n" "$$result"
@@ -590,7 +586,7 @@ report-mail:
 
 	subject=$$(printf '[%s@%s] rclone sync to %s:%s (runid=%s rules=%s/%s)' \
 	    "$(project)" "$(host)" "$(remote)" "$(bucket)" "$$runid" \
-	    "$$rules_done" "$$rules_total)"
+	    "$$rules_done" "$$rules_total"
 
 	$(call send_report,$$runid,$$reportf,$$reportlog,$$subject)
 

@@ -104,8 +104,10 @@ define get_runid
 $$(
     case "$${runid-}" in
         '')   runid=$$(kv_get "$(statusf)" runid) ;;
-        prev) [ -L "$(prev)" ] && runid="$$(basename "$$(readlink $(prev)")") ;;
-        last) [ -L "$(last)" ] && runid="$$(basename "$$(readlink $(last)")") ;;
+        prev) [ -L "$(prev)" ] &&
+              runid=$$(basename "$$(readlink "$(prev)")") ;;
+        last) [ -L "$(last)" ] &&
+              runid=$$(basename "$$(readlink "$(last)")") ;;
     esac
 
     subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
