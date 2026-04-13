@@ -93,7 +93,6 @@ xlist:
 	@: > "$(ruleids_list)"
 
 	$(define_load_rules_conf)
-	$(define_trim)
 	load_rules_conf || exit 1
 
 	$(define_append_rule)
@@ -393,7 +392,8 @@ status status-v:
 	    if [ "$$gstate" = "running" ]; then
 	        mapfile -t ruleids < "$(ruleids_list)"
 	    else
-	        mapfile -t ruleids < <(ls -A "$$statsdir" | grep -vx .status)
+	        mapfile -t ruleids < <(find "$$statsdir" -mindepth 1 -maxdepth 1 \
+	            ! -name .status -printf '%f\n' | sort)
 	    fi
 
 	    queue=0

@@ -257,6 +257,7 @@ endef
 
 define define_load_rules_conf
 load_rules_conf() {
+    $(define_trim)
     local line path key val
     #declare -A rules_skip rules_exclude rules_ruleid rules_opts
 
