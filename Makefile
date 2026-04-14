@@ -30,7 +30,7 @@ $(project): start main end
 
 list:
 	@: > "$(rules_list)"
-	: > "$(ruleids_list)"
+	@: > "$(ruleids_list)"
 
 	if [ -f "$(exclude_list)" ]; then
 	    while IFS= read -r xpat; do
@@ -602,7 +602,7 @@ report-mail:
 
 	subject=$$(printf '[%s@%s] rclone sync to %s:%s (runid=%s rules=%s/%s)' \
 	    "$(project)" "$(host)" "$(remote)" "$(bucket)" "$$runid" \
-	    "$$rules_done" "$$rules_total"
+	    "$$rules_done" "$$rules_total")
 
 	$(call send_report,$$runid,$$reportf,$$reportlog,$$subject)
 

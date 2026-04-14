@@ -508,7 +508,7 @@ trap_on_signal() {
     n=$$(kv_get "$(statusf)" rules_total)
     $(call log,[$$runid] end '$(project)' \
         (rules=$$k/$$n result=$$result rc=$$rc \
-        total_elapsed="$(call t_delta_hms_ms,$$t0,$$t3)))"
+        total_elapsed="$(call t_delta_hms_ms,$$t0,$$t3)"))
     exit $$rc
 }
 endef
