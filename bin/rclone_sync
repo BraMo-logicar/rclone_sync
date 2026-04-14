@@ -24,7 +24,7 @@ set -euo pipefail
 
 home=$(dirname "$(dirname "$0")")
 
-project=$(basename $home)
+project=$(basename "$home")
 progname=${0##*/}
 
 # dirs & files
@@ -60,8 +60,8 @@ OPTS+=(--verbose)                   # more detailed output
 
 # my options
 
-help=$(sed -n '/^# Usage:/,/^# [^ ]/p' $0 | sed '$d;s/^# //')
-Help=$(sed -n '/^# Name:/{:a;/^#/{p;n;ba}}' $0 | sed 's/^# //')
+help=$(sed -n '/^# Usage:/,/^# [^ ]/p' "$0" | sed '$d;s/^# //')
+Help=$(sed -n '/^# Name:/{:a;/^#/{p;n;ba}}' "$0" | sed 's/^# //')
 
 GETOPTS=$(getopt -o hHo: -l help,Help,options -- "$@") || { usage; exit 1; }
 eval set -- "$GETOPTS"
@@ -101,7 +101,7 @@ log "start '$progname'"
 
 # run
 
-cmd=($rclone sync "${OPTS[@]}" "${MYRAWOPTS[@]}" "$lpath" "$rpath")
+cmd=($rclone sync "${OPTS[@]}" "${MYOPTS[@]}" "$lpath" "$rpath")
 printf -v cmd_line "%s " "${cmd[@]}"
 cmd_line=${cmd_line% }
 
