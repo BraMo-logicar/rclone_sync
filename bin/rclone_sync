@@ -12,7 +12,7 @@
 #     <local_path>                  : local path to sync
 #     <remote:bucket/path>          : remote path
 # Author: Marco Broglia (marco.broglia@mutex.it)
-# Date: 2025.10.17
+# Date: 2026.04.14
 
 #
 # vars
@@ -22,15 +22,15 @@
 
 set -euo pipefail
 
-home=$(dirname $(dirname $0))
+home=$(dirname "$(dirname "$0")")
 
 project=$(basename $home)
 progname=${0##*/}
 
 # dirs & files
 
-conf=$home/etc/rclone.conf
-logf=$home/log/$project.log
+conf="$home/etc/rclone.conf"
+logf="$home/log/$project.log"
 
 # cmds
 
@@ -41,7 +41,7 @@ rclone=${RCLONE:-rclone}
 #
 
 now()   { date '+%Y.%m.%d-%H:%M:%S'; }
-log()   { echo "$(now) [$progname:$$] $*" >> $logf; }
+log()   { echo "$(now) [$progname:$$] $*" >> "$logf"; }
 usage() { echo "$help"; }
 
 #
@@ -50,7 +50,7 @@ usage() { echo "$help"; }
 
 # default rclone options
 
-OPTS=(--config $conf)               # rclone config file
+OPTS=(--config "$conf")             # rclone config file
 OPTS+=(--local-no-check-updated)    # skip check of local files during upload
 OPTS+=(--skip-links)                # don't warn about skipped symlinks
 OPTS+=(--stats 1h)                  # print stats every hour
@@ -71,10 +71,10 @@ while :; do
         -h|--help) echo "$help"; exit 0 ;;
         -H|--Help) echo "$Help"; exit 0 ;;
         -o|--options)
-            optarg=$2
-            eval "args=($optarg)";
+            optarg="$2"
+            eval "args=($optarg)"
             MYRAWOPTS+=("$optarg")
-            MYOPTS+=("${args[@]}");
+            MYOPTS+=("${args[@]}")
             shift 2 ;;
         --) shift; break ;;
         *) usage; exit 2 ;;
@@ -84,7 +84,7 @@ done
 
 # local and remote paths
 
-lpath=$1 rpath=$2
+lpath="$1" rpath="$2"
 
 #
 # main
@@ -101,10 +101,12 @@ log "start '$progname'"
 
 # run
 
-printf -v cmd "%q " \
-    $rclone sync "${OPTS[@]}" "${MYRAWOPTS[@]}" "$lpath" "$rpath"
-log "run '${cmd% }'"
-$rclone sync "${OPTS[@]}" "${MYOPTS[@]}" "$lpath" "$rpath"
+cmd=($rclone sync "${OPTS[@]}" "${MYRAWOPTS[@]}" "$lpath" "$rpath")
+printf -v cmd_line "%s " "${cmd[@]}"
+cmd_line=${cmd_line% }
+
+log "run '${cmd_line% }'"
+"${cmd[@]}"
 log "sync '$lpath' -> '$rpath' done"
 
 # end
