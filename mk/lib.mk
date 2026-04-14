@@ -312,7 +312,6 @@ append_rule() {
 
     if [ "$$path" = "." ]; then
         def_ruleid="$(root_files_ruleid)"
-        opts='--max-depth 1'
     else
         def_ruleid=$$(printf '%s' "$$path" | sed 's/[[:space:]]/_/g')
     fi
@@ -320,7 +319,7 @@ append_rule() {
     if [ -n "$${rules_exclude["$$path"]:-}" ]; then
         while IFS= read -r xpat; do
             [ -n "$$xpat" ] || continue
-            opts+=" --exclude '$$xpat'"
+            opts+=" --filter '- $$xpat'"
         done <<< "$${rules_exclude["$$path"]}"
     fi
 
@@ -338,7 +337,7 @@ append_rule() {
     fi
 
     suffix=
-    [ "$$ruleid" != "$$def_ruleid" ] && suffix+="ruleid=$$ruleid"
+    [ "$$ruleid" != "$$def_ruleid" ] && suffix="ruleid=$$ruleid"
     [ -n "$$opts" ] && suffix="$${suffix:+$$suffix }opts=\"$${opts# }\""
     if [ -n "$$suffix" ]; then
         printf '%s -- %s\n' "$$path" "$$suffix"
@@ -360,14 +359,21 @@ endef
 
 define define_parse_rule
 parse_rule() {
-    local rule=$$1
+    local attrs= rule=$$1
+
     case "$$rule" in
-        *' -- '*) path=$${rule%% -- *} opts=$${rule#* -- } ;;
-        *)        path=$$rule opts= ;;
+        *' -- '*) path=$${rule%% -- *} attrs=$${rule#* -- } ;;
+        *)        path=$$rule ;;
     esac
-    [ "$$path" = "." ] && path=
-    ruleid=$$(printf '%s' "$$path" | sed 's|/|_|g;s|[[:space:]]|_|g')
-    set -f; eval "$$opts"; set +f
+
+    if [ "$$path" = "." ]; then
+        ruleid="$(root_files_ruleid)"
+    else
+        ruleid=$$(printf '%s' "$$path" | sed 's|/|_|g;s|[[:space:]]|_|g')
+    fi
+
+    opts=
+    [ -n "$attrs" ] && eval "$$attrs"
 }
 endef
 

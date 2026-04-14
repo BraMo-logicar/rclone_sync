@@ -32,66 +32,6 @@ list:
 	@: > "$(rules_list)"
 	@: > "$(ruleids_list)"
 
-	if [ -f "$(exclude_list)" ]; then
-	    while IFS= read -r xpat; do
-	        case "$$xpat" in
-	            ''|'#'*) continue ;;
-	            */*)     xpath+=("$$xpat") ;;
-	            *)       xrule+=("$$xpat") ;;
-	        esac
-	    done < "$(exclude_list)"
-	fi
-
-	if find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read -r; then
-	    printf '. -- ruleid=root-files opts="--max-depth 1"\n' \
-	        >> "$(rules_list)"
-	    printf 'root-files\n' >> "$(ruleids_list)"
-	fi
-
-	while IFS= read -r path; do
-	    skip=
-	    for xpat in "$${xrule[@]}"; do
-	        case "$$path" in
-	            $$xpat)
-	                skip=1
-	                $(call log,exclude rule path '$$path' by pattern '$$xpat')
-	                break ;;
-	        esac
-	    done
-	    [ -n "$$skip" ] && continue
-
-	    opts=
-	    for xpat in "$${xpath[@]}"; do
-	        head=$${xpat%%/*}
-	        tail=$${xpat#*/}
-	        [ "$$head" = "$$path" ] || continue
-	        opts="$$opts --exclude '/$$tail'"
-	        $(call log, modify rule path '$$path': append option \
-	            --exclude '/$$tail')
-	    done
-
-	    if [ -n "$$opts" ]; then
-	        printf '%s -- opts="%s"\n' "$$path" "$${opts# }"
-	    else
-	        printf '%s\n' "$$path"
-	    fi >> "$(rules_list)"
-	    printf '%s\n' "$$path" | sed 's|/|_|g;s|[[:space:]]|_|g' \
-	        >> "$(ruleids_list)"
-	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d \
-	    -printf '%f\n' | sort)
-
-	n=$$(wc -l < "$(rules_list)")
-	$(call log,list $$n rules from '$(src_root)' to \
-	    '$(call relpath,$(rules_list))')
-
-	n=$$(wc -l < "$(ruleids_list)")
-	$(call log,list $$n ruleids from '$(call relpath,$(rules_list))' \
-	    to '$(call relpath,$(ruleids_list))')
-
-xlist:
-	@: > "$(rules_list)"
-	@: > "$(ruleids_list)"
-
 	$(define_load_rules_conf)
 	load_rules_conf || exit 1
 
@@ -195,6 +135,7 @@ main:
 	    : $$((k++))
 
 	    parse_rule "$$rule"
+
 	    rulef="$$statsdir/$$ruleid"; > "$$rulef"
 	    rule_log="$(logrun)/$$ruleid.log"
 	    pct="$(call pct,$$k,$$n)"
@@ -203,8 +144,16 @@ main:
 	    kv_set "$$rulef" ruleid "$$ruleid"
 	    kv_set "$$rulef" progress "$$k/$$n ($$pct%)"
 
-	    src="$(lpath)/$$path"
-	    dst="$(rpath)/$$path"
+	    if [ "$path" = "." ]; then
+	        src="$(lpath)"
+	        dst="$(rpath)"
+	        filters="--filter '- /*/' --filter '+ /*' --filter '- **'"
+	        opts="$${opts:+$$opts }$$filters"
+	    else
+	        src="$(lpath)/$$path"
+	        dst="$(rpath)/$$path"
+	    fi
+
 	    program_cmd=("$(program_path)" $${opts:+-o "$$opts"} "$$src" "$$dst")
 	    printf -v program_line '%s ' "$${program_cmd[@]}"
 	    program_line=$${program_line% }
@@ -251,7 +200,7 @@ main:
 	        (elapsed=$(call t_hms_ms,$$rule_elapsed)))
 
 	    $(call stop_guard,$$runid,$$ruleid)
-	done < <(sed 's/[[:space:]]*#.*//' "$(rules_list)" | awk 'NF')
+	done < "$(rules_list)"
 
 end:
 	@$(define_kv)
