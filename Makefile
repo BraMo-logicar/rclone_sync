@@ -144,7 +144,7 @@ main:
 	    kv_set "$$rulef" ruleid "$$ruleid"
 	    kv_set "$$rulef" progress "$$k/$$n ($$pct%)"
 
-	    if [ "$path" = "." ]; then
+	    if [ "$$path" = "." ]; then
 	        src="$(lpath)"
 	        dst="$(rpath)"
 	        filters="--filter '- /*/' --filter '+ /*' --filter '- **'"
