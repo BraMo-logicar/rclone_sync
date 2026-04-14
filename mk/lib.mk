@@ -316,9 +316,6 @@ append_rule() {
         def_ruleid=$$(printf '%s' "$$path" | sed 's/[[:space:]]/_/g')
     fi
 
-echo "DEBUG path=[$$path]" >&2
-echo "DEBUG exclude=[$${rules_exclude["$$path"]:-}]" >&2
-
     if [ -n "$${rules_exclude["$$path"]:-}" ]; then
         while IFS= read -r xpat; do
             [ -n "$$xpat" ] || continue
