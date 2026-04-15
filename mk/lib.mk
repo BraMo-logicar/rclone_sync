@@ -306,7 +306,7 @@ append_rule() {
     local def_ruleid opts= xpat ruleid opt suffix=
 
     if [ -n "$${rules_skip["$$path"]:-}" ]; then
-        $(call log,skip rule path '$$path' by '$(call relpath,$(rules_conf))')
+        $(call log,skip path '$$path' by '$(call relpath,$(rules_conf))')
         return 0
     fi
 
@@ -325,7 +325,7 @@ append_rule() {
 
     ruleid=$${rules_ruleid["$$path"]:-$$def_ruleid}
     if [ "$$ruleid" != "$$def_ruleid" ]; then
-        $(call log,override ruleid for rule path '$$path': \
+        $(call log,override ruleid for path '$$path': \
             '$$def_ruleid' -> '$$ruleid')
     fi
 
