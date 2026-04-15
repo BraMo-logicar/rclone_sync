@@ -36,21 +36,24 @@ list:
 	load_rules_conf || exit 1
 
 	$(define_append_rule)
+	n=0
 	if [ -n "$$dot" ] ||
 	    find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read; then
 	    append_rule .
+	    : $$((n++))
 	fi
 	while IFS= read -r path; do
 	    append_rule "$$path"
+	    : $$((n++))
 	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d \
 	    -printf '%f\n' | sort)
 
-	n=$$(wc -l < "$(rules_list)")
-	$(call log,list $$n rules from '$(src_root)' to \
-	    '$(call relpath,$(rules_list))')
+	k=$$(wc -l < "$(rules_list)")
+	$(call log,list $$k/$$n rules ($((n-k)) skipped) from '$(src_root)' \
+	    to '$(call relpath,$(rules_list))')
 
-	n=$$(wc -l < "$(ruleids_list)")
-	$(call log,list $$n ruleids from '$(call relpath,$(rules_list))' \
+	k=$$(wc -l < "$(ruleids_list)")
+	$(call log,list $$k ruleids from '$(call relpath,$(rules_list))' \
 	    to '$(call relpath,$(ruleids_list))')
 
 # run
