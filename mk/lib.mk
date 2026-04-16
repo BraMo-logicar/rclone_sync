@@ -732,8 +732,8 @@ define send_report
         else
             printf '\n'
             printf 'log attachment skipped: \
-                log size (%d bytes) exceeds limit (%s)\n' \
-                "$$log_size" "$(mail_log_gz_max)"
+                log size (%s bytes) exceeds limit (%s)\n' \
+                "$(num3 $$log_size)" "$(mail_log_gz_max)"
             $(call log,[$$runid] log attachment: skip file \
                 '$(call relpath,$$reportlog)' \
                 (size=$$log_size > limit=$(mail_log_gz_max)))
