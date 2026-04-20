@@ -207,7 +207,8 @@ endef
 #
 # run_paths() - derive run paths from runid
 # usage: $(call run_paths,runid)
-# caller vars: subdir (w), statsdir (w), statusf (w)
+# caller vars: subdir (w), statsdir (w), metadir (w), statusf (w)
+#              run_rules_list (w)
 #
 
 define run_paths
@@ -215,7 +216,9 @@ define run_paths
     _runid="$(1)"
     subdir="$${_runid:0:4}/$${_runid:0:4}.$${_runid:4:2}"
     statsdir="$(stats)/$$subdir/$$_runid"
-    statusf="$$statsdir/.status"
+    metadir="$(statsdir)/.meta"
+    statusf="$$metadir/status"
+    run_rules_list="$$metadir/rules.list"
 }
 endef
 
@@ -295,7 +298,7 @@ load_rules_conf() {
 endef
 
 # define_append_rule() - define append_rule() shell function
-# append_rule()        - build rule and append to rules_list
+# append_rule()        - build rule and append it to rules_list
 # usage: $(define_append_rule)
 #        append_rule path
 # caller vars: rules_skip (r) rules_exclude (r) rules_ruleid (r) rules_opts (r)

@@ -44,8 +44,10 @@ list:
 	while IFS= read -r path; do
 	    append_rule "$$path"
 	    : $$((n++))
-	done < <(find "$(src_root)" -mindepth 1 -maxdepth 1 -type d \
-	    -printf '%f\n' | sort)
+	done < <(
+	    find "$(src_root)" -mindepth 1 -maxdepth 1 \
+	        -type d -printf '%f\n' | sort
+	)
 
 	k=$$(wc -l < "$(rules_list)")
 	$(call log,list $$k/$$n rules ($((n-k)) skipped) from '$(src_root)' \
@@ -73,9 +75,10 @@ start: dirs
 	runid="$(t_znow)"
 	$(call run_paths,$$runid)
 
-	mkdir -p "$$statsdir"
+	mkdir -p "$$statsdir" "$$metadir"
+	cp "$(rules_list)" "$$metadir"
 	$(call rotate_last_prev,$(last),$(prev),$$subdir/$$runid)
-	ln -fns stats/last/.status data/status
+	ln -fns stats/last/.meta/status data/status
 
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
 
@@ -115,9 +118,9 @@ main:
 	runid=$$(kv_get "$(statusf)" runid)
 	$(call run_paths,$$runid)
 
-	n="$(call count_rules,$(rules_list))"
+	n="$(call count_rules,$(run_rules_list))"
 	kv_set "$(statusf)" rules_total "$$n"
-	$(call log,[$$runid] loop over '$(call relpath,$(rules_list))' \
+	$(call log,[$$runid] loop over '$(call relpath,$(run_rules_list))' \
         ($$n rules))
 
 	$(define_trap_on_signal)
@@ -198,7 +201,7 @@ main:
 	        (elapsed=$(call t_hms_ms,$$rule_elapsed)))
 
 	    $(call stop_guard,$$runid,$$ruleid)
-	done < "$(rules_list)"
+	done < "$(run_rules_list)"
 
 end:
 	@$(define_kv)
@@ -353,7 +356,7 @@ status status-v:
 	            while IFS= read -r rule; do
 	                parse_rule "$$rule"
 	                printf '%s\n' "$$ruleid"
-	            done < "$(rules_list)"
+	            done < "$(run_rules_list)"
 	        )
 	    else
 	        mapfile -t ruleids < <(
