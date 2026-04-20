@@ -118,9 +118,9 @@ main:
 	runid=$$(kv_get "$(statusf)" runid)
 	$(call run_paths,$$runid)
 
-	n="$(call count_rules,$(run_rules_list))"
+	n="$(call count_rules,$$run_rules_list)"
 	kv_set "$(statusf)" rules_total "$$n"
-	$(call log,[$$runid] loop over '$(call relpath,$(run_rules_list))' \
+	$(call log,[$$runid] loop over '$(call relpath,$$run_rules_list)' \
         ($$n rules))
 
 	$(define_trap_on_signal)
@@ -201,7 +201,7 @@ main:
 	        (elapsed=$(call t_hms_ms,$$rule_elapsed)))
 
 	    $(call stop_guard,$$runid,$$ruleid)
-	done < "$(run_rules_list)"
+	done < "$$run_rules_list"
 
 end:
 	@$(define_kv)
@@ -356,7 +356,7 @@ status status-v:
 	            while IFS= read -r rule; do
 	                parse_rule "$$rule"
 	                printf '%s\n' "$$ruleid"
-	            done < "$(run_rules_list)"
+	            done < "$$run_rules_list"
 	        )
 	    else
 	        mapfile -t ruleids < <(
