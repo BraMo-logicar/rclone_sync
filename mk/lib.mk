@@ -216,7 +216,7 @@ define run_paths
     _runid="$(1)"
     subdir="$${_runid:0:4}/$${_runid:0:4}.$${_runid:4:2}"
     statsdir="$(stats)/$$subdir/$$_runid"
-    metadir="$(statsdir)/.meta"
+    metadir="$$statsdir/.meta"
     statusf="$$metadir/status"
     run_rules_list="$$metadir/rules.list"
 }
