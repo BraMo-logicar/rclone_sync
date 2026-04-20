@@ -1,7 +1,8 @@
 /data
 /etc
+/local
 /log
-/misc
 /tmp
 .include.mk
 .site.mk
+*.swp
