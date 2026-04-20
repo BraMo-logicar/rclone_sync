@@ -361,7 +361,7 @@ status status-v:
 	    else
 	        mapfile -t ruleids < <(
 	            find "$$statsdir" -mindepth 1 -maxdepth 1 \
-	                ! -name .status -printf '%f\n' | sort
+	                -type f -printf '%f\n' | sort
 	        )
 	    fi
 
