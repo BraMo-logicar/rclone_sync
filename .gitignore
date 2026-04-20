@@ -1,5 +1,6 @@
 /data
-/etc
+/etc/*.conf
+/etc/*.list
 /local
 /log
 /tmp

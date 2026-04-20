@@ -1,0 +1,20 @@
+# Name: rules.conf - rules config file
+# Author: Marco Broglia (marco.broglia@mutex.it)
+# Date: yyyy.mm.dd
+
+# format:
+#     path
+#         directive [value]
+#
+# directives:
+#     skip              : skip this path
+#     exclude <pattern> : exclude matching paths
+#     ruleid <id>       : override rule identifier
+#     opts <args>       : append raw rclone options
+
+# top-level files
+#.
+#    ruleid root-files
+
+nobackup
+    skip
