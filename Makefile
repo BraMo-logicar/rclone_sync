@@ -356,8 +356,10 @@ status status-v:
 	            done < "$(rules_list)"
 	        )
 	    else
-	        mapfile -t ruleids < <(find "$$statsdir" -mindepth 1 -maxdepth 1 \
-	            ! -name .status -printf '%f\n' | sort)
+	        mapfile -t ruleids < <(
+	            find "$$statsdir" -mindepth 1 -maxdepth 1 \
+	                ! -name .status -printf '%f\n' | sort
+	        )
 	    fi
 
 	    queue=0
