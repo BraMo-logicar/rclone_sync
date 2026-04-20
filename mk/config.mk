@@ -1,7 +1,7 @@
 # Name: mk/config.mk - config for Makefile
 # Usage: include mk/config.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2026.03.19
+# Date: 2026.04.20
 
 #-----
 # vars
@@ -63,7 +63,6 @@ rpath = $(remote):$(bucket)$(dst_root)
 exclude_list := $(home)/etc/exclude.list
 rules_conf   := $(home)/etc/rules.conf
 rules_list   := $(home)/etc/rules.list
-ruleids_list := $(home)/etc/ruleids.list
 
 root_files_ruleid := root-files
 

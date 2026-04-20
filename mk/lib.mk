@@ -295,7 +295,7 @@ load_rules_conf() {
 endef
 
 # define_append_rule() - define append_rule() shell function
-# append_rule()        - build rule/ruleid and append to {rules,ruleids}_list
+# append_rule()        - build rule and append to rules_list
 # usage: $(define_append_rule)
 #        append_rule path
 # caller vars: rules_skip (r) rules_exclude (r) rules_ruleid (r) rules_opts (r)
@@ -344,8 +344,6 @@ append_rule() {
     else
         printf '%s\n' "$$path"
     fi >> "$(rules_list)"
-
-    printf '%s\n' "$$ruleid" >> "$(ruleids_list)"
 }
 endef
 

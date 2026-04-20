@@ -30,7 +30,6 @@ $(project): start main end
 
 list:
 	@: > "$(rules_list)"
-	@: > "$(ruleids_list)"
 
 	$(define_load_rules_conf)
 	load_rules_conf || exit 1
@@ -51,10 +50,6 @@ list:
 	k=$$(wc -l < "$(rules_list)")
 	$(call log,list $$k/$$n rules ($((n-k)) skipped) from '$(src_root)' \
 	    to '$(call relpath,$(rules_list))')
-
-	k=$$(wc -l < "$(ruleids_list)")
-	$(call log,list $$k ruleids from '$(call relpath,$(rules_list))' \
-	    to '$(call relpath,$(ruleids_list))')
 
 # run
 
@@ -353,7 +348,13 @@ status status-v:
 	    rc_ok=0 rc_fail=0
 
 	    if [ "$$gstate" = "running" ]; then
-	        mapfile -t ruleids < "$(ruleids_list)"
+	        $(define_parse_rule)
+	        mapfile -t ruleids < <(
+	            while IFS= read -r rule; do
+	                parse_rule "$$rule"
+	                printf '%s\n' "$$ruleid"
+	            done < "$(rules_list)"
+	        )
 	    else
 	        mapfile -t ruleids < <(find "$$statsdir" -mindepth 1 -maxdepth 1 \
 	            ! -name .status -printf '%f\n' | sort)
