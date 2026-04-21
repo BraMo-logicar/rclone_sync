@@ -76,7 +76,7 @@ start: dirs
 	$(call run_paths,$$runid)
 
 	mkdir -p "$$statsdir" "$$metadir"
-	cp "$(rules_list)" "$$metadir"
+	cp "$(rules_list)" "$$run_rules_list"
 	$(call rotate_last_prev,$(last),$(prev),$$subdir/$$runid)
 	ln -fns stats/last/.meta/status data/status
 
@@ -236,6 +236,8 @@ end:
 stop:
 	@$(define_kv)
 	runid=$$(kv_get "$$run_statusf" runid)
+	$(call run_paths,$$runid)
+
 	{
 	    printf '[%s] graceful stop requested (runid=%s): ' \
 	        "$(project)" "$$runid"
@@ -249,6 +251,8 @@ stop:
 kill:
 	@$(define_kv)
 	runid=$$(kv_get "$$run_statusf" runid)
+	$(call run_paths,$$runid)
+
 	shell_pid=$$(kv_get "$$run_statusf" shell_pid)
 	program_pid=$$(kv_get "$$run_statusf" program_pid)
 	rclone_pid=$$(kv_get "$$run_statusf" rclone_pid)
