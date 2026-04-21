@@ -76,7 +76,7 @@ watch_delay := .05
 last := $(stats)/last
 prev := $(stats)/prev
 
-statusf := $(last)/.meta/status
+last_statusf := $(last)/.meta/status
 
 # colors
 

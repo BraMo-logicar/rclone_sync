@@ -82,25 +82,25 @@ start: dirs
 
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
 
-	> "$(statusf)"
-	kv_set "$(statusf)" gstate "running"
-	kv_set "$(statusf)" runid "$$runid"
-	kv_set "$(statusf)" started_at_epoch "$$t0"
-	kv_set "$(statusf)" started_at "$(call at,$$t0)"
-	kv_set "$(statusf)" rules_done "0"
-	kv_set "$(statusf)" rules_total "42"
-	kv_set "$(statusf)" current_ruleid "-"
-	kv_set "$(statusf)" current_rule_src "-"
-	kv_set "$(statusf)" current_rule_dst "-"
-	kv_set "$(statusf)" make_pid "$$PPID"
-	kv_set "$(statusf)" shell_pid "-"
-	kv_set "$(statusf)" program_pid "-"
-	kv_set "$(statusf)" rclone_pid "-"
-	kv_set "$(statusf)" ended_at_epoch "-"
-	kv_set "$(statusf)" ended_at "-"
-	kv_set "$(statusf)" total_elapsed "-"
-	kv_set "$(statusf)" result "-"
-	kv_set "$(statusf)" rc "-"
+	> "$$run_statusf"
+	kv_set "$$run_statusf" gstate "running"
+	kv_set "$$run_statusf" runid "$$runid"
+	kv_set "$$run_statusf" started_at_epoch "$$t0"
+	kv_set "$$run_statusf" started_at "$(call at,$$t0)"
+	kv_set "$$run_statusf" rules_done "0"
+	kv_set "$$run_statusf" rules_total "42"
+	kv_set "$$run_statusf" current_ruleid "-"
+	kv_set "$$run_statusf" current_rule_src "-"
+	kv_set "$$run_statusf" current_rule_dst "-"
+	kv_set "$$run_statusf" make_pid "$$PPID"
+	kv_set "$$run_statusf" shell_pid "-"
+	kv_set "$$run_statusf" program_pid "-"
+	kv_set "$$run_statusf" rclone_pid "-"
+	kv_set "$$run_statusf" ended_at_epoch "-"
+	kv_set "$$run_statusf" ended_at "-"
+	kv_set "$$run_statusf" total_elapsed "-"
+	kv_set "$$run_statusf" result "-"
+	kv_set "$$run_statusf" rc "-"
 
 	$(get_config)
 	msg=
@@ -115,11 +115,11 @@ start: dirs
 
 main:
 	@$(define_kv)
-	runid=$$(kv_get "$(statusf)" runid)
+	runid=$$(kv_get "$(last_statusf)" runid)
 	$(call run_paths,$$runid)
 
 	n="$(call count_rules,$$run_rules_list)"
-	kv_set "$(statusf)" rules_total "$$n"
+	kv_set "$$run_statusf" rules_total "$$n"
 	$(call log,[$$runid] loop over '$(call relpath,$$run_rules_list)' \
         ($$n rules))
 
@@ -128,7 +128,7 @@ main:
 	trap 'trap_on_signal SIGTERM 15' TERM
 	shell_pid=$$$$
 
-	kv_set "$(statusf)" shell_pid "$$shell_pid"
+	kv_set "$$run_statusf" shell_pid "$$shell_pid"
 
 	$(define_parse_rule)
 	k=0
@@ -163,9 +163,9 @@ main:
 	    kv_set "$$rulef" rule_dst "$$dst"
 	    kv_set "$$rulef" program_cmd "$$program_line"
 
-	    kv_set "$(statusf)" current_ruleid "$$ruleid"
-	    kv_set "$(statusf)" current_rule_src "$$src"
-	    kv_set "$(statusf)" current_rule_dst "$$dst"
+	    kv_set "$$run_statusf" current_ruleid "$$ruleid"
+	    kv_set "$$run_statusf" current_rule_src "$$src"
+	    kv_set "$$run_statusf" current_rule_dst "$$dst"
 
 	    $(call log,[$$runid] rule '$$rule')
 	    $(call log,[$$runid] ruleid '$$ruleid' ($$k/$$n $$pct%))
@@ -177,7 +177,7 @@ main:
 	    kv_set "$$rulef" rule_started_at "$(call at,$$t1)"
 
 	    "$${program_cmd[@]}" &> "$$rule_log" & program_pid=$$!
-	    kv_set "$(statusf)" program_pid "$$program_pid"
+	    kv_set "$$run_statusf" program_pid "$$program_pid"
 	    $(call watch_rclone,$$rulef,$$program_pid)
 	    rc=0; wait $$program_pid || rc=$$?
 	    wait $$watcher_pid || true
@@ -192,9 +192,9 @@ main:
 	    kv_set "$$rulef" rule_elapsed "$$rule_elapsed"
 	    kv_set "$$rulef" rc "$$rc"
 
-	    kv_set "$(statusf)" rules_done "$$k"
-	    kv_set "$(statusf)" program_pid "-"
-	    kv_set "$(statusf)" rclone_pid "-"
+	    kv_set "$$run_statusf" rules_done "$$k"
+	    kv_set "$$run_statusf" program_pid "-"
+	    kv_set "$$run_statusf" rclone_pid "-"
 
 	    [ "$$rc" -ne 0 ] && warn=" (WARN)" || warn=
 	    $(call log,[$$runid:$$ruleid]$$warn end '$(program_name)': rc=$$rc \
@@ -205,26 +205,27 @@ main:
 
 end:
 	@$(define_kv)
-	runid=$$(kv_get "$(statusf)" runid)
-	t0=$$(kv_get "$(statusf)" started_at_epoch)
+	runid=$$(kv_get "$(last_statusf)" runid)
+	$(call run_paths,$$runid)
+
 	t3="$(t)"
-	kv_set "$(statusf)" ended_at_epoch "$$t3"
-	kv_set "$(statusf)" ended_at "$(call at,$$t3)"
-	kv_set "$(statusf)" total_elapsed "$(call t_delta,$$t0,$$t3)"
-	k=$$(kv_get "$(statusf)" rules_done)
-	n=$$(kv_get "$(statusf)" rules_total)
-	kv_set "$(statusf)" gstate "idle"
-	result=$$(kv_get "$(statusf)" result)
+	kv_set "$$run_statusf" ended_at_epoch "$$t3"
+	kv_set "$$run_statusf" ended_at "$(call at,$$t3)"
+	kv_set "$$run_statusf" total_elapsed "$(call t_delta,$$t0,$$t3)"
+	k=$$(kv_get "$$run_statusf" rules_done)
+	n=$$(kv_get "$$run_statusf" rules_total)
+	kv_set "$$run_statusf" gstate "idle"
+	result=$$(kv_get "$$run_statusf" result)
 	if [ "$$result" = "stopped" ] || [ "$$result" = "killed" ]; then
-	    rc=$$(kv_get "$(statusf)" rc)
+	    rc=$$(kv_get "$$run_statusf" rc)
 	else
 	    if [ "$$k" -eq "$$n" ]; then
 	        result=completed rc=0
 	    else
 	        result=failed rc=-1
 	    fi
-	    kv_set "$(statusf)" result "$$result"
-	    kv_set "$(statusf)" rc "$$rc"
+	    kv_set "$$run_statusf" result "$$result"
+	    kv_set "$$run_statusf" rc "$$rc"
 	fi
 	$(call log,[$$runid] end '$(project)' \
 	    (rules=$$k/$$n result=$$result rc=$$rc) \
@@ -234,7 +235,7 @@ end:
 
 stop:
 	@$(define_kv)
-	runid=$$(kv_get "$(statusf)" runid)
+	runid=$$(kv_get "$$run_statusf" runid)
 	{
 	    printf '[%s] graceful stop requested (runid=%s): ' \
 	        "$(project)" "$$runid"
@@ -247,10 +248,10 @@ stop:
 
 kill:
 	@$(define_kv)
-	runid=$$(kv_get "$(statusf)" runid)
-	shell_pid=$$(kv_get "$(statusf)" shell_pid)
-	program_pid=$$(kv_get "$(statusf)" program_pid)
-	rclone_pid=$$(kv_get "$(statusf)" rclone_pid)
+	runid=$$(kv_get "$$run_statusf" runid)
+	shell_pid=$$(kv_get "$$run_statusf" shell_pid)
+	program_pid=$$(kv_get "$$run_statusf" program_pid)
+	rclone_pid=$$(kv_get "$$run_statusf" rclone_pid)
 	printf '[%s] global kill requested (%s=%d %s=%d %s=%d)\n' \
 	    "$(project)" "recipe_shell" "$$shell_pid" \
 	    "program" "$$program_pid" "rclone" "$$rclone_pid" >&2
@@ -265,7 +266,7 @@ kill:
 	    done
 	    sleep 1
 	done
-	kv_set "$(statusf)" gstate "idle"
+	kv_set "$$run_statusf" gstate "idle"
 	$(call log,[$$runid] kill: sent signals to rclone=$$rclone_pid \
 	    program=$$program_pid recipe_shell=$$shell_pid)
 
@@ -279,31 +280,31 @@ status status-v:
 	runid=$(get_runid) || exit 1
 	$(call run_paths,$$runid)
 
-	gstate=$$(kv_get "$$statusf" gstate)
+	gstate=$$(kv_get "$$run_statusf" gstate)
 	[ -n "$$gstate" ] || gstate=idle
 
-	k=$$(kv_get "$$statusf" rules_done)
-	n=$$(kv_get "$$statusf" rules_total)
+	k=$$(kv_get "$$run_statusf" rules_done)
+	n=$$(kv_get "$$run_statusf" rules_total)
 	pct="$(call pct,$$k,$$n)"
 
 	if [ "$$gstate" = "running" ]; then
 	    t0="$(t)"
-	    started_at_epoch=$$(kv_get "$$statusf" started_at_epoch)
-	    started_at=$$(kv_get "$$statusf" started_at)
+	    started_at_epoch=$$(kv_get "$$run_statusf" started_at_epoch)
+	    started_at=$$(kv_get "$$run_statusf" started_at)
 	    elapsed="$(call t_delta_hms,$$started_at_epoch,$$t0)"
 
-	    current_ruleid=$$(kv_get "$$statusf" current_ruleid)
+	    current_ruleid=$$(kv_get "$$run_statusf" current_ruleid)
 	    rulef="$$statsdir/$$current_ruleid"
 	    rule_started_at_epoch=$$(kv_get "$$rulef" rule_started_at_epoch)
 	    rule_elapsed="$(call t_delta_hms,$$rule_started_at_epoch,$$t0)"
 
-	    current_rule_src=$$(kv_get "$$statusf" current_rule_src)
-	    current_rule_dst=$$(kv_get "$$statusf" current_rule_dst)
+	    current_rule_src=$$(kv_get "$$run_statusf" current_rule_src)
+	    current_rule_dst=$$(kv_get "$$run_statusf" current_rule_dst)
 
-	    make_pid=$$(kv_get "$$statusf" make_pid)
-	    shell_pid=$$(kv_get "$$statusf" shell_pid)
-	    program_pid=$$(kv_get "$$statusf" program_pid)
-	    rclone_pid=$$(kv_get "$$statusf" rclone_pid)
+	    make_pid=$$(kv_get "$$run_statusf" make_pid)
+	    shell_pid=$$(kv_get "$$run_statusf" shell_pid)
+	    program_pid=$$(kv_get "$$run_statusf" program_pid)
+	    rclone_pid=$$(kv_get "$$run_statusf" rclone_pid)
 	    pids="make=$${make_pid:--} shell=$${shell_pid:--} "
 	    pids+="rclone_sync=$${program_pid:--} rclone=$${rclone_pid:--}"
 
@@ -318,10 +319,10 @@ status status-v:
 	                           "$$current_ruleid" "$$rule_elapsed"
 	    printf "pids         : %s\n" "$$pids"
 	else
-	    result=$$(kv_get "$$statusf" result)
-	    started_at=$$(kv_get "$$statusf" started_at)
-	    ended_at=$$(kv_get "$$statusf" ended_at)
-	    elapsed="$(call t_hms,$$(kv_get "$$statusf" total_elapsed))"
+	    result=$$(kv_get "$$run_statusf" result)
+	    started_at=$$(kv_get "$$run_statusf" started_at)
+	    ended_at=$$(kv_get "$$run_statusf" ended_at)
+	    elapsed="$(call t_hms,$$(kv_get "$$run_statusf" total_elapsed))"
 
 	    printf "state       : $$_RED_%s$$RST\n" "$${gstate^^}"
 	    printf "result      : $$_RED_%s$$RST\n" "$$result"
@@ -454,7 +455,7 @@ report: dirs
 	runid=$(get_runid) || exit 1
 	$(call run_paths,$$runid)
 
-	gstate=$$(kv_get "$$statusf" gstate)
+	gstate=$$(kv_get "$$run_statusf" gstate)
 	if [ "$$gstate" = "running" ]; then
 	    if [ -t 1 ]; then
 	        printf "[%s] $$_RED_%s is running$$RST: report skipped\n" \
@@ -467,9 +468,9 @@ report: dirs
 	$(call report_paths,$$runid)
 	mkdir -p "$$reportsdir"
 
-	rules_done=$$(kv_get "$$statusf" rules_done)
-	rules_total=$$(kv_get "$$statusf" rules_total)
-	elapsed="$(call t_hms_ms,$$(kv_get "$$statusf" total_elapsed))"
+	rules_done=$$(kv_get "$$run_statusf" rules_done)
+	rules_total=$$(kv_get "$$run_statusf" rules_total)
+	elapsed="$(call t_hms_ms,$$(kv_get "$$run_statusf" total_elapsed))"
 
 	{
 	    printf '%s @ %s (%s)\n' "$(project)" "$(hostname)" "$$runid"
@@ -509,12 +510,12 @@ report: dirs
 	    printf 'source      : %s\n' "$(lpath)"
 	    printf 'destination : %s\n' "$(rpath)"
 	    printf '\n'
-	    printf 'started_at  : %s\n' "$$(kv_get "$$statusf" started_at)"
-	    printf 'ended_at    : %s\n' "$$(kv_get "$$statusf" ended_at)"
+	    printf 'started_at  : %s\n' "$$(kv_get "$$run_statusf" started_at)"
+	    printf 'ended_at    : %s\n' "$$(kv_get "$$run_statusf" ended_at)"
 	    printf 'elapsed     : %s\n' "$$elapsed"
 	    printf '\n'
 	    printf 'rules       : %s\n' "$$rules_done/$$rules_total"
-	    printf 'result      : %s\n' "$$(kv_get "$$statusf" result)"
+	    printf 'result      : %s\n' "$$(kv_get "$$run_statusf" result)"
 	    printf '\n'
 	    printf -- '-------- rules summary (status-v) --------\n'
 	    printf '\n'
@@ -555,8 +556,8 @@ report-mail:
 	    $(call log,[$$runid] report log does not exist)
 	fi
 
-	rules_done=$$(kv_get "$$statusf" rules_done)
-	rules_total=$$(kv_get "$$statusf" rules_total)
+	rules_done=$$(kv_get "$$run_statusf" rules_done)
+	rules_total=$$(kv_get "$$run_statusf" rules_total)
 
 	subject=$$(printf '[%s@%s] rclone sync to %s:%s (runid=%s rules=%s/%s)' \
 	    "$(project)" "$(host)" "$(remote)" "$(bucket)" "$$runid" \

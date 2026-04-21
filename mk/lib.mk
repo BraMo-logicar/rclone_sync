@@ -183,7 +183,7 @@ endef
 define get_runid
 $$(
     case "$${runid-}" in
-        '')   runid=$$(kv_get "$(statusf)" runid) ;;
+        '')   runid=$$(kv_get "$(last_statusf)" runid) ;;
         prev) [ -L "$(prev)" ] &&
               runid=$$(basename "$$(readlink "$(prev)")") ;;
         last) [ -L "$(last)" ] &&
@@ -207,8 +207,8 @@ endef
 #
 # run_paths() - derive run paths from runid
 # usage: $(call run_paths,runid)
-# caller vars: subdir (w), statsdir (w), metadir (w), statusf (w)
-#              run_rules_list (w)
+# caller vars: subdir (w), statsdir (w), metadir (w),
+#              run_statusf (w), run_rules_list (w)
 #
 
 define run_paths
@@ -217,7 +217,7 @@ define run_paths
     subdir="$${_runid:0:4}/$${_runid:0:4}.$${_runid:4:2}"
     statsdir="$(stats)/$$subdir/$$_runid"
     metadir="$$statsdir/.meta"
-    statusf="$$metadir/status"
+    run_statusf="$$metadir/status"
     run_rules_list="$$metadir/rules.list"
 }
 endef
@@ -432,13 +432,13 @@ define watch_rclone
     tries="$(watch_tries)" delay="$(watch_delay)"
     rclone_pid="$(call watch_child,$$program_pid,rclone,$$tries,$$delay)"
     if [ -n "$$rclone_pid" ]; then
-        kv_set "$(statusf)" rclone_pid "$$rclone_pid"
+        kv_set "$$run_statusf" rclone_pid "$$rclone_pid"
         rclone_cmd="$(call get_command_by_pid,$$rclone_pid)"
         if [ -n "$$rclone_cmd" ]; then
             kv_set "$$rulef" rclone_cmd "$$rclone_cmd"
         fi
     else
-        kv_set "$(statusf)" rclone_pid "unknown"
+        kv_set "$$run_statusf" rclone_pid "unknown"
     fi
 ) & watcher_pid=$$!
 endef
@@ -455,9 +455,9 @@ define stop_guard
             (runid=%s ruleid=%s)\n' "$(project)" "$(1)" "$(2)" >&2
         rm -f "$(stop_flag)"
         $(call log,[$(1):$(2)] stop flag found: exit after current rule)
-        kv_set "$(statusf)" gstate "idle"
-        kv_set "$(statusf)" result "stopped"
-        kv_set "$(statusf)" rc "200"
+        kv_set "$$run_statusf" gstate "idle"
+        kv_set "$$run_statusf" result "stopped"
+        kv_set "$$run_statusf" rc "200"
         exit 0
     fi
 }
@@ -497,22 +497,22 @@ trap_on_signal() {
     fi
     kv_set "$$rulef" rc "$$rc"
 
-    kv_set "$(statusf)" program_pid "-"
-    kv_set "$(statusf)" rclone_pid "-"
+    kv_set "$$run_statusf" program_pid "-"
+    kv_set "$$run_statusf" rclone_pid "-"
     $(call log,[$$runid:$$ruleid] (WARN) end '$(program_name)': \
         rc=$$rc (elapsed=$$rule_elapsed_hms_ms))
 
-    t0=$$(kv_get "$(statusf)" started_at_epoch)
+    t0=$$(kv_get "$$run_statusf" started_at_epoch)
     t3="$(t)"
-    kv_set "$(statusf)" ended_at_epoch "$$t3"
-    kv_set "$(statusf)" ended_at "$(call at,$$t3)"
-    kv_set "$(statusf)" total_elapsed "$(call t_delta,$$t0,$$t3)"
-    kv_set "$(statusf)" gstate "idle"
-    kv_set "$(statusf)" result "$$result"
-    kv_set "$(statusf)" rc "$$rc"
+    kv_set "$$run_statusf" ended_at_epoch "$$t3"
+    kv_set "$$run_statusf" ended_at "$(call at,$$t3)"
+    kv_set "$$run_statusf" total_elapsed "$(call t_delta,$$t0,$$t3)"
+    kv_set "$$run_statusf" gstate "idle"
+    kv_set "$$run_statusf" result "$$result"
+    kv_set "$$run_statusf" rc "$$rc"
 
-    k=$$(kv_get "$(statusf)" rules_done)
-    n=$$(kv_get "$(statusf)" rules_total)
+    k=$$(kv_get "$$run_statusf" rules_done)
+    n=$$(kv_get "$$run_statusf" rules_total)
     $(call log,[$$runid] end '$(project)' \
         (rules=$$k/$$n result=$$result rc=$$rc \
         total_elapsed="$(call t_delta_hms_ms,$$t0,$$t3)"))
