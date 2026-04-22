@@ -208,6 +208,7 @@ end:
 	runid=$$(kv_get "$(last_statusf)" runid)
 	$(call run_paths,$$runid)
 
+	t0=$$(kv_get "$$run_statusf" started_at_epoch)
 	t3="$(t)"
 	kv_set "$$run_statusf" ended_at_epoch "$$t3"
 	kv_set "$$run_statusf" ended_at "$(call at,$$t3)"
