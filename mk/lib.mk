@@ -434,9 +434,7 @@ define watch_rclone
     if [ -n "$$rclone_pid" ]; then
         kv_set "$$run_statusf" rclone_pid "$$rclone_pid"
         rclone_cmd="$(call get_command_by_pid,$$rclone_pid)"
-        if [ -n "$$rclone_cmd" ]; then
-            kv_set "$$rulef" rclone_cmd "$$rclone_cmd"
-        fi
+        [ -n "$$rclone_cmd" ] && kv_set "$$rulef" rclone_cmd "$$rclone_cmd"
     else
         kv_set "$$run_statusf" rclone_pid "unknown"
     fi
@@ -492,9 +490,7 @@ trap_on_signal() {
 
     $(call append_rule_log,$$runid,$$ruleid,$$rule_log)
     kv_set "$$rulef" rule_ended_at "$$rule_ended_at"
-    if [ -n "$$rule_elapsed" ]; then
-        kv_set "$$rulef" rule_elapsed "$$rule_elapsed"
-    fi
+    [ -n "$$rule_elapsed" ] && kv_set "$$rulef" rule_elapsed "$$rule_elapsed"
     kv_set "$$rulef" rc "$$rc"
 
     kv_set "$$run_statusf" program_pid "-"

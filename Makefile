@@ -286,7 +286,7 @@ status status-v:
 	$(call run_paths,$$runid)
 
 	gstate=$$(kv_get "$$run_statusf" gstate)
-	[ -n "$$gstate" ] || gstate=idle
+	[ -n "$${gstate-}" ] || gstate=idle
 
 	k=$$(kv_get "$$run_statusf" rules_done)
 	n=$$(kv_get "$$run_statusf" rules_total)
@@ -456,15 +456,14 @@ history:
 	n=$${n:-$(history_n)}
 	files=$$(find "$(stats)" -type f -path '*/.meta/status')
 	runs=$$(for f in $$files; do
-	    runid=$$(basename $$(dirname $$(dirname "$$f")))
+	    runid=$${f%/.meta/status} runid=$${runid##*/}
 	    printf '%s %s\n' "$$runid" "$$f"
 	done)
 	[ -n "$${from-}" ] &&
-	    runs=$$(echo "$$runs" | awk -v from="$$from" '$$1 >= from');
+	    runs=$$(printf '%s\n' "$$runs" | awk -v from="$$from" '$$1 >= from');
 	[ -n "$${to-}" ] &&
-	    runs=$$(echo "$$runs" | awk -v to="$$to" '$$1 <= to');
-	runs=$$(echo "$$runs" | sort -r -k1,1)
-	runs=$$(echo "$$runs" | head -n $$n)
+	    runs=$$(printf '%s\n' "$$runs" | awk -v to="$$to" '$$1 <= to');
+	runs=$$(printf '%s\n' "$$runs" | sort -r -k1,1 | head -n $$n)
 
 	printf "%-12s %-7s %-8s %-8s %-8s %-7s %-6s %-6s %-5s %-3s %-6s\n" \
 		"RUNID" "RULES" "START" "END" "ELAPSED" "CHECKS" "XFER" "MIB" \
