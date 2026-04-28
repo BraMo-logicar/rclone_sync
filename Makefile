@@ -453,8 +453,12 @@ status status-v:
 # history
 
 history:
+	@$(define_kv)
+	$(colors)
+
 	n=$${n:-$(history_n)}
 	files=$$(find "$(stats)" -type f -path '*/.meta/status')
+
 	runs=$$(for f in $$files; do
 	    runid=$${f%/.meta/status} runid=$${runid##*/}
 	    printf '%s %s\n' "$$runid" "$$f"
@@ -465,27 +469,28 @@ history:
 	    runs=$$(printf '%s\n' "$$runs" | awk -v to="$$to" '$$1 <= to');
 	runs=$$(printf '%s\n' "$$runs" | sort -r -k1,1 | head -n $$n)
 
-	printf "%-12s %-7s %-8s %-8s %-8s %-7s %-6s %-6s %-5s %-3s %-6s\n" \
-		"RUNID" "RULES" "START" "END" "ELAPSED" "CHECKS" "XFER" "MIB" \
-	    "DEL" "RC" "RESULT"
+	fmt="%-15s  %7s  %-8s  %-8s  %-8s  %8s  %8s  %10s  %6s  %3s  %s"
+	printf "$$BLD$$fmt$$RST\n" \
+		"RUNID" "RULES" "START" "END" "ELAPSED" "CHECKS" \
+	    "XFER" "XFER_MiB" "DEL" "RC" "RESULT"
 
-	echo "$$runs" | while IFS='|' read -r runid statusf; do
-	    rules_done=$$(kv_get "$$statusf" rules_done || true);
-	    rules_total=$$(kv_get "$$statusf" rules_total || true);
-	    ts_start=$$(kv_get "$$statusf" ts_start || true);
-	    ts_end=$$(kv_get "$$statusf" ts_end || true);
-	    elapsed=$$(kv_get "$$statusf" elapsed || true);
-	    checks=$$(kv_get "$$statusf" checks || true);
-	    xfer=$$(kv_get "$$statusf" xfer || true);
-	    xfer_mib=$$(kv_get "$$statusf" xfer_mib || true);
-	    del=$$(kv_get "$$statusf" del || true);
-	    rc=$$(kv_get "$$statusf" rc || true);
-	    result=$$(kv_get "$$statusf" result || true);
-	    rules="$$rules_done/$$rules_total";
-	    printf "%-12s %-7s %-8s %-8s %-8s %-7s %-6s %-6s %-5s %-3s %-6s\n" \
-	        "$$runid" "$$rules" "$$ts_start" "$$ts_end" "$$elapsed" \
-	        "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc" "$$result";
-	done
+	while read -r runid statusf; do
+	#    rules_done=$$(kv_get "$$statusf" rules_done || true);
+	#    rules_total=$$(kv_get "$$statusf" rules_total || true);
+	#    ts_start=$$(kv_get "$$statusf" ts_start || true);
+	#    ts_end=$$(kv_get "$$statusf" ts_end || true);
+	#    elapsed=$$(kv_get "$$statusf" elapsed || true);
+	#    checks=$$(kv_get "$$statusf" checks || true);
+	#    xfer=$$(kv_get "$$statusf" xfer || true);
+	#    xfer_mib=$$(kv_get "$$statusf" xfer_mib || true);
+	#    del=$$(kv_get "$$statusf" del || true);
+	#    rc=$$(kv_get "$$statusf" rc || true);
+	#    result=$$(kv_get "$$statusf" result || true);
+	#    rules="$$rules_done/$$rules_total";
+	#    printf "%-12s %-7s %-8s %-8s %-8s %-7s %-6s %-6s %-5s %-3s %-6s\n" \
+	#        "$$runid" "$$rules" "$$ts_start" "$$ts_end" "$$elapsed" \
+	#        "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc" "$$result";
+	done <<< "$$runs"
 
 # report
 
