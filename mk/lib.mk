@@ -474,13 +474,12 @@ define define_trap_on_signal
 trap_on_signal() {
     local sig=$$1 sigcode=$$2
     local rc=$$((128 + sigcode))
-    local t0 t2 t3 rule_ended_at rule_elapsed rule_elapsed_hms_ms k
-    local result=killed
+    local t0 t2 t3 rule_elapsed rule_elapsed_hms_ms
+    local k n result=killed
 
     $(call log,[$$runid:$$ruleid] (WARN) caught $$sig signal)
 
     t2="$(t)"
-    rule_ended_at="$(call at,$$t2)"
     if [ -n "$${t1-}" ]; then
         rule_elapsed="$(call t_delta,$$t1,$$t2)"
         rule_elapsed_hms_ms="$(call t_hms_ms,$$rule_elapsed)"
@@ -492,7 +491,8 @@ trap_on_signal() {
     $(call append_rule_log,$$runid,$$ruleid,$$rule_log)
     $(call save_rclone_stats,$$runid,$$ruleid,$$rulef,$$rule_log)
     $(call update_run_stats,$$run_statusf,$$rulef)
-    kv_set "$$rulef" rule_ended_at "$$rule_ended_at"
+    kv_set "$$rulef" rule_ended_at_epoch "$$t2"
+    kv_set "$$rulef" rule_ended_at "$(call at,$$t2)"
     [ -n "$$rule_elapsed" ] && kv_set "$$rulef" rule_elapsed "$$rule_elapsed"
     kv_set "$$rulef" rc "$$rc"
 
@@ -588,12 +588,12 @@ define update_run_stats
 (
     run_statusf="$(1)" rulef="$(2)"
 
-    checks=$$(kv_get "$$rulef" rclone_checks); checks=$${checks%/*}
-    xfer=$$(kv_get "$$rulef" rclone_transferred)
+    checks=$$(kv_get "$$rulef" rclone_checks); checks="$(call lhs,checks)"
+    xfer=$$(kv_get "$$rulef" rclone_transferred); xfer="$(call lhs,xfer)"
     xfer_new=$$(kv_get "$$rulef" rclone_copied_new)
     xfer_replaced=$$(kv_get "$$rulef" rclone_copied_replaced)
     xfer_mib=$$(kv_get "$$rulef" rclone_transferred_size)
-    xfer_mib="$(call iec2mib,$${xfer_mib%/*},3)"
+    xfer_mib="$(call iec2mib,$(call lhs,xfer_mib),3)"
     del=$$(kv_get "$$rulef" rclone_deleted)
 
     total_checks=$$(kv_get "$$run_statusf" checks)
@@ -606,8 +606,10 @@ define update_run_stats
     kv_set "$$run_statusf" checks "$$((total_checks + checks))"
     kv_set "$$run_statusf" xfer "$$((total_xfer + xfer))"
     kv_set "$$run_statusf" xfer_new "$$((total_xfer_new + xfer_new))"
-    kv_set "$$run_statusf" xfer_replaced "$$((total_xfer_replaced + xfer_replaced))"
-    kv_set "$$run_statusf" xfer_mib "$$(echo "$$total_xfer_mib + $$xfer_mib" | bc)"
+    kv_set "$$run_statusf" xfer_replaced \
+        "$$((total_xfer_replaced + xfer_replaced))"
+    kv_set "$$run_statusf" xfer_mib \
+        "$$(echo "$$total_xfer_mib + $$xfer_mib" | bc)"
     kv_set "$$run_statusf" del "$$((total_del + del))"
 )
 endef
@@ -652,6 +654,13 @@ $$(
         printf '%s+' "$${s:0:$$((w-1))}"
 )
 endef
+
+#
+# lhs() - return left-hand side of slash-separated value
+# usage: $(call lhs,var)
+#
+
+lhs = $${$(1)%%/*}
 
 #
 # iec2mib() - convert IEC size (B, KiB, MiB, GiB, TiB) to MiB

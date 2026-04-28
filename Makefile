@@ -20,8 +20,10 @@ include .include.mk
 help:
 	@printf '%s\n' \
 	    'Makefile: Please specify a target:' \
-	    '    list, run, stop, kill' \
-	    '    status(-v) [runid=<runid>], report(-mail) [runid=<runid>],' \
+	    '    list, run, stop, kill,' \
+	    '    status(-v) [runid=<runid>],' \
+        '    history [from|to=<date>] [n=<n>],' \
+        '    report(-mail) [runid=<runid>],' \
 	    '    usage, log-last'
 
 $(project): start main end
@@ -243,7 +245,7 @@ end:
 
 stop:
 	@$(define_kv)
-	runid=$$(kv_get "$$run_statusf" runid)
+	runid=$$(kv_get "$(last_statusf)" runid)
 	$(call run_paths,$$runid)
 
 	{
@@ -258,7 +260,7 @@ stop:
 
 kill:
 	@$(define_kv)
-	runid=$$(kv_get "$$run_statusf" runid)
+	runid=$$(kv_get "$(last_statusf)" runid)
 	$(call run_paths,$$runid)
 
 	shell_pid=$$(kv_get "$$run_statusf" shell_pid)
@@ -481,11 +483,11 @@ history:
 	    started_at=$$(kv_get "$$statusf" started_at)
 	    ended_at=$$(kv_get "$$statusf" ended_at)
 	    total_elapsed="$(call t_hms,$$(kv_get "$$statusf" total_elapsed))"
-	    checks="$(call num3,$$(kv_get "$$statusf" checks))"
-	    xfer="$(call num3,$$(kv_get "$$statusf" xfer))"
+	    checks=$$(kv_get "$$statusf" checks)
+	    xfer=$$(kv_get "$$statusf" xfer)
 	    xfer_mib=$$(kv_get "$$statusf" xfer_mib |
 	        awk '{ printf "%.1f", $$1 }')
-	    del="$(call num3,$$(kv_get "$$statusf" del))"
+	    del=$$(kv_get "$$statusf" del)
 	    rc=$$(kv_get "$$statusf" rc)
 	    result=$$(kv_get "$$statusf" result)
 	    rules="$$rules_done/$$rules_total"
