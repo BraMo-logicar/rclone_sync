@@ -580,7 +580,7 @@ define save_rclone_stats
 endef
 
 #
-# update_run_stats() - add rclone metrics to the run status file
+# update_run_stats() - update run stats in to the run status file
 # usage: $(call update_run_stats,run_statusf,rulef)
 #
 
