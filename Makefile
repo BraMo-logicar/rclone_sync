@@ -567,11 +567,9 @@ report: dirs
 	    (elapsed=$(call t_delta_hms_ms,$$t0,$(t))))
 
 	last=$$(readlink "$(last)")
-	ln -fns "$$(dirname "$$last")/report-$$(basename "$$last").txt" \
-	    "$(reports)/last"
+	ln -fns "$${last%/*}/report-$${last##*/}.txt" "$(reports)/last"
 	prev=$$(readlink "$(prev)")
-	ln -fns "$$(dirname "$$prev")/report-$$(basename "$$prev").txt" \
-	    "$(reports)/prev"
+	ln -fns "$${prev%/*}/report-$${prev##*/}.txt" "$(reports)/prev"
 
 # report by email
 

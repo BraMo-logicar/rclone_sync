@@ -185,9 +185,9 @@ $$(
     case "$${runid-}" in
         '')   runid=$$(kv_get "$(last_statusf)" runid) ;;
         prev) [ -L "$(prev)" ] &&
-              runid=$$(basename "$$(readlink "$(prev)")") ;;
+              { target=$$(readlink "$(prev)"); runid=$${target##*/}; } ;;
         last) [ -L "$(last)" ] &&
-              runid=$$(basename "$$(readlink "$(last)")") ;;
+              { target=$$(readlink "$(last)"); runid=$${target##*/}; } ;;
     esac
 
     subdir="$${runid:0:4}/$${runid:0:4}.$${runid:4:2}"
