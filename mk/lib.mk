@@ -466,7 +466,8 @@ endef
 # trap_on_signal()        - handle signals
 # usage: $(define_trap_on_signal)
 #        trap_on_signal signal rc
-# caller vars: runid (r), ruleid (r), t1 (r), rule_log (r), rulef (r)
+# caller vars: runid (r), ruleid (r), t1 (r), rule_log (r), rulef (r),
+#              run_statusf (r)
 #
 
 define define_trap_on_signal
@@ -489,6 +490,8 @@ trap_on_signal() {
     fi
 
     $(call append_rule_log,$$runid,$$ruleid,$$rule_log)
+    $(call save_rclone_stats,$$runid,$$ruleid,$$rulef,$$rule_log)
+    $(call update_run_stats,$$run_statusf,$$rulef)
     kv_set "$$rulef" rule_ended_at "$$rule_ended_at"
     [ -n "$$rule_elapsed" ] && kv_set "$$rulef" rule_elapsed "$$rule_elapsed"
     kv_set "$$rulef" rc "$$rc"
@@ -564,7 +567,7 @@ define save_rclone_stats
 (
     runid="$(1)" ruleid="$(2)" rulef="$(3)" rule_log="$(4)"
     declare -A S
-    while read k v; do
+    while read -r k v; do
         S[$$k]=$$v
         kv_set "$$rulef" "$$k" "$$v"
     done < <($(call get_rclone_stats,$$rule_log))
@@ -573,6 +576,39 @@ define save_rclone_stats
         (new=$${S[rclone_copied_new]} replaced=$${S[rclone_copied_replaced]}) \
         transferred_size=$${S[rclone_transferred_size]} \
         deleted=$${S[rclone_deleted]} elapsed=$${S[rclone_elapsed]})
+)
+endef
+
+#
+# update_run_stats() - add rclone metrics to the run status file
+# usage: $(call update_run_stats,run_statusf,rulef)
+#
+
+define update_run_stats
+(
+    run_statusf="$(1)" rulef="$(2)"
+
+    checks=$$(kv_get "$$rulef" rclone_checks); checks=$${checks%/*}
+    xfer=$$(kv_get "$$rulef" rclone_transferred)
+    xfer_new=$$(kv_get "$$rulef" rclone_copied_new)
+    xfer_replaced=$$(kv_get "$$rulef" rclone_copied_replaced)
+    xfer_mib=$$(kv_get "$$rulef" rclone_transferred_size)
+    xfer_mib="$(call iec2mib,$${xfer_mib%/*})"
+    del=$$(kv_get "$$rulef" rclone_deleted)
+
+    total_checks=$$(kv_get "$$run_statusf" checks)
+    total_xfer=$$(kv_get "$$run_statusf" xfer)
+    total_xfer_new=$$(kv_get "$$run_statusf" xfer_new)
+    total_xfer_replaced=$$(kv_get "$$run_statusf" xfer_replaced)
+    total_xfer_mib=$$(kv_get "$$run_statusf" xfer_mib)
+    total_del=$$(kv_get "$$run_statusf" del)
+
+    kv_set "$$run_statusf" checks "$$((total_checks + checks))"
+    kv_set "$$run_statusf" xfer "$$((total_xfer + xfer))"
+    kv_set "$$run_statusf" xfer_new "$$((total_xfer_new + xfer_new))"
+    kv_set "$$run_statusf" xfer_replaced "$$((total_xfer_replaced + xfer_replaced))"
+    kv_set "$$run_statusf" xfer_mib "$$(echo "$$total_xfer_mib + $$xfer_mib" | bc)"
+    kv_set "$$run_statusf" del "$$((total_del + del))"
 )
 endef
 
