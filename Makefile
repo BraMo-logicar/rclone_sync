@@ -99,6 +99,12 @@ start: dirs
 	kv_set "$$run_statusf" ended_at_epoch "-"
 	kv_set "$$run_statusf" ended_at "-"
 	kv_set "$$run_statusf" total_elapsed "-"
+	kv_set "$$run_statusf" checks "0"
+	kv_set "$$run_statusf" xfer "0"
+	kv_set "$$run_statusf" xfer_new "0"
+	kv_set "$$run_statusf" xfer_replaced "0"
+	kv_set "$$run_statusf" xfer_mib "0"
+	kv_set "$$run_statusf" del "0"
 	kv_set "$$run_statusf" result "-"
 	kv_set "$$run_statusf" rc "-"
 
@@ -187,6 +193,7 @@ main:
 
 	    $(call append_rule_log,$$runid,$$ruleid,$$rule_log)
 	    $(call save_rclone_stats,$$runid,$$ruleid,$$rulef,$$rule_log)
+	    $(call update_run_stats,$$run_statusf,$$rulef)
 	    kv_set "$$rulef" rule_ended_at_epoch "$$t2"
 	    kv_set "$$rulef" rule_ended_at "$(call at,$$t2)"
 	    kv_set "$$rulef" rule_elapsed "$$rule_elapsed"
@@ -351,10 +358,8 @@ status status-v:
 	        "RULE" "STATE" "START" "END" "ELAPSED" \
 	        "CHECKS" "XFER" "XFER_MiB" "DEL" "RC"
 
-	    sum_checks=0
-	    sum_xfer=0 sum_xfer_new=0 sum_xfer_replaced=0 sum_xfer_mib=0
-	    sum_del=0 sum_elapsed=0
-	    rc_ok=0 rc_fail=0
+	    sum_xfer_new=0 sum_xfer_replaced=0
+	    sum_elapsed=0 rc_ok=0 rc_fail=0
 
 	    if [ "$$gstate" = "running" ]; then
 	        $(define_parse_rule)
@@ -402,24 +407,15 @@ status status-v:
 	            else
 	                elapsed=
 	            fi
-	            checks=$$(kv_get "$$rulef" rclone_checks)
-	            checks=$${checks%/*}
-	            xfer=$$(kv_get "$$rulef" rclone_transferred)
-	            xfer=$${xfer%/*}
-	            xfer_new=$$(kv_get "$$rulef" rclone_copied_new)
-	            xfer_replaced=$$(kv_get "$$rulef" rclone_copied_replaced)
-	            xfer_mib=$$(kv_get "$$rulef" rclone_transferred_size)
-	            xfer_mib="$(call iec2mib,$${xfer_mib%/*})"
-	            del=$$(kv_get "$$rulef" rclone_deleted)
+	            checks=$$(kv_get "$$run_statusf" checks)
+	            xfer=$$(kv_get "$$run_statusf" xfer)
+	            xfer_new=$$(kv_get "$$rn_statusf" xfer_new)
+	            xfer_replaced=$$(kv_get "$$rn_statusf" xfer_replaced)
+	            xfer_mib=$$(kv_get "$$run_statusf" xfer_mib)
+	            del=$$(kv_get "$$run_statusf" del)
 	            rc=$$(kv_get "$$rulef" rc)
 
-	            : $$((sum_checks+=checks))
-	            : $$((sum_xfer+=xfer))
-	            : $$((sum_xfer_new+=xfer_new))
-	            : $$((sum_xfer_replaced+=xfer_replaced))
-	            sum_xfer_mib=$$(echo "$$sum_xfer_mib+$${xfer_mib:=0}" | bc)
-	            : $$((sum_del+=del))
-	            sum_elapsed=$$(echo "$$sum_elapsed+$${rule_elapsed:=0}" | bc)
+	            sum_elapsed=$$(echo "$$sum_elapsed + $${rule_elapsed:=0}" | bc)
 	            [ "$$rc" = 0 ] && : $$((rc_ok++)) || : $$((rc_fail++))
 
 	            printf "$$fmt\n" "$$rule" "$$rstate" "$$start" "$$end" \
@@ -440,12 +436,12 @@ status status-v:
 	    else
 	        printf "    rules         : $$_RED_%d/%d$$RST\n" "$$k" "$$n"
 	    fi
-	    printf "    checks        : %s\n" "$(call num3,$$sum_checks)"
-	    printf "    xfer          : %s\n" "$(call num3,$$sum_xfer)"
-	    printf "      new         : %s\n" "$(call num3,$$sum_xfer_new)"
-	    printf "      replaced    : %s\n" "$(call num3,$$sum_xfer_replaced)"
-	    printf "    xfer size     : %s\n" "$(call mib2iec,$$sum_xfer_mib)"
-	    printf "    deleted       : %s\n" "$(call num3,$$sum_del)"
+	    printf "    checks        : %s\n" "$(call num3,$$checks)"
+	    printf "    xfer          : %s\n" "$(call num3,$$xfer)"
+	    printf "      new         : %s\n" "$(call num3,$$xfer_new)"
+	    printf "      replaced    : %s\n" "$(call num3,$$xfer_replaced)"
+	    printf "    xfer size     : %s\n" "$(call mib2iec,$$xfer_mib)"
+	    printf "    deleted       : %s\n" "$(call num3,$$del)"
 	    printf "    rules elapsed : %s\n" "$(call t_hms,$$sum_elapsed)"
 	    printf "    rules result  : ok=%d fail=%d\n" "$$rc_ok" "$$rc_fail"
 	fi
@@ -475,21 +471,21 @@ history:
 	    "XFER" "XFER_MiB" "DEL" "RC" "RESULT"
 
 	while read -r runid statusf; do
-	#    rules_done=$$(kv_get "$$statusf" rules_done || true);
-	#    rules_total=$$(kv_get "$$statusf" rules_total || true);
-	#    ts_start=$$(kv_get "$$statusf" ts_start || true);
-	#    ts_end=$$(kv_get "$$statusf" ts_end || true);
-	#    elapsed=$$(kv_get "$$statusf" elapsed || true);
-	#    checks=$$(kv_get "$$statusf" checks || true);
-	#    xfer=$$(kv_get "$$statusf" xfer || true);
-	#    xfer_mib=$$(kv_get "$$statusf" xfer_mib || true);
-	#    del=$$(kv_get "$$statusf" del || true);
-	#    rc=$$(kv_get "$$statusf" rc || true);
-	#    result=$$(kv_get "$$statusf" result || true);
-	#    rules="$$rules_done/$$rules_total";
-	#    printf "%-12s %-7s %-8s %-8s %-8s %-7s %-6s %-6s %-5s %-3s %-6s\n" \
-	#        "$$runid" "$$rules" "$$ts_start" "$$ts_end" "$$elapsed" \
-	#        "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc" "$$result";
+	    rules_done=$$(kv_get "$$statusf" rules_done);
+	    rules_total=$$(kv_get "$$statusf" rules_total);
+	    started_at=$$(kv_get "$$statusf" started_at);
+	    ended_at=$$(kv_get "$$statusf" ended_at);
+	    total_elapsed=$$(kv_get "$$statusf" total_elapsed);
+	    checks=$$(kv_get "$$statusf" checks);
+	    xfer=$$(kv_get "$$statusf" xfer);
+	    xfer_mib=$$(kv_get "$$statusf" xfer_mib);
+	    del=$$(kv_get "$$statusf" del);
+	    rc=$$(kv_get "$$statusf" rc);
+	    result=$$(kv_get "$$statusf" result);
+	    rules="$$rules_done/$$rules_total";
+	    printf "%-12s %-7s %-8s %-8s %-8s %-7s %-6s %-6s %-5s %-3s %-6s\n" \
+	        "$$runid" "$$rules" "$$started_at" "$$ended_at" "$$total_elapsed" \
+	        "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc" "$$result";
 	done <<< "$$runs"
 
 # report
