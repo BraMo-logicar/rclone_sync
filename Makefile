@@ -407,11 +407,10 @@ status status-v:
 	            else
 	                elapsed=
 	            fi
-	            checks=$$(kv_get "$$rulef" rclone_checks)
+	            checks=$$(kv_get "$$rulef" rclone_checks); checks=$${checks%/*}
 	            xfer=$$(kv_get "$$rulef" rclone_transferred)
-	            xfer_new=$$(kv_get "$$rulef" rclone_copied_new)
-	            xfer_replaced=$$(kv_get "$$rulef" rclone_copied_replaced)
 	            xfer_mib=$$(kv_get "$$rulef" rclone_transferred_size)
+	            xfer_mib="$(call iec2mib,$${xfer_mib%/*})"
 	            del=$$(kv_get "$$rulef" rclone_deleted)
 	            rc=$$(kv_get "$$rulef" rc)
 
