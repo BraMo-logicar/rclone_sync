@@ -14,7 +14,7 @@ include .include.mk
 
 .PHONY: help dirs \
         list run start main end stop kill \
-        status status-v report report-mail \
+        status status-v history report report-mail \
         usage log-last
 
 help:
@@ -25,6 +25,11 @@ help:
 	    '    usage, log-last'
 
 $(project): start main end
+
+# dirs
+
+dirs:
+	@mkdir -p "$(home)/log" "$(reports)" "$(stats)" "$(tmp)" "$(usage)"
 
 # list
 
@@ -61,11 +66,6 @@ run:
 	[ "$$start_rc" -eq 0 ] && { $(MAKE) -s main || main_rc=$$?; }
 	$(MAKE) -s end main_rc=$$main_rc
 	exit $$main_rc
-
-# dirs
-
-dirs:
-	@mkdir -p "$(home)/log" "$(reports)" "$(stats)" "$(tmp)" "$(usage)"
 
 # main
 
@@ -449,6 +449,44 @@ status status-v:
 	    printf "    rules elapsed : %s\n" "$(call t_hms,$$sum_elapsed)"
 	    printf "    rules result  : ok=%d fail=%d\n" "$$rc_ok" "$$rc_fail"
 	fi
+
+# history
+
+history:
+	n=$${n:-$(history_n)}
+	files=$$(find "$(stats)" -type f -path '*/.meta/status')
+	runs=$$(for f in $$files; do
+	    runid=$$(basename $$(dirname $$(dirname "$$f")))
+	    printf '%s %s\n' "$$runid" "$$f"
+	done)
+	[ -n "$${from-}" ] &&
+	    runs=$$(echo "$$runs" | awk -v from="$$from" '$$1 >= from');
+	[ -n "$${to-}" ] &&
+	    runs=$$(echo "$$runs" | awk -v to="$$to" '$$1 <= to');
+	runs=$$(echo "$$runs" | sort -r -k1,1)
+	runs=$$(echo "$$runs" | head -n $$n)
+
+	printf "%-12s %-7s %-8s %-8s %-8s %-7s %-6s %-6s %-5s %-3s %-6s\n" \
+		"RUNID" "RULES" "START" "END" "ELAPSED" "CHECKS" "XFER" "MIB" \
+	    "DEL" "RC" "RESULT"
+
+	echo "$$runs" | while IFS='|' read -r runid statusf; do
+	    rules_done=$$(kv_get "$$statusf" rules_done || true);
+	    rules_total=$$(kv_get "$$statusf" rules_total || true);
+	    ts_start=$$(kv_get "$$statusf" ts_start || true);
+	    ts_end=$$(kv_get "$$statusf" ts_end || true);
+	    elapsed=$$(kv_get "$$statusf" elapsed || true);
+	    checks=$$(kv_get "$$statusf" checks || true);
+	    xfer=$$(kv_get "$$statusf" xfer || true);
+	    xfer_mib=$$(kv_get "$$statusf" xfer_mib || true);
+	    del=$$(kv_get "$$statusf" del || true);
+	    rc=$$(kv_get "$$statusf" rc || true);
+	    result=$$(kv_get "$$statusf" result || true);
+	    rules="$$rules_done/$$rules_total";
+	    printf "%-12s %-7s %-8s %-8s %-8s %-7s %-6s %-6s %-5s %-3s %-6s\n" \
+	        "$$runid" "$$rules" "$$ts_start" "$$ts_end" "$$elapsed" \
+	        "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc" "$$result";
+	done
 
 # report
 

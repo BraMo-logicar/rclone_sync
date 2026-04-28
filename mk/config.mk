@@ -78,6 +78,10 @@ prev := $(stats)/prev
 
 last_statusf := $(last)/.meta/status
 
+# history
+
+history_n := 20
+
 # colors
 
 esc   := \033
