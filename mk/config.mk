@@ -1,7 +1,7 @@
 # Name: mk/config.mk - config for Makefile
 # Usage: include mk/config.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2026.04.20
+# Date: 2026.04.28
 
 #-----
 # vars

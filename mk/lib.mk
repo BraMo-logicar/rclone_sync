@@ -1,7 +1,7 @@
 # Name: mk/lib.mk - Makefile library
 # Usage: include mk/lib.mk
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2026.04.13
+# Date: 2026.04.28
 
 #--------
 # logging
@@ -593,7 +593,7 @@ define update_run_stats
     xfer_new=$$(kv_get "$$rulef" rclone_copied_new)
     xfer_replaced=$$(kv_get "$$rulef" rclone_copied_replaced)
     xfer_mib=$$(kv_get "$$rulef" rclone_transferred_size)
-    xfer_mib="$(call iec2mib,$${xfer_mib%/*})"
+    xfer_mib="$(call iec2mib,$${xfer_mib%/*},3)"
     del=$$(kv_get "$$rulef" rclone_deleted)
 
     total_checks=$$(kv_get "$$run_statusf" checks)
@@ -654,20 +654,22 @@ $$(
 endef
 
 #
-# iec2mib() - convert IEC size (B, KiB, MiB, GiB, TiB) to MiB (1 decimal)
-# usage: $(call iec2mib,size)
+# iec2mib() - convert IEC size (B, KiB, MiB, GiB, TiB) to MiB
+# usage: $(call iec2mib,size,precision)
 #
 
 define iec2mib
 $$(
-    awk -v s="$(1)" '
+    awk -v s="$(1)" -v p="$(2)" '
         function n(x) { sub(/(B|[KMGT]iB)$$/, "", x); return x }
         BEGIN {
-            if      (s ~ /[0-9]B$$/) print sprintf("%.1f", n(s) / 1048576)
-            else if (s ~ /KiB$$/)    print sprintf("%.1f", n(s) / 1024)
-            else if (s ~ /MiB$$/)    print sprintf("%.1f", n(s))
-            else if (s ~ /GiB$$/)    print sprintf("%.1f", n(s) * 1024)
-            else if (s ~ /TiB$$/)    print sprintf("%.1f", n(s) * 1048576)
+            if      (s ~ /[0-9]B$$/) v = n(s) / 1048576
+            else if (s ~ /KiB$$/)    v = n(s) / 1024
+            else if (s ~ /MiB$$/)    v = n(s)
+            else if (s ~ /GiB$$/)    v = n(s) * 1024
+            else if (s ~ /TiB$$/)    v = n(s) * 1048576
+            else                     v = 0
+            printf "%.*f", p, v
         }'
 )
 endef

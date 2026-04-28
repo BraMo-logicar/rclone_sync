@@ -1,7 +1,7 @@
 # Name: Makefile - Makefile for $(project)
 # Usage: (g)make [ all | <target> | clean ]
 # Author: Marco Broglia <marco.broglia@mutex.it>
-# Date: 2026.04.13
+# Date: 2026.04.28
 
 include mk/config.mk
 include mk/lib.mk
@@ -358,7 +358,6 @@ status status-v:
 	        "RULE" "STATE" "START" "END" "ELAPSED" \
 	        "CHECKS" "XFER" "XFER_MiB" "DEL" "RC"
 
-	    sum_xfer_new=0 sum_xfer_replaced=0
 	    sum_elapsed=0 rc_ok=0 rc_fail=0
 
 	    if [ "$$gstate" = "running" ]; then
@@ -408,9 +407,9 @@ status status-v:
 	                elapsed=
 	            fi
 	            checks=$$(kv_get "$$rulef" rclone_checks); checks=$${checks%/*}
-	            xfer=$$(kv_get "$$rulef" rclone_transferred)
+	            xfer=$$(kv_get "$$rulef" rclone_transferred); xfer=$${xfer%/*}
 	            xfer_mib=$$(kv_get "$$rulef" rclone_transferred_size)
-	            xfer_mib="$(call iec2mib,$${xfer_mib%/*})"
+	            xfer_mib="$(call iec2mib,$${xfer_mib%/*},1)"
 	            del=$$(kv_get "$$rulef" rclone_deleted)
 	            rc=$$(kv_get "$$rulef" rc)
 
@@ -481,17 +480,19 @@ history:
 	    rules_total=$$(kv_get "$$statusf" rules_total)
 	    started_at=$$(kv_get "$$statusf" started_at)
 	    ended_at=$$(kv_get "$$statusf" ended_at)
-	    total_elapsed=$$(kv_get "$$statusf" total_elapsed)
-	    checks=$$(kv_get "$$statusf" checks)
-	    xfer=$$(kv_get "$$statusf" xfer)
-	    xfer_mib=$$(kv_get "$$statusf" xfer_mib)
-	    del=$$(kv_get "$$statusf" del)
+	    total_elapsed="$(call t_hms,$$(kv_get "$$statusf" total_elapsed))"
+	    checks="$(call num3,$$(kv_get "$$statusf" checks))"
+	    xfer="$(call num3,$$(kv_get "$$statusf" xfer))"
+	    xfer_mib=$$(kv_get "$$statusf" xfer_mib |
+	        awk '{ printf "%.1f", $$1 }')
+	    del="$(call num3,$$(kv_get "$$statusf" del))"
 	    rc=$$(kv_get "$$statusf" rc)
 	    result=$$(kv_get "$$statusf" result)
 	    rules="$$rules_done/$$rules_total"
-		printf "$$fmt\n" "$$runid" "$$rules" "$$started_at" "$$ended_at" \
-            "$$total_elapsed" "$$checks" "$$xfer" "$$xfer_mib" "$$del" \
-            "$$rc" "$$result"
+
+	    printf "$$fmt\n" "$$runid" "$$rules" "$$started_at" "$$ended_at" \
+	        "$$total_elapsed" "$$checks" "$$xfer" "$$xfer_mib" "$$del" \
+	        "$$rc" "$$result"
 	done <<< "$$runs"
 
 # report
