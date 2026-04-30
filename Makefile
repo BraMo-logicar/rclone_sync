@@ -46,11 +46,11 @@ list:
 	if [ -n "$$dot" ] ||
 	    find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read; then
 	    append_rule .
-	    : $$((n++))
+	    ((n++))
 	fi
 	while IFS= read -r path; do
 	    append_rule "$$path"
-	    : $$((n++))
+	    ((n++))
 	done < <(
 	    find "$(src_root)" -mindepth 1 -maxdepth 1 \
 	        -type d -printf '%f\n' | sort
@@ -141,7 +141,7 @@ main:
 	$(define_parse_rule)
 	k=0
 	while IFS= read -r rule; do
-	    : $$((k++))
+	    ((k++))
 
 	    parse_rule "$$rule"
 
@@ -384,7 +384,7 @@ status status-v:
 	        rstate="$(call get_rstate,$$rulef,$$gstate)"
 
 	        if [ "$$rstate" = "queue" ]; then
-	            : $$((queue++))
+	            ((queue++))
 	            if [ "$$queue" -le "$(rule_queue)" ]; then
 	                printf "$$fmt_queue\n" "$$rule" "queue"
 	            fi
@@ -416,7 +416,7 @@ status status-v:
 	            rc=$$(kv_get "$$rulef" rc)
 
 	            sum_elapsed=$$(echo "$$sum_elapsed + $${rule_elapsed:=0}" | bc)
-	            [ "$$rc" = 0 ] && : $$((rc_ok++)) || : $$((rc_fail++))
+	            [ "$$rc" = 0 ] && ((rc_ok++)) || ((rc_fail++))
 
 	            printf "$$fmt\n" "$$rule" "$$rstate" "$$start" "$$end" \
 	                "$$elapsed" "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc"
@@ -460,24 +460,36 @@ history:
 	$(colors)
 
 	n=$${n:-$(history_n)}
-	files=$$(find "$(stats)" -type f -path '*/.meta/status')
 
-	runs=$$(for f in $$files; do
-	    runid=$${f%/.meta/status} runid=$${runid##*/}
-	    printf '%s %s\n' "$$runid" "$$f"
-	done)
-	[ -n "$${from-}" ] &&
-	    runs=$$(printf '%s\n' "$$runs" | awk -v from="$$from" '$$1 >= from')
-	[ -n "$${to-}" ] &&
-	    runs=$$(printf '%s\n' "$$runs" | awk -v to="$$to" '$$1 <= to')
-	runs=$$(printf '%s\n' "$$runs" | sort -r -k1,1 | head -n $$n)
+	mapfile -t runs < <(
+	find "$(stats)" -type f -path '*/.meta/status' |
+	    while read -r statusf; do
+	        runid=$${statusf%/.meta/status} runid=$${runid##*/}
+	        [ -n "$${from-}" ] && "$$runid" < "$$from" ]] && continue
+	        [ -n "$${to-}" ]   && "$$runid" > "$$to"   ]] && continue
+	        printf '%s %s\n' "$$runid" "$$statusf"
+	    done | sort -k1,1
+	)
+
+	case "$$n" in
+	    0)
+	        ;;
+	    -*)
+	        n=$${n#-}
+	        mapfile -t runs < <(printf '%s\n' "$${runs[@]}" | head -n "$$n")
+	        ;;
+	    *)
+	        mapfile -t runs < <(printf '%s\n' "$${runs[@]}" | tail -n "$$n")
+	        ;;
+	esac
 
 	fmt="%-15s  %7s  %-8s  %-8s  %-8s  %8s  %8s  %10s  %6s  %3s  %s"
 	printf "$$BLD$$fmt$$RST\n" \
 		"RUNID" "RULES" "START" "END" "ELAPSED" "CHECKS" \
 	    "XFER" "XFER_MiB" "DEL" "RC" "RESULT"
 
-	while read -r runid statusf; do
+	for row in "$${runs[@]}"; do
+	    runid=$${row%% *} statusf=$${row#* }
 	    rules_done=$$(kv_get "$$statusf" rules_done)
 	    rules_total=$$(kv_get "$$statusf" rules_total)
 	    started_at=$$(kv_get "$$statusf" started_at)
@@ -495,7 +507,7 @@ history:
 	    printf "$$fmt\n" "$$runid" "$$rules" "$$started_at" "$$ended_at" \
 	        "$$total_elapsed" "$$checks" "$$xfer" "$$xfer_mib" "$$del" \
 	        "$$rc" "$$result"
-	done <<< "$$runs"
+	done
 
 # report
 

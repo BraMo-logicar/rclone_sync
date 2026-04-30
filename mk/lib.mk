@@ -757,7 +757,7 @@ define send_report
     printf '<html><body><pre>\n'
     cat "$$reportf"
 
-    if [ "$(mail_log)" = "yes" ]; then
+    if [[ "$(mail_log)" = "yes" ]]; then
         log_size=$$(stat -c%s "$$reportlog")
         log_max="$(call iec2bytes,$(mail_log_max))"
         log_gz_max="$(call iec2bytes,$(mail_log_gz_max))"
