@@ -465,8 +465,8 @@ history:
 	    find "$(stats)" -type f -path '*/.meta/status' |
 	        while read -r statusf; do
 	            runid=$${statusf%/.meta/status} runid=$${runid##*/}
-	            [ -n "$${from-}" ] && "$$runid" < "$$from" ]] && continue
-	            [ -n "$${to-}" ]   && "$$runid" > "$$to"   ]] && continue
+	            [[ -n "$${from-}" && "$$runid" < "$$from" ]] && continue
+	            [[ -n "$${to-}"   && "$$runid" > "$$to"   ]] && continue
 	            printf '%s %s\n' "$$runid" "$$statusf"
 	        done | sort -k1,1
 	)
