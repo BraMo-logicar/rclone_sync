@@ -416,7 +416,7 @@ status status-v:
 	            rc=$$(kv_get "$$rulef" rc)
 
 	            sum_elapsed=$$(echo "$$sum_elapsed + $${rule_elapsed:=0}" | bc)
-	            [ "$$rc" = 0 ] && ((rc_ok++)) || ((rc_fail++))
+	            [ "$$rc" = 0 ] && : $$((rc_ok++)) || $$((rc_fail++))
 
 	            printf "$$fmt\n" "$$rule" "$$rstate" "$$start" "$$end" \
 	                "$$elapsed" "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc"
@@ -473,12 +473,15 @@ history:
 
 	case "$$n" in
 	    0)
+	        echo uno
 	        ;;
-	    -*)
+	    [-]*)
+	        echo due
 	        n=$${n#-}
 	        mapfile -t runs < <(printf '%s\n' "$${runs[@]}" | head -n "$$n")
 	        ;;
 	    *)
+	        echo tre
 	        mapfile -t runs < <(printf '%s\n' "$${runs[@]}" | tail -n "$$n")
 	        ;;
 	esac
