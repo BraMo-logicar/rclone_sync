@@ -46,11 +46,11 @@ list:
 	if [ -n "$$dot" ] ||
 	    find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read; then
 	    append_rule .
-	    ((n++))
+	    : $$((n++))
 	fi
 	while IFS= read -r path; do
 	    append_rule "$$path"
-	    ((n++))
+	    : $$((n++))
 	done < <(
 	    find "$(src_root)" -mindepth 1 -maxdepth 1 \
 	        -type d -printf '%f\n' | sort
@@ -141,7 +141,7 @@ main:
 	$(define_parse_rule)
 	k=0
 	while IFS= read -r rule; do
-	    ((k++))
+	    : $$((k++))
 
 	    parse_rule "$$rule"
 
@@ -384,7 +384,7 @@ status status-v:
 	        rstate="$(call get_rstate,$$rulef,$$gstate)"
 
 	        if [ "$$rstate" = "queue" ]; then
-	            ((queue++))
+	            : $$((queue++))
 	            if [ "$$queue" -le "$(rule_queue)" ]; then
 	                printf "$$fmt_queue\n" "$$rule" "queue"
 	            fi
