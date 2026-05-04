@@ -77,7 +77,7 @@ start: dirs
 	runid="$(t_znow)"
 	$(call run_paths,$$runid)
 
-	mkdir -p "$$statsdir" "$$metadir"
+	mkdir -p "$$rundir" "$$metadir"
 	cp "$(rules_list)" "$$run_rules_list"
 	$(call rotate_last_prev,$(last),$(prev),$$subdir/$$runid)
 	ln -fns stats/last/.meta/status data/status
@@ -85,7 +85,7 @@ start: dirs
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
 
 	> "$$run_statusf"
-	kv_set "$$run_statusf" gstate "running"
+	kv_set "$$run_statusf" run_state "running"
 	kv_set "$$run_statusf" runid "$$runid"
 	kv_set "$$run_statusf" started_at_epoch "$$t0"
 	kv_set "$$run_statusf" started_at "$(call at,$$t0)"
@@ -145,7 +145,7 @@ main:
 
 	    parse_rule "$$rule"
 
-	    rulef="$$statsdir/$$ruleid"; > "$$rulef"
+	    rulef="$$rundir/$$ruleid"; > "$$rulef"
 	    rule_log="$(logrun)/$$ruleid.log"
 	    pct="$(call pct,$$k,$$n)"
 
@@ -224,7 +224,7 @@ end:
 	kv_set "$$run_statusf" total_elapsed "$(call t_delta,$$t0,$$t3)"
 	k=$$(kv_get "$$run_statusf" rules_done)
 	n=$$(kv_get "$$run_statusf" rules_total)
-	kv_set "$$run_statusf" gstate "idle"
+	kv_set "$$run_statusf" run_state "idle"
 	result=$$(kv_get "$$run_statusf" result)
 	if [ "$$result" = "stopped" ] || [ "$$result" = "killed" ]; then
 	    rc=$$(kv_get "$$run_statusf" rc)
@@ -280,7 +280,7 @@ kill:
 	    done
 	    sleep 1
 	done
-	kv_set "$$run_statusf" gstate "idle"
+	kv_set "$$run_statusf" run_state "idle"
 	$(call log,[$$runid] kill: sent signals to rclone=$$rclone_pid \
 	    program=$$program_pid recipe_shell=$$shell_pid)
 
@@ -294,21 +294,21 @@ status status-v:
 	runid=$(get_runid) || exit 1
 	$(call run_paths,$$runid)
 
-	gstate=$$(kv_get "$$run_statusf" gstate)
-	[ -n "$${gstate-}" ] || gstate=idle
+	run_state=$$(kv_get "$$run_statusf" run_state)
+	[ -n "$${run_state-}" ] || run_state=idle
 
 	k=$$(kv_get "$$run_statusf" rules_done)
 	n=$$(kv_get "$$run_statusf" rules_total)
 	pct="$(call pct,$$k,$$n)"
 
-	if [ "$$gstate" = "running" ]; then
+	if [ "$$run_state" = "running" ]; then
 	    t0="$(t)"
 	    started_at_epoch=$$(kv_get "$$run_statusf" started_at_epoch)
 	    started_at=$$(kv_get "$$run_statusf" started_at)
 	    elapsed="$(call t_delta_hms,$$started_at_epoch,$$t0)"
 
 	    current_ruleid=$$(kv_get "$$run_statusf" current_ruleid)
-	    rulef="$$statsdir/$$current_ruleid"
+	    rulef="$$rundir/$$current_ruleid"
 	    rule_started_at_epoch=$$(kv_get "$$rulef" rule_started_at_epoch)
 	    rule_elapsed="$(call t_delta_hms,$$rule_started_at_epoch,$$t0)"
 
@@ -322,7 +322,7 @@ status status-v:
 	    pids="make=$${make_pid:--} shell=$${shell_pid:--} "
 	    pids+="rclone_sync=$${program_pid:--} rclone=$${rclone_pid:--}"
 
-	    printf "state        : $$_RED_%s$$RST\n" "$${gstate^^}"
+	    printf "state        : $$_RED_%s$$RST\n" "$${run_state^^}"
 	    printf "runid        : %s\n" "$$runid"
 	    printf "source       : %s\n" "$$current_rule_src"
 	    printf "destination  : %s\n" "$$current_rule_dst"
@@ -338,7 +338,7 @@ status status-v:
 	    ended_at=$$(kv_get "$$run_statusf" ended_at)
 	    elapsed="$(call t_hms,$$(kv_get "$$run_statusf" total_elapsed))"
 
-	    printf "state       : $$_RED_%s$$RST\n" "$${gstate^^}"
+	    printf "state       : $$_RED_%s$$RST\n" "$${run_state^^}"
 	    printf "result      : $$_RED_%s$$RST\n" "$$result"
 	    printf "runid       : %s\n" "$$runid"
 	    printf "source      : %s\n" "$(lpath)"
@@ -362,7 +362,7 @@ status status-v:
 
 	    sum_elapsed=0 rc_ok=0 rc_fail=0
 
-	    if [ "$$gstate" = "running" ]; then
+	    if [ "$$run_state" = "running" ]; then
 	        $(define_parse_rule)
 	        mapfile -t ruleids < <(
 	            while IFS= read -r rule; do
@@ -372,7 +372,7 @@ status status-v:
 	        )
 	    else
 	        mapfile -t ruleids < <(
-	            find "$$statsdir" -mindepth 1 -maxdepth 1 \
+	            find "$$rundir" -mindepth 1 -maxdepth 1 \
 	                -type f -printf '%f\n' | sort
 	        )
 	    fi
@@ -380,10 +380,10 @@ status status-v:
 	    queue=0
 	    for ruleid in "$${ruleids[@]}"; do
 	        rule="$(call truncate,$$ruleid,$(rule_width))"
-	        rulef="$$statsdir/$$ruleid"
-	        rstate="$(call get_rstate,$$rulef,$$gstate)"
+	        rulef="$$rundir/$$ruleid"
+	        rule_state="$(call get_rule_state,$$rulef,$$run_state)"
 
-	        if [ "$$rstate" = "queue" ]; then
+	        if [ "$$rule_state" = "queue" ]; then
 	            : $$((queue++))
 	            if [ "$$queue" -le "$(rule_queue)" ]; then
 	                printf "$$fmt_queue\n" "$$rule" "queue"
@@ -394,12 +394,12 @@ status status-v:
 	        start=$$(kv_get "$$rulef" rule_started_at); start=$${start#*-}
 	        end=$$(kv_get "$$rulef" rule_ended_at); end=$${end#*-}
 
-	        if [ "$$rstate" = "run" ]; then
+	        if [ "$$rule_state" = "run" ]; then
 	            rule_started_at_epoch=$$(kv_get "$$rulef" \
 	                rule_started_at_epoch)
 	            elapsed="$(call t_hms_colon,$(call \
 	                t_delta,$$rule_started_at_epoch,$(t)))"
-	            printf "$$fmt_run\n" "$$rule" "$$rstate" \
+	            printf "$$fmt_run\n" "$$rule" "$$rule_state" \
 	                "$$start" "$$end" "$$elapsed"
 	        else
 	            rule_elapsed=$$(kv_get "$$rulef" rule_elapsed)
@@ -418,7 +418,7 @@ status status-v:
 	            sum_elapsed=$$(echo "$$sum_elapsed + $${rule_elapsed:=0}" | bc)
 	            [ "$$rc" = 0 ] && : $$((rc_ok++)) || $$((rc_fail++))
 
-	            printf "$$fmt\n" "$$rule" "$$rstate" "$$start" "$$end" \
+	            printf "$$fmt\n" "$$rule" "$$rule_state" "$$start" "$$end" \
 	                "$$elapsed" "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc"
 	        fi
 	    done
@@ -437,7 +437,7 @@ status status-v:
 
 	    printf "\n$$BLD%s$$RST\n" "SUMMARY"
 
-	    if [ "$$gstate" = "running" ]; then
+	    if [ "$$run_state" = "running" ]; then
 	        printf "    rules         : $$_RED_%d/%d$$RST (%.2f%%)\n" \
 	            "$$k" "$$n" "$$pct"
 	    else
@@ -522,8 +522,8 @@ report: dirs
 	runid=$(get_runid) || exit 1
 	$(call run_paths,$$runid)
 
-	gstate=$$(kv_get "$$run_statusf" gstate)
-	if [ "$$gstate" = "running" ]; then
+	run_state=$$(kv_get "$$run_statusf" run_state)
+	if [ "$$run_state" = "running" ]; then
 	    if [ -t 1 ]; then
 	        printf "[%s] $$_RED_%s is running$$RST: report skipped\n" \
 	            "$(project)" "$(project)"

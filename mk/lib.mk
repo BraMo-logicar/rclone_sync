@@ -207,7 +207,7 @@ endef
 #
 # run_paths() - derive run paths from runid
 # usage: $(call run_paths,runid)
-# caller vars: subdir (w), statsdir (w), metadir (w),
+# caller vars: subdir (w), rundir (w), metadir (w),
 #              run_statusf (w), run_rules_list (w)
 #
 
@@ -215,8 +215,8 @@ define run_paths
 {
     _runid="$(1)"
     subdir="$${_runid:0:4}/$${_runid:0:4}.$${_runid:4:2}"
-    statsdir="$(stats)/$$subdir/$$_runid"
-    metadir="$$statsdir/.meta"
+    rundir="$(stats)/$$subdir/$$_runid"
+    metadir="$$rundir/.meta"
     run_statusf="$$metadir/status"
     run_rules_list="$$metadir/rules.list"
 }
@@ -453,7 +453,7 @@ define stop_guard
             (runid=%s ruleid=%s)\n' "$(project)" "$(1)" "$(2)" >&2
         rm -f "$(stop_flag)"
         $(call log,[$(1):$(2)] stop flag found: exit after current rule)
-        kv_set "$$run_statusf" gstate "idle"
+        kv_set "$$run_statusf" run_state "idle"
         kv_set "$$run_statusf" result "stopped"
         kv_set "$$run_statusf" rc "200"
         exit 0
@@ -506,7 +506,7 @@ trap_on_signal() {
     kv_set "$$run_statusf" ended_at_epoch "$$t3"
     kv_set "$$run_statusf" ended_at "$(call at,$$t3)"
     kv_set "$$run_statusf" total_elapsed "$(call t_delta,$$t0,$$t3)"
-    kv_set "$$run_statusf" gstate "idle"
+    kv_set "$$run_statusf" run_state "idle"
     kv_set "$$run_statusf" result "$$result"
     kv_set "$$run_statusf" rc "$$rc"
 
@@ -619,18 +619,18 @@ endef
 #-------
 
 #
-# get_rstate() - compute rule state (done|fail|run|queue)
-# usage: $(call get_rstate,rulef,gstate)
+# get_rule_state() - compute rule state (done|fail|run|queue)
+# usage: $(call get_rule_state,rulef,run_state)
 #
 
-define get_rstate
+define get_rule_state
 $$(
-    rulef="$(1)" gstate="$(2)"
+    rulef="$(1)" run_state="$(2)"
     if [ ! -f "$$rulef" ]; then
         printf 'queue'
     elif rc=$$(kv_get "$$rulef" rc); [ -n "$$rc" ]; then
         printf 'done'
-    elif [ "$$gstate" = "running" ]; then
+    elif [ "$$run_state" = "running" ]; then
         printf 'run'
     else
         printf 'fail'
