@@ -57,7 +57,7 @@ list:
 	)
 
 	k=$$(wc -l < "$(rules_list)")
-	$(call log,list $$k/$$n rules ($((n-k)) skipped) from '$(src_root)' \
+	$(call log,list $$k/$$n rules ($$((n-k)) skipped) from '$(src_root)' \
 	    to '$(call relpath,$(rules_list))')
 
 # run
