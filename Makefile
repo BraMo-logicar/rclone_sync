@@ -459,7 +459,9 @@ history:
 	@$(define_kv)
 	$(colors)
 
-	n=$${n:-$(history_n)}
+	if [ -z "$${from-}" ] && [ -z "$${to-}" ] && [ -z "$${n-}" ]; then
+	    n=$(history_n)
+	fi
 
 	mapfile -t runs < <(
 	    find "$(stats)" -type f -path '*/.meta/status' |
@@ -471,20 +473,13 @@ history:
 	        done | sort -k1,1
 	)
 
-	case "$$n" in
-	    0)
-	        echo uno
-	        ;;
-	    [-]*)
-	        echo due
-	        n=$${n#-}
-	        mapfile -t runs < <(printf '%s\n' "$${runs[@]}" | head -n "$$n")
-	        ;;
-	    *)
-	        echo tre
-	        mapfile -t runs < <(printf '%s\n' "$${runs[@]}" | tail -n "$$n")
-	        ;;
+	case "$${n-}" in
+	    ''|0) ;;
+	    [-]*) n=$${n#-}; [ -n "$${from-}" ] && lim=tail || lim=head ;;
+	    *)               [ -n "$${from-}" ] && lim=head || lim=tail ;;
 	esac
+	[ -z "$${lim-}" ] ||
+	    mapfile -t runs < <(printf '%s\n' "$${runs[@]}" | $$lim -n "$$n")
 
 	fmt="%-15s  %7s  %-19s  %-19s  %9s  %8s  %8s  %10s  %8s  %3s  %s"
 	printf "$$BLD$$fmt$$RST\n" \
