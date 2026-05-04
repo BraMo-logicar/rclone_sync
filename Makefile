@@ -488,11 +488,13 @@ history:
 
 	for row in "$${runs[@]}"; do
 	    runid=$${row%% *} statusf=$${row#* }
+	    run_state=$$(kv_get "$$statusf" state)
 	    rules_done=$$(kv_get "$$statusf" rules_done)
 	    rules_total=$$(kv_get "$$statusf" rules_total)
+	    rules="$$rules_done/$$rules_total"
 	    started_at=$$(kv_get "$$statusf" started_at)
 	    ended_at=$$(kv_get "$$statusf" ended_at)
-	    total_elapsed="$(call t_hms,$$(kv_get "$$statusf" total_elapsed))"
+	    total_elapsed=$$(kv_get "$$statusf" total_elapsed)
 	    checks=$$(kv_get "$$statusf" checks)
 	    xfer=$$(kv_get "$$statusf" xfer)
 	    xfer_mib=$$(kv_get "$$statusf" xfer_mib |
@@ -500,7 +502,14 @@ history:
 	    del=$$(kv_get "$$statusf" del)
 	    rc=$$(kv_get "$$statusf" rc)
 	    result=$$(kv_get "$$statusf" result)
-	    rules="$$rules_done/$$rules_total"
+
+	    if [ "$$run_state" = "running" ]; then
+	        started_at_epoch=$$(kv_get "$$statusf" started_at_epoch)
+	        total_elapsed="$(call t_delta_hms,$$started_at_epoch,$(t))"
+	        result="running"
+	    else
+	        total_elapsed="$(call t_hms,$$total_elapsed)"
+	    fi
 
 	    printf "$$fmt\n" "$$runid" "$$rules" "$$started_at" "$$ended_at" \
 	        "$$total_elapsed" "$$checks" "$$xfer" "$$xfer_mib" "$$del" \
@@ -517,7 +526,7 @@ report: dirs
 	runid=$(get_runid) || exit 1
 	$(call run_paths,$$runid)
 
-	run_state=$$(kv_get "$$run_statusf" run_state)
+	run_state=$$(kv_get "$$run_statusf" state)
 	if [ "$$run_state" = "running" ]; then
 	    if [ -t 1 ]; then
 	        printf "[%s] $$_RED_%s is running$$RST: report skipped\n" \
