@@ -416,7 +416,7 @@ status status-v:
 	            rc=$$(kv_get "$$rulef" rc)
 
 	            sum_elapsed=$$(echo "$$sum_elapsed + $${rule_elapsed:=0}" | bc)
-	            [ "$$rc" = 0 ] && : $$((rc_ok++)) || $$((rc_fail++))
+	            [ "$$rc" = 0 ] && : $$((rc_ok++)) || : $$((rc_fail++))
 
 	            printf "$$fmt\n" "$$rule" "$$rule_state" "$$start" "$$end" \
 	                "$$elapsed" "$$checks" "$$xfer" "$$xfer_mib" "$$del" "$$rc"
