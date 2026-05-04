@@ -629,7 +629,7 @@ $$(
     if [ ! -f "$$rulef" ]; then
         printf 'queue'
     elif rc=$$(kv_get "$$rulef" rc); [ -n "$$rc" ]; then
-        printf 'done'
+        [ "$$rc" = 0 ] && printf 'done' || printf 'fail'
     elif [ "$$run_state" = "running" ]; then
         printf 'run'
     else
