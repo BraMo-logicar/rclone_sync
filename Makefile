@@ -486,7 +486,7 @@ history:
 	        ;;
 	esac
 
-	fmt="%-15s  %7s  %-8s  %-8s  %-8s  %8s  %8s  %10s  %6s  %3s  %s"
+	fmt="%-15s  %7s  %-19s  %-19s  %9s  %8s  %8s  %10s  %8s  %3s  %s"
 	printf "$$BLD$$fmt$$RST\n" \
 		"RUNID" "RULES" "START" "END" "ELAPSED" "CHECKS" \
 	    "XFER" "XFER_MiB" "DEL" "RC" "RESULT"
