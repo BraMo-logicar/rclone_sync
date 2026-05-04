@@ -85,7 +85,7 @@ start: dirs
 	rm -rf "$(logrun)"; mkdir -p "$(logrun)"
 
 	> "$$run_statusf"
-	kv_set "$$run_statusf" run_state "running"
+	kv_set "$$run_statusf" state "running"
 	kv_set "$$run_statusf" runid "$$runid"
 	kv_set "$$run_statusf" started_at_epoch "$$t0"
 	kv_set "$$run_statusf" started_at "$(call at,$$t0)"
@@ -224,7 +224,7 @@ end:
 	kv_set "$$run_statusf" total_elapsed "$(call t_delta,$$t0,$$t3)"
 	k=$$(kv_get "$$run_statusf" rules_done)
 	n=$$(kv_get "$$run_statusf" rules_total)
-	kv_set "$$run_statusf" run_state "idle"
+	kv_set "$$run_statusf" state "idle"
 	result=$$(kv_get "$$run_statusf" result)
 	if [ "$$result" = "stopped" ] || [ "$$result" = "killed" ]; then
 	    rc=$$(kv_get "$$run_statusf" rc)
@@ -280,7 +280,7 @@ kill:
 	    done
 	    sleep 1
 	done
-	kv_set "$$run_statusf" run_state "idle"
+	kv_set "$$run_statusf" state "idle"
 	$(call log,[$$runid] kill: sent signals to rclone=$$rclone_pid \
 	    program=$$program_pid recipe_shell=$$shell_pid)
 
@@ -294,7 +294,7 @@ status status-v:
 	runid=$(get_runid) || exit 1
 	$(call run_paths,$$runid)
 
-	run_state=$$(kv_get "$$run_statusf" run_state)
+	run_state=$$(kv_get "$$run_statusf" state)
 	[ -n "$${run_state-}" ] || run_state=idle
 
 	k=$$(kv_get "$$run_statusf" rules_done)

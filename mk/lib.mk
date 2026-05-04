@@ -453,7 +453,7 @@ define stop_guard
             (runid=%s ruleid=%s)\n' "$(project)" "$(1)" "$(2)" >&2
         rm -f "$(stop_flag)"
         $(call log,[$(1):$(2)] stop flag found: exit after current rule)
-        kv_set "$$run_statusf" run_state "idle"
+        kv_set "$$run_statusf" state "idle"
         kv_set "$$run_statusf" result "stopped"
         kv_set "$$run_statusf" rc "200"
         exit 0
@@ -506,7 +506,7 @@ trap_on_signal() {
     kv_set "$$run_statusf" ended_at_epoch "$$t3"
     kv_set "$$run_statusf" ended_at "$(call at,$$t3)"
     kv_set "$$run_statusf" total_elapsed "$(call t_delta,$$t0,$$t3)"
-    kv_set "$$run_statusf" run_state "idle"
+    kv_set "$$run_statusf" state "idle"
     kv_set "$$run_statusf" result "$$result"
     kv_set "$$run_statusf" rc "$$rc"
 
