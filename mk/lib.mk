@@ -374,7 +374,7 @@ parse_rule() {
     fi
 
     opts=
-    [ -n "$attrs" ] && eval "$$attrs"
+    [ -n "$$attrs" ] && eval "$$attrs"
 }
 endef
 
