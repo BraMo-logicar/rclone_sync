@@ -60,9 +60,8 @@ sync_dst = $(remote):$(bucket)$(dst_root)
 
 # rules
 
-exclude_list := $(home)/etc/exclude.list
-rules_conf   := $(home)/etc/rules.conf
-rules_list   := $(home)/etc/rules.list
+rules_conf := $(home)/etc/rules.conf
+rules_list := $(home)/etc/rules.list
 
 root_files_ruleid := root-files
 
