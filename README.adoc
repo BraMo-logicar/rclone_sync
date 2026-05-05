@@ -1,64 +1,350 @@
-= rclone_sync
+= rclone_sync - structured backup workflow for rclone
+:sectlinks:
+:toc:
 
-IMPORTANT: This README describes the legacy v1.0. A full rewrite (v2) is
-incoming.  Installation/usage below are obsolete for v2. A complete README will
-be published with v2.0.
+== overview
 
-== usage
+`rclone_sync` is a Makefile-driven wrapper around `rclone` that provides a
+structured and repeatable workflow for data synchronization and backup.
 
-[source]
-----
-# Name: rclone_sync - sync to bucket s3 by rclone
-# Usage:
-#     rclone_sync [ -h|--help ] [ -H|--Help ]
-#         [ -l|--copy-links ] [ --skip-links ]
-#         [ -q|--quiet ] [ -v|--verbose ]
-#         [ -n|--dry-run ]
-#         [ -o|--options <sync_opts> ]
-#         [ -I|--filter-from <file> ]
-#         <local_path> <remote:bucket/path>
-# Options:
-#     -h|--help                : print usage
-#     -H|--Help                : print description
-#     -l|--copy-links          : follow symlinks  [no]
-#     --skip-links             : don't warn about skipped symlinks  [no]
-#     -q|--quiet               : log-level = ERROR  [no]
-#     -v|--verbose             : log-level = INFO  [no]
-#     -n|--dry-run             : dry-run  [no]
-#     -o|--options <sync_opts> : sync options  []
-#     -I|--filter-from <file>  : read filtering pattern from <file>
-#     <local_path>             : local path to sync
-#     <remote:bucket/path>     : remote path
-# Author: Marco Broglia (marco.broglia@mutex.it)
-# Date: 2023.09.15
-----
+It organizes execution into explicit phases, adds retry logic, logging,
+statistics collection, reporting, and optional email notifications.
+
+Each run produces timestamped outputs (reports, stats, logs) organized in a
+persistent directory structure, allowing historical tracking and inspection
+over time. Convenient symlinks (`last`, `prev`, `status`) provide quick access
+to recent executions.
+
+The tool supports both batch execution (full pipeline) and interactive
+inspection through dedicated targets (`status(-v)`, `history`).
+
+Configuration is defined via Makefile variables and configuration files, and is
+designed for system-level deployment.
 
 == features
 
-* sync to bucket S3 by rclone
-* support for Amazon Aws, IDrive e2, ...
-* file versioning
-* point in time restore
-* mount by date (snapshot time machine)
-* pass options to rclone
-* copy or skip links
-* logging
-  ** list of copied (new or replaced) and deleted objects
-  ** statistics
-     *** number of copied (new or replaced) and deleted objects
-     *** data transferred
-     *** elapsed time
-     *** disk and bucket usage (with and without versions)
-* report by email
+* execution pipeline
+** make-based workflow with explicit phases
+** deterministic sequence: list → run (start → main → end) → report → report-mail
+** support for full pipeline or individual phase execution
 
-== quotes
+* rclone integration
+** data synchronization via `rclone`
+** configurable source and destination paths
 
-r + clone = rclone = clone with %r (Python)
+* execution control
+** controlled execution within the run phase
+** failure handling across pipeline steps
+
+* logging and observability
+** global log file and per-dataset logs
+** structured execution tracing
+** persistent logs across runs
+
+* statistics and reporting
+** per-run statistics collection
+** per-dataset metrics storage
+** generation of log and summary reports
+
+* historical data management
+** timestamped storage of reports, stats, and usage
+** directory structure organized by year/month
+** persistent history of executions
+
+* quick access helpers
+** symlinks to recent data (`last`, `prev`)
+** current status snapshot (`status`)
+** fast access to latest reports and stats
+
+* batch and dataset execution
+** support for multiple datasets via configuration (`rules.list`)
+** per-dataset execution and tracking
+** independent logs and stats per dataset
+
+* interactive inspection
+** targets for runtime inspection (e.g. `status`, `history`)
+** access to latest and historical execution data
+
+* configuration model
+** default configuration via `config.mk`
+** site-specific overrides via `.include.mk`
+** external configuration files (`rules.conf`, `rules.list`, `rclone.conf`)
+
+* multi-instance deployment
+** same tool reused with different project names and configurations
+
+* notification
+** optional email notification after execution
+
+* portability
+** minimal dependencies (make, shell, rclone)
+** suitable for cron or system-level scheduling
+
+== requirements / installation
+
+=== requirements
+
+- `make`
+- `rclone`
+- POSIX shell environment (bash)
+- optional: local mail system for notifications
+
+=== installation
+
+Clone the repository and initialize local configuration:
+
 ----
-_='_=%r;print(_%%_)';print(_%_)
+cp .include.mk.dist .include.mk
 ----
 
-== links
+Edit `.include.mk` to override site-specific settings as needed.
 
-* https://rclone.org/ - rclone
-* https://en.wikipedia.org/wiki/Quine_(computing)[] - clone -> quine
+== project structure
+
+[source]
+----
+<project>/                                   # project name defined in configuration
+├── bin/
+│   └── rclone_sync                          # rclone sync wrapper  
+├── data/
+│   ├── reports/                             # execution reports
+│   │    ├─ yyyy/yyyy.mm/
+│   │    │  ├── report-<runid>.log           # report generation log
+│   │    │  └── report-<runid>.txt           # report summary
+│   │    ├── last -> ...                     # symlink to latest report summary
+│   │    └── prev -> ...                     # symlink to previous report summary
+│   ├── stats/                               # run statistics
+│   |    ├─ yyyy/yyyy.mm/<runid>/
+|   |    |  ├── <ruleid>                     # per-rule statistics
+│   |    │  └── .meta/                       # run metadata
+|   |    |      ├── rules.list               # rules used for the run
+|   |    |      └── status                   # run status
+│   |    ├── last -> ...                     # symlink to latest run directory
+│   |    └── prev -> ...                     # symlink to previous run directory
+|   ├── usage/                               # aggregated usage snapshots
+│   |    ├─ yyyy/
+|   |    |  └── usage-<ts>                   # usage snapshot
+│   |    ├── last -> ...                     # symlink to latest usage snapshot
+│   |    └── prev -> ...                     # symlink to previous usage snapshot
+|   └── status -> stats/last/.meta/status    # current status snapshot
+├── etc/
+│   ├── rclone.conf                          # rclone configuration
+│   ├── rules.conf                           # sync rules definition
+│   └── rules.list                           # generated list of active rules
+├── log/
+|   ├── <project>.log                        # main execution log
+│   └── run/                                 # per-rule rclone logs for current run
+│       └── <ruleid>.log
+├── mk/
+│   ├── config.mk                            # default configuration variables 
+│   └── lib.mk                               # shared functions
+├── Makefile                                 # entry point and phase orchestration
+└── README.adoc                              # project documentation
+----
+
+== configuration
+
+Configuration is split across Makefile variables and project-specific config
+files.
+
+The main defaults are defined in:
+
+[source]
+----
+mk/config.mk
+----
+
+Local project settings are defined in:
+
+[source]
+----
+.include.mk
+----
+
+A template is provided as:
+
+[source]
+----
+.include.mk.dist
+----
+
+`rclone_sync` also uses configuration files under `etc/`:
+
+[source]
+----
+etc/
+├── rclone.conf       # rclone remote configuration
+├── rules.conf        # sync rule definitions
+└── rules.list        # generated list of active rules
+----
+
+=== main variables
+
+[source,make]
+----
+project      := $(shell basename "$(home)")
+program_name := rclone_sync
+version      := 2.0
+
+rclone       := /usr/bin/rclone
+sendmail     := /usr/sbin/sendmail
+
+rclone_conf  := $(home)/etc/rclone.conf
+rules_conf   := $(home)/etc/rules.conf
+rules_list   := $(home)/etc/rules.list
+----
+
+=== project-specific settings
+
+[source,make]
+----
+bucket := [BUCKET]
+
+src_root := [SRC_ROOT]
+dst_root := [DST_ROOT]
+
+rule_width := [RULE_WIDTH]
+rule_queue := [RULE_QUEUE]
+
+mail_from := [MAIL_FROM]
+mail_to   := [MAIL_TO]
+----
+
+=== sync rules
+
+[source]
+----
+# format:
+#     path
+#         directive [value]
+
+# directives:
+#     skip              : skip this path
+#     exclude <pattern> : exclude matching paths
+#     ruleid <id>       : override rule identifier
+#     opts <args>       : append raw rclone options
+----
+
+`rules.list` is generated from `rules.conf` and the source directory layout.
+It is copied into each run metadata directory so that every run keeps the exact
+list of rules used for that execution.
+
+== usage
+
+=== pipeline execution
+
+[source,sh]
+----
+make list run report report-mail
+----
+
+=== core targets
+
+* `list`
+** generate the active `rules.list`
+
+* `run`
+** execute the synchronization pipeline
+
+* `report`
+** generate the execution report
+
+* `report-mail`
+** send the report via email
+
+=== control targets
+
+* `stop`
+** request a graceful stop (after current rule)
+
+* `kill`
+** force termination of the running process
+
+=== inspection targets
+
+* `status`
+** show current or last run status
+
+* `status-v`
+** show detailed per-rule status
+
+* `history`
+** list past runs
+
+=== utility targets
+
+* `help`
+** show available targets
+
+* `dirs`
+** create required directory structure
+
+* `usage`
+** collect usage snapshots
+
+* `log-last`
+** show latest execution log
+
+=== notes
+
+* most targets accept `runid=<runid>`, `runid=last` or `runid=prev`
+* targets operate on the current project configuration
+
+== output
+
+Runtime data is stored under `data/` and `log/`.
+
+The output layout is timestamp-based and keeps historical data for reports,
+statistics, and usage snapshots.
+
+* reports
+** stored under `data/reports/YYYY/YYYY.MM/`
+** generated as both `.log` and `.txt` files
+** exposed through `data/reports/last` and `data/reports/prev`
+
+* statistics
+** stored under `data/stats/YYYY/YYYY.MM/<runid>/`
+** include one statistics file per rule
+** include run metadata under `.meta/`
+** exposed through `data/stats/last` and `data/stats/prev`
+
+* status
+** stored as run metadata
+** exposed through `data/status`
+** points to `data/stats/last/.meta/status`
+
+* usage
+** stored under `data/usage/YYYY/`
+** exposed through `data/usage/last` and `data/usage/prev`
+
+* logs
+** main log stored under `log/<project>.log`
+** per-rule logs stored under `log/run/<ruleid>.log`
+
+`last` and `prev` symlinks provide stable access to the most recent and
+previous outputs without requiring the caller to know the corresponding
+`runid`.
+
+== mail
+
+Email notifications can be sent after report generation.
+
+The `report-mail` target sends the latest report using the configured mail
+system.
+
+Configuration is defined via Makefile variables:
+
+[source,make]
+----
+mail_from := ...
+mail_to   := ...
+sendmail  := ...
+----
+
+The report is sent as plain text and corresponds to the output generated by the
+`report` target.
+
+== author / maintainer
+
+* Developed by: Marco Broglia <marco.broglia@mutex.it>
+* Maintained by: Università Bocconi Technology Department
