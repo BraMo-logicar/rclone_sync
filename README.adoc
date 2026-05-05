@@ -16,7 +16,7 @@ over time. Convenient symlinks (`last`, `prev`, `status`) provide quick access
 to recent executions.
 
 The tool supports both batch execution (full pipeline) and interactive
-inspection through dedicated targets (`status(-v)`, `history`).
+inspection through dedicated targets (`status`, `status-v`, `history`).
 
 Configuration is defined via Makefile variables and configuration files, and is
 designed for system-level deployment.
@@ -37,13 +37,13 @@ designed for system-level deployment.
 ** failure handling across pipeline steps
 
 * logging and observability
-** global log file and per-dataset logs
+** global log file and per-rule logs
 ** structured execution tracing
 ** persistent logs across runs
 
 * statistics and reporting
 ** per-run statistics collection
-** per-dataset metrics storage
+** per-rule metrics storage
 ** generation of log and summary reports
 
 * historical data management
@@ -56,10 +56,10 @@ designed for system-level deployment.
 ** current status snapshot (`status`)
 ** fast access to latest reports and stats
 
-* batch and dataset execution
-** support for multiple datasets via configuration (`rules.list`)
-** per-dataset execution and tracking
-** independent logs and stats per dataset
+* batch and rule execution
+** support for multiple rules via configuration (`rules.list`)
+** per-rule execution and tracking
+** independent logs and stats per rule
 
 * interactive inspection
 ** targets for runtime inspection (e.g. `status`, `history`)
@@ -108,31 +108,31 @@ Edit `.include.mk` to override site-specific settings as needed.
 │   └── rclone_sync                          # rclone sync wrapper  
 ├── data/
 │   ├── reports/                             # execution reports
-│   │    ├─ yyyy/yyyy.mm/
+│   │    ├── yyyy/yyyy.mm/
 │   │    │  ├── report-<runid>.log           # report generation log
 │   │    │  └── report-<runid>.txt           # report summary
 │   │    ├── last -> ...                     # symlink to latest report summary
 │   │    └── prev -> ...                     # symlink to previous report summary
 │   ├── stats/                               # run statistics
-│   |    ├─ yyyy/yyyy.mm/<runid>/
-|   |    |  ├── <ruleid>                     # per-rule statistics
-│   |    │  └── .meta/                       # run metadata
-|   |    |      ├── rules.list               # rules used for the run
-|   |    |      └── status                   # run status
-│   |    ├── last -> ...                     # symlink to latest run directory
-│   |    └── prev -> ...                     # symlink to previous run directory
-|   ├── usage/                               # aggregated usage snapshots
-│   |    ├─ yyyy/
-|   |    |  └── usage-<ts>                   # usage snapshot
-│   |    ├── last -> ...                     # symlink to latest usage snapshot
-│   |    └── prev -> ...                     # symlink to previous usage snapshot
-|   └── status -> stats/last/.meta/status    # current status snapshot
+│   │    ├── yyyy/yyyy.mm/<runid>/
+│   │    │   ├── <ruleid>                    # per-rule statistics
+│   │    │   └── .meta/                      # run metadata
+│   │    │       ├── rules.list              # rules used for the run
+│   │    │       └── status                  # run status
+│   │    ├── last -> ...                     # symlink to latest run directory
+│   │    └── prev -> ...                     # symlink to previous run directory
+│   ├── usage/                               # aggregated usage snapshots
+│   │    ├── yyyy/
+│   │    │   └── usage-<ts>                  # usage snapshot
+│   │    ├── last -> ...                     # symlink to latest usage snapshot
+│   │    └── prev -> ...                     # symlink to previous usage snapshot
+│   └── status -> stats/last/.meta/status    # current status snapshot
 ├── etc/
 │   ├── rclone.conf                          # rclone configuration
 │   ├── rules.conf                           # sync rules definition
 │   └── rules.list                           # generated list of active rules
 ├── log/
-|   ├── <project>.log                        # main execution log
+│   ├── <project>.log                        # main execution log
 │   └── run/                                 # per-rule rclone logs for current run
 │       └── <ruleid>.log
 ├── mk/
@@ -144,8 +144,8 @@ Edit `.include.mk` to override site-specific settings as needed.
 
 == configuration
 
-Configuration is split across Makefile variables and project-specific config
-files.
+Configuration is split across Makefile variables and project-specific
+configuration files.
 
 The main defaults are defined in:
 
@@ -298,12 +298,12 @@ The output layout is timestamp-based and keeps historical data for reports,
 statistics, and usage snapshots.
 
 * reports
-** stored under `data/reports/YYYY/YYYY.MM/`
+** stored under `data/reports/yyyy/yyyy.mm/`
 ** generated as both `.log` and `.txt` files
 ** exposed through `data/reports/last` and `data/reports/prev`
 
 * statistics
-** stored under `data/stats/YYYY/YYYY.MM/<runid>/`
+** stored under `data/stats/yyyy/yyyy.mm/<runid>/`
 ** include one statistics file per rule
 ** include run metadata under `.meta/`
 ** exposed through `data/stats/last` and `data/stats/prev`
@@ -314,12 +314,13 @@ statistics, and usage snapshots.
 ** points to `data/stats/last/.meta/status`
 
 * usage
-** stored under `data/usage/YYYY/`
+** stored under `data/usage/yyyy/`
 ** exposed through `data/usage/last` and `data/usage/prev`
 
 * logs
 ** main log stored under `log/<project>.log`
 ** per-rule logs stored under `log/run/<ruleid>.log`
+** logs correspond to the current run
 
 `last` and `prev` symlinks provide stable access to the most recent and
 previous outputs without requiring the caller to know the corresponding
