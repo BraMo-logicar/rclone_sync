@@ -86,7 +86,7 @@ designed for system-level deployment.
 
 - `make`
 - `rclone`
-- POSIX shell environment (bash)
+- POSIX-compatible shell (sh, bash)
 - optional: local mail system for notifications
 
 === installation
@@ -288,7 +288,7 @@ make list run report report-mail
 === notes
 
 * most targets accept `runid=<runid>`, `runid=last` or `runid=prev`
-* targets operate on the current project configuration
+* all targets operate on the current project configuration
 
 == output
 
