@@ -42,9 +42,10 @@ list:
 	load_rules_conf || exit 1
 
 	$(define_append_rule)
+	has_root_files=$$(find "$(src_root)" -mindepth 1 -maxdepth 1 \
+        -type f -print -quit)
 	n=0
-	if [ -n "$$dot" ] ||
-	    find "$(src_root)" -mindepth 1 -maxdepth 1 -type f | read; then
+	if [ -n "$$include_root" ] || [ -n "$$has_root_files" ]; then
 	    append_rule .
 	    : $$((n++))
 	fi
@@ -154,13 +155,13 @@ main:
 	    kv_set "$$rulef" progress "$$k/$$n ($$pct%)"
 
 	    if [ "$$path" = "." ]; then
-	        src="$(lpath)"
-	        dst="$(rpath)"
+	        src="$(sync_src)"
+	        dst="$(sync_dst)"
 	        filters="--filter '- /*/' --filter '+ /*' --filter '- **'"
 	        opts="$${opts:+$$opts }$$filters"
 	    else
-	        src="$(lpath)/$$path"
-	        dst="$(rpath)/$$path"
+	        src="$(sync_src)/$$path"
+	        dst="$(sync_dst)/$$path"
 	    fi
 
 	    program_cmd=("$(program_path)" $${opts:+-o "$$opts"} "$$src" "$$dst")
@@ -341,8 +342,8 @@ status status-v:
 	    printf "state       : $$_RED_%s$$RST\n" "$${run_state^^}"
 	    printf "result      : $$_RED_%s$$RST\n" "$$result"
 	    printf "runid       : %s\n" "$$runid"
-	    printf "source      : %s\n" "$(lpath)"
-	    printf "destination : %s\n" "$(rpath)"
+	    printf "source      : %s\n" "$(sync_src)"
+	    printf "destination : %s\n" "$(sync_dst)"
 	    printf "rules       : $$_RED_%d/%d$$RST\n" "$$k" "$$n"
 	    printf "started at  : %s\n" "$$started_at"
 	    printf "ended at    : %s\n" "$$ended_at"
@@ -578,8 +579,8 @@ report: dirs
 	    [ -n "$${region-}" ]   && printf 'region      : %s\n' "$$region"
 	    [ -n "$${endpoint-}" ] && printf 'endpoint    : %s\n' "$$endpoint"
 	    printf '\n'
-	    printf 'source      : %s\n' "$(lpath)"
-	    printf 'destination : %s\n' "$(rpath)"
+	    printf 'source      : %s\n' "$(sync_src)"
+	    printf 'destination : %s\n' "$(sync_dst)"
 	    printf '\n'
 	    printf 'started_at  : %s\n' "$$(kv_get "$$run_statusf" started_at)"
 	    printf 'ended_at    : %s\n' "$$(kv_get "$$run_statusf" ended_at)"
@@ -663,7 +664,7 @@ usage: dirs
 	    (bucket='$(bucket)' prefix='$(dst_root)'))
 	{
 	    printf '    excluding versions:\n'
-	    $(rclone) --config "$(rclone_conf)" size "$(rpath)" |
+	    $(rclone) --config "$(rclone_conf)" size "$(sync_dst)" |
 	        sed 's/^/        /'
 	} >> "$$usagef"
 	$(call log,end bucket usage (excluding versions) \
@@ -674,7 +675,7 @@ usage: dirs
 	    (bucket='$(bucket)' prefix='$(dst_root)'))
 	{
 	    printf '    including versions:\n'
-	    $(rclone) --config "$(rclone_conf)" size --s3-versions "$(rpath)" |
+	    $(rclone) --config "$(rclone_conf)" size --s3-versions "$(sync_dst)" |
 	        sed 's/^/        /'
 	} >> "$$usagef"
 	$(call log,end bucket usage (including versions) \

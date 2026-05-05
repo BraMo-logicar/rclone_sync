@@ -55,8 +55,8 @@ logrun := $(home)/log/run
 
 remote := $(project)
 
-lpath = $(src_root)
-rpath = $(remote):$(bucket)$(dst_root)
+sync_src = $(src_root)
+sync_dst = $(remote):$(bucket)$(dst_root)
 
 # rules
 

@@ -24,7 +24,7 @@ log = printf '%s [%s(%s):%d] %s\n' "$(t_now)" \
 define append_rule_log
 {
     printf -- '-- begin rclone log (runid=%s ruleid=%s) --\n' "$(1)" "$(2)"
-    sed '$${/^$$/d}' "$(3)"
+    cat "$(3)"
     printf -- '-- end rclone log (runid=%s ruleid=%s) --\n' "$(1)" "$(2)"
 } >> "$(logf)"
 endef
@@ -257,14 +257,14 @@ endef
 # load_rules_conf()        - load rules config
 # usage: $(define_load_rules_conf)
 #        load_rules_conf
-# caller vars: dot (w), rules_skip (w), rules_exclude (w),
+# caller vars: include_root (w), rules_skip (w), rules_exclude (w),
 #              rules_ruleid (w), rules_opts (w)
 
 define define_load_rules_conf
 declare -A rules_skip rules_exclude rules_ruleid rules_opts
 load_rules_conf() {
     $(define_trim)
-    dot=
+    include_root=
     local line path= key val
 
     [ -f "$(rules_conf)" ] || return
@@ -277,7 +277,7 @@ load_rules_conf() {
 
         if [[ "$$line" != [[:space:]]* ]]; then
             path="$$line"
-            [ "$$path" = "." ] && dot=1
+            [ "$$path" = "." ] && include_root=1
             continue
         fi
 
