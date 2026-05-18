@@ -89,7 +89,7 @@ designed for system-level deployment.
 
 - `make`
 - `rclone`
-- POSIX-compatible shell (sh, bash)
+- POSIX-compatible shell (`sh`, `bash`)
 - optional: mail support for notifications
 
 === installation
@@ -133,6 +133,7 @@ Edit `.include.mk` to override site-specific settings as needed.
 ├── etc/
 │   ├── rclone.conf                          # rclone configuration
 │   ├── rules.conf                           # sync rules definition
+│   ├── rules.conf.dist                      # sync rules template
 │   └── rules.list                           # generated list of active rules
 ├── log/
 │   ├── <project>.log                        # main execution log
@@ -185,6 +186,36 @@ etc/
 ** standard rclone configuration
 ** contains provider-specific settings and credentials
 
+=== configuration hierarchy
+
+Configuration is evaluated in the following order:
+
+[source]
+----
+mk/config.mk -> .include.mk -> etc/*.conf
+----
+
+* `config.mk`
+** default values shared across all projects
+
+* `.include.mk`
+** project-specific overrides
+
+* configuration files under `etc/`
+** synchronization rules and runtime settings
+
+=== template files
+
+Files with the `.dist` suffix provide example configurations and templates.
+
+Typical initialization:
+
+[source,sh]
+----
+cp .include.mk.dist .include.mk
+cp etc/rules.conf.dist etc/rules.conf
+----
+
 === main variables
 
 [source,make]
@@ -215,56 +246,6 @@ rule_queue := [RULE_QUEUE]
 
 mail_from := [MAIL_FROM]
 mail_to   := [MAIL_TO]
-----
-
-Example:
-
-[source]
-----
-projects
-    exclude *.tmp
-
-nobackup
-    skip
-
-archive
-    opts --checksum
-----
-
-By default, each top-level directory under the source path generates one
-synchronization rule.
-
-Files stored directly under the source root are grouped into a special
-`root-files` rule.
-
-=== configuration hierarchy
-
-Configuration is evaluated in the following order:
-
-[source]
-----
-mk/config.mk -> .include.mk -> etc/*.conf
-----
-
-* `config.mk`
-** default values shared across all projects
-
-* `.include.mk`
-** project-specific overrides
-
-* configuration files under `etc/`
-** synchronization rules and runtime settings
-
-=== template files
-
-Files with the `.dist` suffix provide example configurations and templates.
-
-Typical initialization:
-
-[source,sh]
-----
-cp .include.mk.dist .include.mk
-cp etc/rules.conf.dist etc/rules.conf
 ----
 
 === sync rules
