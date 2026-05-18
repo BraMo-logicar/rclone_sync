@@ -25,16 +25,19 @@ designed for system-level deployment.
 
 * execution pipeline
 ** make-based workflow with explicit phases
-** deterministic sequence: list → run (start → main → end) → report → report-mail
+** deterministic sequence: list -> run (start -> main -> end) -> report ->
+   report-mail
 ** support for full pipeline or individual phase execution
 
 * rclone integration
 ** data synchronization via `rclone`
-** configurable source and destination paths
+** configurable synchronization rules and locations
+** support for rule-specific options and filters
 
 * execution control
 ** controlled execution within the run phase
-** failure handling across pipeline steps
+** graceful stop support (`stop`)
+** forced termination (`kill`)
 
 * logging and observability
 ** global log file and per-rule logs
@@ -87,7 +90,7 @@ designed for system-level deployment.
 - `make`
 - `rclone`
 - POSIX-compatible shell (sh, bash)
-- optional: local mail system for notifications
+- optional: mail support for notifications
 
 === installation
 
@@ -173,10 +176,14 @@ A template is provided as:
 [source]
 ----
 etc/
-├── rclone.conf       # rclone remote configuration
-├── rules.conf        # sync rule definitions
-└── rules.list        # generated list of active rules
+├── rclone.conf    # rclone remote configuration
+├── rules.conf     # sync rule definitions
+└── rules.list     # generated list of active rules
 ----
+
+* `rclone.conf`
+** standard rclone configuration
+** contains provider-specific settings and credentials
 
 === main variables
 
@@ -210,7 +217,66 @@ mail_from := [MAIL_FROM]
 mail_to   := [MAIL_TO]
 ----
 
+Example:
+
+[source]
+----
+projects
+    exclude *.tmp
+
+nobackup
+    skip
+
+archive
+    opts --checksum
+----
+
+By default, each top-level directory under the source path generates one
+synchronization rule.
+
+Files stored directly under the source root are grouped into a special
+`root-files` rule.
+
+=== configuration hierarchy
+
+Configuration is evaluated in the following order:
+
+[source]
+----
+mk/config.mk -> .include.mk -> etc/*.conf
+----
+
+* `config.mk`
+** default values shared across all projects
+
+* `.include.mk`
+** project-specific overrides
+
+* configuration files under `etc/`
+** synchronization rules and runtime settings
+
+=== template files
+
+Files with the `.dist` suffix provide example configurations and templates.
+
+Typical initialization:
+
+[source,sh]
+----
+cp .include.mk.dist .include.mk
+cp etc/rules.conf.dist etc/rules.conf
+----
+
 === sync rules
+
+`rules.conf` defines synchronization behavior for individual rules.
+
+Each rule can:
+
+* be skipped
+* define exclude patterns
+* override the default rule identifier
+* append additional rclone options
 
 [source]
 ----
@@ -224,6 +290,26 @@ mail_to   := [MAIL_TO]
 #     ruleid <id>       : override rule identifier
 #     opts <args>       : append raw rclone options
 ----
+
+Example:
+
+[source]
+----
+projects
+    exclude *.tmp
+
+nobackup
+    skip
+
+archive
+    opts --checksum
+----
+
+By default, each top-level directory under the source path generates one
+synchronization rule.
+
+Files stored directly under the source root are grouped into a special
+`root-files` rule.
 
 `rules.list` is generated from `rules.conf` and the source directory layout.
 It is copied into each run metadata directory so that every run keeps the exact
@@ -290,6 +376,107 @@ make list run report report-mail
 * most targets accept `runid=<runid>`, `runid=last` or `runid=prev`
 * all targets operate on the current project configuration
 
+== examples
+
+=== run execution
+
+Typical scheduled execution:
+
+[source,sh]
+----
+make list run report report-mail
+----
+
+Manual execution:
+
+[source,sh]
+----
+make list
+make run
+make report
+----
+
+=== execution control
+
+Request a graceful stop after the current rule:
+
+[source,sh]
+----
+make stop
+----
+
+Immediately terminate the current execution:
+
+[source,sh]
+----
+make kill
+----
+
+=== status inspection
+
+Show current or latest execution status:
+
+[source,sh]
+----
+make status
+----
+
+Example:
+
+[source]
+----
+state        : RUNNING
+runid        : 20250419.031415
+source       : /share/home/alice
+destination  : backup:home/alice
+progress     : 42/99 (42.42%)
+started at   : 2025.04.19-03:14:15 (elapsed 1h45m45s)
+current rule : dave (elapsed 42m42s)
+...
+----
+
+Show detailed rule information:
+
+[source,sh]
+----
+make status-v
+----
+
+Example:
+
+[source]
+----
+RULE      STATE  START     END       ELAPSED     CHECKS      XFER  XFER_MiB DEL RC
+alice     done   03:14:15  03:15:16  00:01:01      1764       42      42.0   1  0
+bob       done   03:15:16  04:16:17  01:01:01     74088     1764    4242.4   4  0
+dave      run    04:17:18            00:42:42
+eve       queue
+...
+----
+
+=== history
+
+Show latest runs:
+
+[source,sh]
+----
+make history
+----
+
+Limit the number of runs:
+
+[source,sh]
+----
+make history n=10
+----
+
+Filter by date:
+
+[source,sh]
+----
+make history from=2025.04.01 to=2025.04.30
+----
+
 == output
 
 Runtime data is stored under `data/` and `log/`.
@@ -331,7 +518,7 @@ previous outputs without requiring the caller to know the corresponding
 Email notifications can be sent after report generation.
 
 The `report-mail` target sends the latest report using the configured mail
-system.
+delivery system.
 
 Configuration is defined via Makefile variables:
 
