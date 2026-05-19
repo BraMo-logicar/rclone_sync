@@ -450,7 +450,7 @@ state       : IDLE
 result      : completed
 runid       : 20260419.031415
 source      : /home
-destination : hpcbak:bocconi-hpc-backup/home
+destination : backup:bucket/home
 rules       : 42/42
 started at  : 2026.04.19-03:14:15
 ended at    : 2026.04.19-08:09:10
@@ -472,7 +472,7 @@ Example:
 state        : RUNNING
 runid        : 20260419.031415
 source       : /home
-destination  : hpcbak:bocconi-hpc-backup/home
+destination  : backup:bucket/home
 progress     : 42/99 (42.42%)
 started at   : 2026.04.19-03:14:15  (elapsed 1h45m45s)
 current rule : dave  (elapsed 42m42s)
