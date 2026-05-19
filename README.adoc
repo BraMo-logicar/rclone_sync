@@ -69,7 +69,7 @@ configurations.
 ** independent logs and stats per rule
 
 * interactive inspection
-** targets for runtime inspection (e.g. `status`, `history`)
+** targets for runtime inspection (e.g. `status`, `status-v`, `history`)
 ** access to latest and historical execution data
 
 * configuration model
@@ -98,13 +98,39 @@ configurations.
 
 === installation
 
-Clone the repository and initialize local configuration:
+Clone the repository:
 
+[source,sh]
+----
+git clone <repo>
+cd rclone_sync
+----
+
+Initialize local configuration:
+
+[source,sh]
 ----
 cp .include.mk.dist .include.mk
+cp etc/rules.conf.dist etc/rules.conf
 ----
 
-Edit `.include.mk` to override site-specific settings as needed.
+Edit `.include.mk` to override site-specific settings.
+
+Configure `etc/rclone.conf` with the required remote provider settings.
+
+Generate the active rules list:
+
+[source,sh]
+----
+make list
+----
+
+Run a first synchronization:
+
+[source,sh]
+----
+make run
+----
 
 == project structure
 
@@ -136,7 +162,7 @@ Edit `.include.mk` to override site-specific settings as needed.
 │   └── status -> stats/last/.meta/status    # current status snapshot
 ├── etc/
 │   ├── rclone.conf                          # rclone configuration
-│   ├── rules.conf                           # sync rules definition
+│   ├── rules.conf                           # sync rule definitions
 │   ├── rules.conf.dist                      # sync rules template
 │   └── rules.list                           # generated list of active rules
 ├── log/
