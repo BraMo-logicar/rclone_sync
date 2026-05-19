@@ -138,7 +138,7 @@ make run
 ----
 <project>/                                   # project name defined in configuration
 ├── bin/
-│   └── rclone_sync                          # rclone sync wrapper  
+│   └── rclone_sync                          # rclone sync wrapper
 ├── data/
 │   ├── reports/                             # execution reports
 │   │    ├── yyyy/yyyy.mm/
@@ -170,7 +170,7 @@ make run
 │   └── run/                                 # per-rule rclone logs for current run
 │       └── <ruleid>.log
 ├── mk/
-│   ├── config.mk                            # default configuration variables 
+│   ├── config.mk                            # default configuration variables
 │   └── lib.mk                               # shared functions
 ├── Makefile                                 # entry point and phase orchestration
 └── README.adoc                              # project documentation
@@ -397,7 +397,7 @@ make list run report report-mail
 
 == examples
 
-=== run execution
+=== scheduled execution
 
 Typical scheduled execution:
 
@@ -406,13 +406,14 @@ Typical scheduled execution:
 make list run report report-mail
 ----
 
-Manual execution:
+Equivalent step-by-step execution:
 
 [source,sh]
 ----
 make list
 make run
 make report
+make report-mail
 ----
 
 === execution control
@@ -433,7 +434,7 @@ make kill
 
 === status inspection
 
-Show current or latest execution status:
+Show current or latest run status:
 
 [source,sh]
 ----
@@ -444,17 +445,18 @@ Example:
 
 [source]
 ----
-state        : RUNNING
-runid        : 20250419.031415
-source       : /share/home/alice
-destination  : backup:home/alice
-progress     : 42/99 (42.42%)
-started at   : 2025.04.19-03:14:15 (elapsed 1h45m45s)
-current rule : dave (elapsed 42m42s)
-...
+state       : IDLE
+result      : completed
+runid       : 20260419.031415
+source      : /home
+destination : hpcbak:bocconi-hpc-backup/home
+rules       : 42/42
+started at  : 2026.04.19-03:14:15
+ended at    : 2026.04.19-08:09:10
+elapsed     : 4h54m55s
 ----
 
-Show detailed rule information:
+Show detailed per-rule status and execution statistics:
 
 [source,sh]
 ----
@@ -465,12 +467,37 @@ Example:
 
 [source]
 ----
-RULE      STATE  START     END       ELAPSED     CHECKS      XFER  XFER_MiB DEL RC
-alice     done   03:14:15  03:15:16  00:01:01      1764       42      42.0   1  0
-bob       done   03:15:16  04:16:17  01:01:01     74088     1764    4242.4   4  0
+state        : RUNNING
+runid        : 20260419.031415
+source       : /home
+destination  : hpcbak:bocconi-hpc-backup/home
+progress     : 42/99 (42.42%)
+started at   : 2026.04.19-03:14:15  (elapsed 1h45m45s)
+current rule : dave  (elapsed 42m42s)
+pids         : make=12345, shell=31415, rclone_sync=35711, rclone=14916
+
+RULE      STATE  START     END       ELAPSED     CHECKS      XFER  XFER_MiB     DEL   RC
+alice     done   03:14:15  03:15:16  00:01:01      1764        42      42.0       1    0
+bob       done   03:15:16  04:16:17  01:01:01     74088      1764    4242.4       4    0
+carol     done   04:16:17  04:17:18  00:01:01        42         1       4.2       9    0
 dave      run    04:17:18            00:42:42
 eve       queue
+frank     queue
+grace     queue
+helen     queue
 ...
+(+n more rules remaining)
+
+SUMMARY
+    rules         : 42/99 (42.42%)
+    checks        : 75'894
+    xfer          : 1'807
+      new         : 1'205
+      replaced    : 602
+    xfer size     : 4.2GiB
+    deleted       : 14
+    rules elapsed : 1h03m03s
+    rules result  : ok=3, fail=0
 ----
 
 === history
@@ -482,18 +509,29 @@ Show latest runs:
 make history
 ----
 
-Limit the number of runs:
+Limit the number of displayed runs:
 
 [source,sh]
 ----
 make history n=10
 ----
 
-Filter by date:
+Filter by date range:
 
 [source,sh]
 ----
-make history from=2025.04.01 to=2025.04.30
+make history n=4
+----
+
+Example:
+
+[source]
+----
+RUNID            RULES  START                END                    ELAPSED    CHECKS      XFER    XFER_MiB       DEL   RC  RESULT
+20260419.031415  24/24  2026.04.19-03:14:15  2026.04.19-08:09:10   4h54m55s  12345678    123456   1234567.8    123456    0  completed
+20260420.031415  24/24  2026.04.20-03:14:15  2026.04.20-02:39:51   7h25m43s  12340910        12    234567.8        25    0  completed
+20260421.031415  24/24  2026.04.21-03:14:15  2026.04.21-05:29:24  10h15m15s  12341112       987    345678.9         0    0  completed
+20260422.031415  24/24  2026.04.22-03:14:15  2026.04.22-00:50:52   5h36m44s  12341314        98    910111.2         0    0  completed
 ----
 
 == output
