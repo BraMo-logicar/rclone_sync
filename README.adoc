@@ -181,7 +181,7 @@ make run
 Configuration is split across Makefile variables and project-specific
 configuration files.
 
-Defaults values are defined in:
+Default values are defined in:
 
 [source]
 ----
