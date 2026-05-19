@@ -8,9 +8,10 @@
 structured and repeatable workflow for data synchronization and backup.
 
 It organizes execution into explicit phases, adds retry logic, logging,
-statistics collection, reporting, and optional email notifications.
+statistics collection, reporting, optional email notifications and historical
+tracking of executions.
 
-Each run produces timestamped outputs (reports, stats, logs) organized in a
+Each run produces timestamped outputs (logs, stats, reports) organized in a
 persistent directory structure, allowing historical tracking and inspection
 over time. Convenient symlinks (`last`, `prev`, `status`) provide quick access
 to recent executions.
@@ -20,6 +21,9 @@ inspection through dedicated targets (`status`, `status-v`, `history`).
 
 Configuration is defined via Makefile variables and configuration files, and is
 designed for system-level deployment.
+
+The same tool can be reused across multiple projects through independent
+configurations.
 
 == features
 
@@ -74,7 +78,7 @@ designed for system-level deployment.
 ** external configuration files (`rules.conf`, `rules.list`, `rclone.conf`)
 
 * multi-instance deployment
-** same tool reused with different project names and configurations
+** same tool reused across multiple projects with independent configuration
 
 * notification
 ** optional email notification after execution
