@@ -445,6 +445,7 @@ Example:
 
 [source]
 ----
+# make status
 state       : IDLE
 result      : completed
 runid       : 20260419.031415
@@ -467,6 +468,7 @@ Example:
 
 [source]
 ----
+# make status-v
 state        : RUNNING
 runid        : 20260419.031415
 source       : /home
@@ -520,13 +522,14 @@ Filter by date range:
 
 [source,sh]
 ----
-make history n=4
+make history from=2026.05.01 to=2026.05.31
 ----
 
 Example:
 
 [source]
 ----
+# make history n=4
 RUNID            RULES  START                END                    ELAPSED    CHECKS      XFER    XFER_MiB       DEL   RC  RESULT
 20260419.031415  24/24  2026.04.19-03:14:15  2026.04.19-08:09:10   4h54m55s  12345678    123456   1234567.8    123456    0  completed
 20260420.031415  24/24  2026.04.20-03:14:15  2026.04.20-02:39:51   7h25m43s  12340910        12    234567.8        25    0  completed
