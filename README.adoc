@@ -335,6 +335,8 @@ exact list of rules used during execution.
 
 === pipeline execution
 
+Typical scheduled execution:
+
 [source,sh]
 ----
 make list run report report-mail
@@ -346,13 +348,13 @@ make list run report report-mail
 ** generate the active `rules.list`
 
 * `run`
-** execute the synchronization pipeline
+** execute the synchronization pipeline: `start`, `main`, and `end`
 
 * `report`
 ** generate the execution report
 
 * `report-mail`
-** send the report via email
+** send the generated report via email
 
 === control targets
 
@@ -360,7 +362,7 @@ make list run report report-mail
 ** request a graceful stop (after current rule)
 
 * `kill`
-** force termination of the running process
+** send termination signals to the running shell, program and rclone processes
 
 === inspection targets
 
@@ -368,15 +370,16 @@ make list run report report-mail
 ** show current or last run status
 
 * `status-v`
-** show detailed per-rule status
+** show detailed per-rule status and execution statistics
 
 * `history`
-** list past runs
+** list historical runs
+** supports `from=<date>`, `to=<date>` and `n=<n>`
 
 === utility targets
 
 * `help`
-** show available targets
+** show available targets and command syntax
 
 * `dirs`
 ** create required directory structure
