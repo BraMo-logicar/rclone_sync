@@ -515,7 +515,7 @@ statistics, and usage snapshots.
 ** exposed through `data/stats/last` and `data/stats/prev`
 
 * status
-** stored as run metadata
+** stored as run metadata under `.meta/status`
 ** exposed through `data/status`
 ** points to `data/stats/last/.meta/status`
 
@@ -526,7 +526,7 @@ statistics, and usage snapshots.
 * logs
 ** main log stored under `log/<project>.log`
 ** per-rule logs stored under `log/run/<ruleid>.log`
-** logs correspond to the current run
+** per-rule logs refer to the current run
 
 `last` and `prev` symlinks provide stable access to the most recent and
 previous outputs without requiring the caller to know the corresponding
