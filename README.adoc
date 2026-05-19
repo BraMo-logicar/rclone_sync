@@ -161,7 +161,7 @@ make run
 │   │    └── prev -> ...                     # symlink to previous usage snapshot
 │   └── status -> stats/last/.meta/status    # current status snapshot
 ├── etc/
-│   ├── rclone.conf                          # rclone configuration
+│   ├── rclone.conf                          # rclone backend configuration
 │   ├── rules.conf                           # sync rule definitions
 │   ├── rules.conf.dist                      # sync rules template
 │   └── rules.list                           # generated list of active rules
@@ -181,21 +181,21 @@ make run
 Configuration is split across Makefile variables and project-specific
 configuration files.
 
-The main defaults are defined in:
+Defaults values are defined in:
 
 [source]
 ----
 mk/config.mk
 ----
 
-Local project settings are defined in:
+Project-specific settings are defined in:
 
 [source]
 ----
 .include.mk
 ----
 
-A template is provided as:
+Template configuration:
 
 [source]
 ----
@@ -207,9 +207,10 @@ A template is provided as:
 [source]
 ----
 etc/
-├── rclone.conf    # rclone remote configuration
-├── rules.conf     # sync rule definitions
-└── rules.list     # generated list of active rules
+├── rclone.conf        # rclone backend configuration
+├── rules.conf         # sync rule definitions
+├── rules.conf.dist    # sync rules template
+└── rules.list         # generated list of active rules
 ----
 
 * `rclone.conf`
@@ -276,6 +277,7 @@ rule_queue := [RULE_QUEUE]
 
 mail_from := [MAIL_FROM]
 mail_to   := [MAIL_TO]
+mail_log  := [MAIL_LOG]
 ----
 
 === sync rules
@@ -306,13 +308,16 @@ Example:
 
 [source]
 ----
-projects
-    exclude *.tmp
-
-nobackup
+mordor
     skip
 
-archive
+shire
+    exclude *.orc
+
+mithrandir
+    ruleid gandalf
+
+palantir
     opts --checksum
 ----
 
@@ -323,8 +328,8 @@ Files stored directly under the source root are grouped into a special
 `root-files` rule.
 
 `rules.list` is generated from `rules.conf` and the source directory layout.
-It is copied into each run metadata directory so that every run keeps the exact
-list of rules used for that execution.
+It is copied into each run metadata directory so that every run preserves the
+exact list of rules used during execution.
 
 == usage
 
