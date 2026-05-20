@@ -1,0 +1,10 @@
+= TODO
+
+== features
+
+* support `include` directove in `rules.conf`
+
+== logging
+
+* ISO date format? (`yyyy.mm.ddThh:mm:ss`)
+* include timezone?
