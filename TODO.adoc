@@ -2,9 +2,13 @@
 
 == features
 
-* support `include` directove in `rules.conf`
+* support `include` directive in `rules.conf`
 
 == logging
 
 * ISO date format? (`yyyy.mm.ddThh:mm:ss`)
 * include timezone?
+
+== doc
+
+* restore
