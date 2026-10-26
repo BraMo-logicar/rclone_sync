@@ -3,6 +3,7 @@
 == features
 
 * support `include` directive in `rules.conf`
+* detect interrupted runs after reboot using boot id
 
 == logging
 
