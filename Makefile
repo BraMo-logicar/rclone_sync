@@ -88,6 +88,7 @@ start: dirs
 	> "$$run_statusf"
 	kv_set "$$run_statusf" state "running"
 	kv_set "$$run_statusf" runid "$$runid"
+	kv_set "$$run_statusf" rclone_ver "$(rclone_ver)"
 	kv_set "$$run_statusf" started_at_epoch "$$t0"
 	kv_set "$$run_statusf" started_at "$(call at,$$t0)"
 	kv_set "$$run_statusf" rules_done "0"
@@ -120,6 +121,7 @@ start: dirs
 
 	$(call log,[$$runid] start '$(project)' ($(program_name) v$(version)) \
 	    @ $(hostname) ($(ip)))
+	$(call log,[$$runid] rclone version: v$(rclone_ver))
 	$(call log,[$$runid] rclone remote: $$msg)
 
 main:
@@ -571,6 +573,7 @@ report: dirs
 	    printf '%s @ %s (%s)\n' "$(project)" "$(hostname)" "$$runid"
 	    printf '\n'
 	    printf 'program     : %s (v%s)\n' "$(program_name)" "$(version)"
+	    printf 'rclone      : v%s\n' "$$(kv_get "$$run_statusf" rclone_ver)"
 	    printf 'host        : %s\n' "$(hostname) ($(ip))"
 	    printf 'runid       : %s\n' "$$runid"
 	    printf '\n'

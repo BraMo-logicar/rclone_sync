@@ -746,7 +746,6 @@ define send_report
     printf 'MIME-Version: 1.0\n'
     printf 'Content-Type: multipart/mixed; boundary="%s"\n' "$$boundary"
     printf 'Rclone-Sync-Project: %s (v%s)\n' "$(project)" "$(version)"
-    printf 'Rclone-Version: %s\n' "$(rclone_ver)"
     printf '\n'
 
     printf -- '--%s\n' "$$boundary"
