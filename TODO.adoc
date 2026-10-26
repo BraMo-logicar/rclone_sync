@@ -4,6 +4,9 @@
 
 * support `include` directive in `rules.conf`
 * detect interrupted runs after reboot using boot id
+* implement `make purge-list` and `make purge` to identify and remove
+  destination areas no longer covered by source rules
+* implement rmdir/rmdirs to remove empty directories/prefixes
 
 == logging
 
