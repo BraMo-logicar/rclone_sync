@@ -7,6 +7,10 @@
 # vars
 #-----
 
+# instance
+
+instance := [INSTANCE]
+
 # source/destination
 
 bucket := [BUCKET]
