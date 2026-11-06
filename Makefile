@@ -633,7 +633,7 @@ report-mail:
 	rules_total=$$(kv_get "$$run_statusf" rules_total)
 
 	subject=$$(printf '[%s@%s] rclone sync to %s:%s (runid=%s rules=%s/%s)' \
-	    "$(project)" "$(host)" "$(remote)" "$(bucket)" "$$runid" \
+	    "$(instance)" "$(host)" "$(remote)" "$(bucket)" "$$runid" \
 	    "$$rules_done" "$$rules_total")
 
 	$(call send_report,$$runid,$$reportf,$$reportlog,$$subject)
